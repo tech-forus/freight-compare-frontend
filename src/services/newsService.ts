@@ -41,11 +41,12 @@ export const fetchIndianBusinessNews = async (): Promise<NewsArticle[]> => {
         }
 
         // Fetch fresh news from backend proxy (bypasses CORS)
-        const apiBaseBackend = import.meta.env.VITE_API_BASE_URL || 'freight-compare-backend-production.up.railway.app';
+        const apiBaseBackend = import.meta.env.VITE_API_BASE_URL || 'https://freight-compare-backend-production.up.railway.app';
 
         console.log('[News Service] Fetching fresh Indian business news from backend proxy...');
 
         const response = await fetch(`${apiBaseBackend}/api/news/business`);
+
 
         if (!response.ok) {
             if (response.status === 429) {
