@@ -304,7 +304,7 @@ const SignupForm: React.FC = () => {
     toast.loading("Sending verification codes...");
     try {
       const values = getValues();
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || "freight-compare-backend-production.up.railway.app";
       await axios.post(`${apiUrl}/api/auth/signup/initiate`, values);
       toast.dismiss();
       toast.success("Verification codes sent!");
@@ -325,7 +325,7 @@ const SignupForm: React.FC = () => {
     setLoading(true);
     try {
       const { email, emailOtp } = getValues();
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || "freight-compare-backend-production.up.railway.app";
       const { data } = await axios.post(`${apiUrl}/api/auth/signup/verify`, {
         email,
         emailOtp,

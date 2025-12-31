@@ -33,7 +33,7 @@ interface Vendor {
 }
 
 // Base URL for non-local environments (Vercel, etc.)
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'freight-compare-backend-production.up.railway.app';
 
 const MyVendors: React.FC = () => {
   const { user } = useAuth();

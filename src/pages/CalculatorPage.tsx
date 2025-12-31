@@ -616,7 +616,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     if (!user || !token) return;
     try {
       const response = await axios.get(
-        `http://localhost:8000/api/transporter/getpackinglist?customerId=${(user as any).customer._id
+        `freight-compare-backend-production.up.railway.app/api/transporter/getpackinglist?customerId=${(user as any).customer._id
         }`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -636,7 +636,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     if (window.confirm("Delete this preset permanently?")) {
       try {
         await axios.delete(
-          `http://localhost:8000/api/transporter/deletepackinglist/${presetId}`,
+          `freight-compare-backend-production.up.railway.app/api/transporter/deletepackinglist/${presetId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -776,7 +776,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     try {
       await axios.post(
-        `http://localhost:8000/api/transporter/savepackinglist`,
+        `freight-compare-backend-production.up.railway.app/api/transporter/savepackinglist`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -927,7 +927,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     };
 
     // Centralized API base URL with production fallback
-    const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+    const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'freight-compare-backend-production.up.railway.app').replace(/\/+$/, '');
 
     try {
       // PERF: Minimal logging in hot path

@@ -54,7 +54,7 @@ const BiddingPage: React.FC = () => {
   useEffect(() => {
     const userId = user ? (user as any).customer._id : '';
     const fetchData = async () => {
-      await axios.get<{ data: ActiveBid[] }>(`http://localhost:8000/api/bidding/user/${userId}`).then(res => setActiveBids(res.data.data)).catch(err => console.error('Failed to load active bids', err));
+      await axios.get<{ data: ActiveBid[] }>(`freight-compare-backend-production.up.railway.app/api/bidding/user/${userId}`).then(res => setActiveBids(res.data.data)).catch(err => console.error('Failed to load active bids', err));
     };
     fetchData();
   }, [user]);
@@ -63,7 +63,7 @@ const BiddingPage: React.FC = () => {
   const onSubmit: SubmitHandler<FormValues> = async data => {
     try {``
       const payload = { userId: (user as any).customer._id, weightOfBox: Number(data.weightOfBox), noofboxes: Number(data.noofboxes), length: Number(data.length), width: Number(data.width), height: Number(data.height), origin: data.origin, destination: data.destination, bidEndTime: data.bidEndTime, pickupDate: data.pickupDate, pickupTime: data.pickupTime, bidType: data.bidType, transporterIds: data.bidType === 'semi-limited' ? data.transporterIds : [], transporterRating: data.bidType === 'semi-limited' && data.transporterRating !== '' ? Number(data.transporterRating) : undefined, };
-      const response = await axios.post('http://localhost:8000/api/bidding/addbid', payload);
+      const response = await axios.post('freight-compare-backend-production.up.railway.app/api/bidding/addbid', payload);
       if (response.data.success) {
         toast.success('Bidding created successfully!');
       }
@@ -92,7 +92,7 @@ const BiddingPage: React.FC = () => {
 
   const getBiddingDetails = async () => {
     try {
-      const response = await axios.get(`http://localhost:8000/api/bidding/details/${expandedBidId}`);
+      const response = await axios.get(`freight-compare-backend-production.up.railway.app/api/bidding/details/${expandedBidId}`);
       console.log(response.data);
     } catch (error) {
       console.error('Failed to fetch bidding details', error);

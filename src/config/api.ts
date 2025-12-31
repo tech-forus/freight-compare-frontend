@@ -10,7 +10,7 @@
  */
 
 // The production backend URL - fallback if env var is not set
-const PRODUCTION_BACKEND = 'http://localhost:8000';
+const PRODUCTION_BACKEND = 'freight-compare-backend-production.up.railway.app';
 
 /**
  * Get the API base URL from environment or use production fallback

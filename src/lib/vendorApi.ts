@@ -49,7 +49,7 @@ function resolveApiBase(explicit?: string): string {
     : undefined;
   if (craBase) return stripTrailingSlash(String(craBase));
 
-  return "http://localhost:8000";
+  return "freight-compare-backend-production.up.railway.app";
 }
 
 // Shared fetch wrapper

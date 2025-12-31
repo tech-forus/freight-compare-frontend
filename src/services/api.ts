@@ -37,7 +37,7 @@ export interface PincodeLookupResponse {
 // Normalize base URL (strip trailing slashes). Default to your Render host.
 const RAW_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-  'http://localhost:8000';
+  'freight-compare-backend-production.up.railway.app';
 
 const API_BASE = RAW_BASE.replace(/\/+$/, '');
 

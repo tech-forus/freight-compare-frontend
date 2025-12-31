@@ -26,7 +26,7 @@ const configured =
   getEnv("VITE_API_BASE") ||
   getEnv("VITE_API_BASE_URL") || // keep backward-compat
   getEnv("REACT_APP_URL") ||     // older CRA name
-  "http://localhost:8000"; // final fallback
+  "freight-compare-backend-production.up.railway.app"; // final fallback
 
 const rawNoSlash = String(configured).replace(/\/$/, "");
 

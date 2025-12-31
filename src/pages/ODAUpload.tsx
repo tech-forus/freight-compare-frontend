@@ -266,7 +266,7 @@ const ODAUpload: React.FC = () => {
     const toastId = toast.loading('Saving distance-weight matrix...');
 
     try {
-      const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+      const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'freight-compare-backend-production.up.railway.app').replace(/\/+$/, '');
       
       // Get auth token
       const token = localStorage.getItem('authToken') || 

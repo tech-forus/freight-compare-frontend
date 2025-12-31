@@ -1090,7 +1090,7 @@
 // // //         },
 // // //       };
 
-// // //       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// // //       const API_URL = import.meta.env.VITE_API_URL || 'freight-compare-backend-production.up.railway.app';
 // // //       const token = getAuthTokenFromStorage();
 
 // // //       if (!token) {
@@ -2892,7 +2892,7 @@
 // //         },
 // //       };
 
-// //       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// //       const API_URL = import.meta.env.VITE_API_URL || 'freight-compare-backend-production.up.railway.app';
 // //       const token = getAuthTokenFromStorage();
 
 // //       if (!token) {
@@ -4722,7 +4722,7 @@
 // //         },
 // //       };
 
-// //       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// //       const API_URL = import.meta.env.VITE_API_URL || 'freight-compare-backend-production.up.railway.app';
 // //       const token = getAuthTokenFromStorage();
 
 // //       if (!token) {
@@ -6572,7 +6572,7 @@
 //         },
 //       };
 
-//       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+//       const API_URL = import.meta.env.VITE_API_URL || 'freight-compare-backend-production.up.railway.app';
 //       const token = getAuthTokenFromStorage();
 
 //       if (!token) {
@@ -7374,7 +7374,7 @@ import { usePincodeLookup } from '../hooks/usePincodeLookup';
 
 
 const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+  (import.meta.env.VITE_API_BASE_URL || 'freight-compare-backend-production.up.railway.app').replace(/\/+$/, '');
 
 
 const validatePhone = (phone: string): string => {
@@ -8367,7 +8367,7 @@ const EditVendorModal: React.FC<EditVendorModalProps> = ({ vendor, onClose, onSa
     setPincodeError('');
 
     try {
-      //const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      //const API_URL = import.meta.env.VITE_API_URL || 'freight-compare-backend-production.up.railway.app';
       const response = await fetch(`${API_BASE}/api/pincode/${pincode}`);
       
       if (!response.ok) {
@@ -8555,7 +8555,7 @@ const EditVendorModal: React.FC<EditVendorModalProps> = ({ vendor, onClose, onSa
         allFields: Object.keys(payload),
       });
 
-      //onst API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      //onst API_URL = import.meta.env.VITE_API_URL || 'freight-compare-backend-production.up.railway.app';
       const token = getAuthTokenFromStorage();
 
       if (!token) {
