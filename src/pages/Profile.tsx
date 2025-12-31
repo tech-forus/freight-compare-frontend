@@ -64,7 +64,7 @@ const ProfilePage: React.FC = () => {
         if (passwordFields.newPassword.length < 8) { toast.error('New password must be at least 8 characters long.'); setIsSaving(false); return; }
 
         try {
-            const response = await axios.post("freight-compare-backend-production.up.railway.app/api/auth/changepassword", {
+            const response = await axios.post(`${API_BASE_URL}/api/auth/changepassword`, {
                 email: customer.email, password: passwordFields.currentPassword, newpassword: passwordFields.newPassword,
             });
             toast.success(response.data?.message || 'Password changed successfully!');

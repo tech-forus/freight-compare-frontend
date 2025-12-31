@@ -78,7 +78,7 @@ export type VehiclePricingData = {
 /** --- Config (use env when available) --- */
 const BASE_URL =
   (import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ||
-    "freight-compare-backend-production.up.railway.app");
+    "https://freight-compare-backend-production.up.railway.app");
 
 const AUTH_HEADER = (token?: string) =>
   token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -242,7 +242,7 @@ export async function getGoogleMapsDistance(
   toPincode: string,
   token?: string
 ): Promise<number> {
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'freight-compare-backend-production.up.railway.app').replace(/\/+$/, '');
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://freight-compare-backend-production.up.railway.app').replace(/\/+$/, '');
 
   // PERF: Removed verbose logging - this function is now rarely called
 

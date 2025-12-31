@@ -10,14 +10,14 @@ function getEnv(name: string): string | undefined {
       const v = (import.meta as any).env[name];
       if (v) return String(v);
     }
-  } catch {}
+  } catch { }
   try {
     // Node/process fallback (rare in browser)
     if (typeof process !== "undefined" && (process as any).env) {
       const v = (process as any).env[name];
       if (v) return String(v);
     }
-  } catch {}
+  } catch { }
   return undefined;
 }
 
@@ -26,7 +26,7 @@ const configured =
   getEnv("VITE_API_BASE") ||
   getEnv("VITE_API_BASE_URL") || // keep backward-compat
   getEnv("REACT_APP_URL") ||     // older CRA name
-  "freight-compare-backend-production.up.railway.app"; // final fallback
+  "https://freight-compare-backend-production.up.railway.app"; // final fallback
 
 const rawNoSlash = String(configured).replace(/\/$/, "");
 

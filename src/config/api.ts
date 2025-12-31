@@ -10,7 +10,7 @@
  */
 
 // The production backend URL - fallback if env var is not set
-const PRODUCTION_BACKEND = 'freight-compare-backend-production.up.railway.app';
+const PRODUCTION_BACKEND = 'https://freight-compare-backend-production.up.railway.app';
 
 /**
  * Get the API base URL from environment or use production fallback
@@ -18,11 +18,11 @@ const PRODUCTION_BACKEND = 'freight-compare-backend-production.up.railway.app';
  */
 export const getApiBaseUrl = (): string => {
   // Try VITE_API_BASE_URL first (most common)
-  const envUrl = 
-    import.meta.env.VITE_API_BASE_URL || 
-    import.meta.env.VITE_API_BASE || 
+  const envUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_BASE ||
     import.meta.env.REACT_APP_URL;
-  
+
   const baseUrl = (envUrl || PRODUCTION_BACKEND).replace(/\/+$/, '');
   return baseUrl;
 };

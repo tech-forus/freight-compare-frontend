@@ -49,7 +49,7 @@ function resolveApiBase(explicit?: string): string {
     : undefined;
   if (craBase) return stripTrailingSlash(String(craBase));
 
-  return "freight-compare-backend-production.up.railway.app";
+  return "https://freight-compare-backend-production.up.railway.app";
 }
 
 // Shared fetch wrapper
