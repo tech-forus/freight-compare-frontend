@@ -101,13 +101,40 @@ export const incrementCalculatorUsageCount = (): number => {
 };
 
 /**
- * Check if user should see news popup
- * Super admin: first 30 uses
- * Regular users: first 5 uses
+ * Check if user has disabled news popup
  */
-export const shouldShowNewsPopup = (isSuperAdmin?: boolean): boolean => {
-    const count = getCalculatorUsageCount();
-    // Super admin gets 30 uses, regular users get 5
-    const limit = isSuperAdmin ? 30 : 5;
-    return count < limit;
+export const hasUserDisabledNews = (): boolean => {
+    return localStorage.getItem('newsPopupDisabled') === 'true';
+};
+
+/**
+ * Disable news popup permanently (user choice)
+ */
+export const disableNewsPopup = (): void => {
+    localStorage.setItem('newsPopupDisabled', 'true');
+    console.log('[News Service] User disabled news popup');
+};
+
+/**
+ * Re-enable news popup (for testing or user preference reset)
+ */
+export const enableNewsPopup = (): void => {
+    localStorage.removeItem('newsPopupDisabled');
+    console.log('[News Service] User enabled news popup');
+};
+
+/**
+ * Check if user should see news popup
+ * Returns false if user clicked "Don't show again"
+ * Otherwise always returns true (Google RSS has no limits)
+ */
+export const shouldShowNewsPopup = (): boolean => {
+    // Respect user's choice if they disabled it
+    if (hasUserDisabledNews()) {
+        return false;
+    }
+
+    // Google News RSS has unlimited requests, so no counter limit needed
+    // News shows every time UNLESS user explicitly disables it
+    return true;
 };

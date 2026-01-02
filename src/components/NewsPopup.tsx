@@ -1,7 +1,7 @@
 // frontend/src/components/NewsPopup.tsx
 import React, { useEffect, useState } from 'react';
 import { X, ExternalLink, Newspaper, Loader2 } from 'lucide-react';
-import { fetchIndianBusinessNews, NewsArticle } from '../services/newsService';
+import { fetchIndianBusinessNews, NewsArticle, disableNewsPopup } from '../services/newsService';
 import './NewsPopup.css';
 
 interface NewsPopupProps {
@@ -14,6 +14,7 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
     const [articles, setArticles] = useState<NewsArticle[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [dontShowAgain, setDontShowAgain] = useState(false);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -35,6 +36,16 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
 
         loadNews();
     }, [isOpen]);
+
+    const handleDontShowAgainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const checked = e.target.checked;
+        setDontShowAgain(checked);
+
+        if (checked) {
+            disableNewsPopup();
+            console.log('[NewsPopup] User opted to never show news again');
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -132,17 +143,29 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
                     )}
                 </div>
 
-                {/* Blinking "View Results" Button (appears when results are ready) */}
-                {resultsReady && (
-                    <div className="news-popup-footer">
+                {/* Footer with "Don't show again" option */}
+                <div className="news-popup-footer">
+                    {/* "Don't show again" checkbox (always visible) */}
+                    <label className="dont-show-again-label">
+                        <input
+                            type="checkbox"
+                            checked={dontShowAgain}
+                            onChange={handleDontShowAgainChange}
+                            className="dont-show-again-checkbox"
+                        />
+                        <span>Don't show news again</span>
+                    </label>
+
+                    {/* Blinking "View Results" Button (appears when results are ready) */}
+                    {resultsReady && (
                         <button
                             className="view-results-btn"
                             onClick={handleViewResults}
                         >
                             🎯 View Your Results
                         </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );

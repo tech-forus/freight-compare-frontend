@@ -799,14 +799,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
   const calculateQuotes = async () => {
     if (isCalculating) return;
 
-    // 📰 Smart News Popup: Check BEFORE incrementing (prevents off-by-one on 5th use)
-    // Super admin: 30 uses, Regular users: 5 uses
-    const shouldShowNews = shouldShowNewsPopup(isSuperAdmin);
+    // 📰 Smart News Popup: Shows unless user clicked "Don't show again"
+    // Google News RSS has unlimited requests, so no usage limits needed
+    const shouldShowNews = shouldShowNewsPopup();
 
-    // Now increment the counter
+    // Increment counter for analytics (still tracked but not used for limits)
     const currentUsage = incrementCalculatorUsageCount();
-    const limit = isSuperAdmin ? 30 : 5;
-    console.log('[News] Calculator usage count:', currentUsage, '| Should show news:', shouldShowNews, `(limit: ${limit} for ${isSuperAdmin ? 'super admin' : 'user'})`);
+    console.log('[News] Calculator usage count:', currentUsage, '| Should show news:', shouldShowNews);
 
     setIsCalculating(true);
     setError(null);
