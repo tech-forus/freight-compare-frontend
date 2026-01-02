@@ -82,6 +82,38 @@
     color: white;
 }
 
+
+/* Header action buttons wrapper */
+.news-popup-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Small "View Results" button in header */
+.view-results-btn-small {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.view-results-btn-small:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: translateY(-1px);
+}
+
+.view-results-btn-small:active {
+    transform: translateY(0);
+}
+
 .news-popup-close {
     background: rgba(255, 255, 255, 0.2);
     border: none;
@@ -94,6 +126,7 @@
     cursor: pointer;
     transition: all 0.2s;
     color: white;
+    flex-shrink: 0;
 }
 
 .news-popup-close:hover {

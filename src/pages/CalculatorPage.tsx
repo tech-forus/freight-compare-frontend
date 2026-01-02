@@ -1114,6 +1114,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         if (shouldShowNews && !showNewsPopup) {
           console.log('[News] Calculation finished quickly, showing news popup immediately');
           setShowNewsPopup(true);
+          setResultsReady(true); // Results are ready now!
         }
       }
 

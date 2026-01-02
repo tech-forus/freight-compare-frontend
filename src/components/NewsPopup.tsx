@@ -25,7 +25,13 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
 
             try {
                 const news = await fetchIndianBusinessNews();
-                setArticles(news);
+
+                // 🎲 Randomize articles so users see different news each time
+                // Even though backend caches for 30min, we shuffle for variety
+                const shuffled = [...news].sort(() => Math.random() - 0.5);
+
+                // Show top 5 random articles (not all 10 - keeps popup compact)
+                setArticles(shuffled.slice(0, 5));
             } catch (err: any) {
                 console.error('[NewsPopup] Error loading news:', err);
                 setError(err.message || 'Failed to load news');
@@ -72,13 +78,22 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
                         <Newspaper className="news-icon" />
                         <h2>Latest Indian Business News</h2>
                     </div>
-                    <button
-                        className="news-popup-close"
-                        onClick={onClose}
-                        aria-label="Close news"
-                    >
-                        <X size={24} />
-                    </button>
+                    <div className="news-popup-header-actions">
+                        <button
+                            className="view-results-btn-small"
+                            onClick={handleViewResults}
+                            title="View your freight results"
+                        >
+                            View Results →
+                        </button>
+                        <button
+                            className="news-popup-close"
+                            onClick={onClose}
+                            aria-label="Close news"
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}
