@@ -53,11 +53,19 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
         }
     };
 
-    // Helper to strip HTML tags from text (Google RSS descriptions contain raw HTML)
+    // Helper to strip HTML tags AND decode HTML entities from text
+    // (Google RSS descriptions contain raw HTML with entities like &nbsp;)
     const stripHtml = (html: string): string => {
         if (!html) return '';
-        // Remove all HTML tags
-        return html.replace(/<[^>]*>/g, '').trim();
+
+        // First remove all HTML tags
+        let text = html.replace(/<[^>]*>/g, '');
+
+        // Decode HTML entities using browser's DOMParser
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        text = doc.documentElement.textContent || '';
+
+        return text.trim();
     };
 
     if (!isOpen) return null;
