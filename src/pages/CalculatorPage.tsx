@@ -1104,10 +1104,17 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         setError(`Failed to get rates. Error: ${e.message}`);
       }
     } finally {
-      // 📰 Clear timer if results came early (< 3 seconds)
+      // 📰 FIXED: If calculation finishes before 3 seconds AND news should show, open it immediately
+      // Don't just cancel the timer - show the popup anyway!
       if (newsTimerRef.current) {
         clearTimeout(newsTimerRef.current);
         newsTimerRef.current = null;
+
+        // If timer was still pending and news should be shown, show it now
+        if (shouldShowNews && !showNewsPopup) {
+          console.log('[News] Calculation finished quickly, showing news popup immediately');
+          setShowNewsPopup(true);
+        }
       }
 
       // 📰 If news popup is open, show blinking "View Results" button
