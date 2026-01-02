@@ -53,6 +53,13 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
         }
     };
 
+    // Helper to strip HTML tags from text (Google RSS descriptions contain raw HTML)
+    const stripHtml = (html: string): string => {
+        if (!html) return '';
+        // Remove all HTML tags
+        return html.replace(/<[^>]*>/g, '').trim();
+    };
+
     if (!isOpen) return null;
 
     const handleViewResults = () => {
@@ -145,7 +152,7 @@ const NewsPopup: React.FC<NewsPopupProps> = ({ isOpen, onClose, resultsReady }) 
                                     <div className="news-content">
                                         <h3 className="news-title">{article.title}</h3>
                                         {article.description && (
-                                            <p className="news-description">{article.description}</p>
+                                            <p className="news-description">{stripHtml(article.description)}</p>
                                         )}
                                         <div className="news-meta">
                                             <span className="news-source">{article.source.name}</span>
