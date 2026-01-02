@@ -138,3 +138,43 @@ export const shouldShowNewsPopup = (): boolean => {
     // News shows every time UNLESS user explicitly disables it
     return true;
 };
+
+/**
+ * One-time migration: Clean up old localStorage states from counter-based implementation
+ * This ensures users who tested with the old 5/30-limit code don't have stale data
+ * Auto-runs on module load
+ */
+const migrateNewsStorage = (): void => {
+    const CURRENT_VERSION = '2.0';
+    const versionKey = 'newsStorageVersion';
+    const storedVersion = localStorage.getItem(versionKey);
+
+    if (storedVersion !== CURRENT_VERSION) {
+        console.log(`[News Migration] Upgrading storage from v${storedVersion || '1.0'} to v${CURRENT_VERSION}`);
+
+        // Migration from v1.0 (counter-based) to v2.0 (user-choice based)
+        // We keep the usage counter for analytics but don't use it for limiting
+        // We ONLY clear the disabled flag if this is an automatic migration
+        // (Users who manually check "Don't show again" in v2.0 will have their preference respected)
+
+        // Clear old disabled state from v1.0 counter limits
+        // New v2.0 logic: only disabled if user explicitly checks the box
+        const currentDisabled = localStorage.getItem('newsPopupDisabled');
+        if (currentDisabled === 'true' && !storedVersion) {
+            // This was likely set automatically by old counter logic, not user choice
+            console.log('[News Migration] Removing auto-set disabled flag from v1.0');
+            localStorage.removeItem('newsPopupDisabled');
+        }
+
+        // Mark migration complete
+        localStorage.setItem(versionKey, CURRENT_VERSION);
+        console.log('[News Migration] ✅ Migration complete');
+    }
+};
+
+// Auto-run migration when this module loads
+try {
+    migrateNewsStorage();
+} catch (error) {
+    console.warn('[News Migration] Migration failed:', error);
+}
