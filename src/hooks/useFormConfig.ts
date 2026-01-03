@@ -68,8 +68,8 @@ const DEFAULTS: Record<string, FormConfig> = {
     },
 };
 
-// Cache TTL (5 minutes)
-const CACHE_TTL = 5 * 60 * 1000;
+// Cache TTL (30 seconds - balances performance with quick updates)
+const CACHE_TTL = 30 * 1000;
 
 /**
  * Hook to fetch form configuration from API with caching and fallback
