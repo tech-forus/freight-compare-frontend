@@ -71,9 +71,8 @@ const UserProfileDropdown = () => {
         </span>
         <ChevronDown
           size={16}
-          className={`text-slate-500 transition-transform ${
-            isOpen ? 'rotate-180' : ''
-          }`}
+          className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''
+            }`}
         />
       </button>
 
@@ -187,12 +186,6 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                     <LayoutDashboard size={20} className="text-blue-600" /> Dashboard
                   </MobileNavLink>
 
-                  {/* SUPER ADMIN LINK (mobile) */}
-                  {isSuperAdmin && (
-                    <MobileNavLink to="/super-admin">
-                      <LayoutDashboard size={20} className="text-red-600" /> Super Admin
-                    </MobileNavLink>
-                  )}
 
                   <MobileNavLink to="/my-vendors">
                     <Truck size={20} className="text-blue-600" /> My Vendor
@@ -293,15 +286,6 @@ const Header: React.FC = () => {
                       Dashboard
                     </Link>
 
-                    {/* Super Admin button (desktop) - show only for super admin */}
-                    {isSuperAdmin && (
-                      <Link
-                        to="/super-admin"
-                        className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-red-700"
-                      >
-                        Super Admin
-                      </Link>
-                    )}
 
                     {/* Admin button (desktop) - show only for admin */}
                     {isAdmin && (
