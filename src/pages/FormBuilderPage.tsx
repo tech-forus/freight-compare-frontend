@@ -31,10 +31,12 @@ interface FieldConfig {
     visible: boolean;
     gridSpan: number;
     order: number;
+    section?: 'company' | 'transport' | 'charges';
     constraints: FieldConstraints;
     options?: FieldOption[];
     inputMode?: string | null;
     autoCapitalize?: string | null;
+    suffix?: string | null;
 }
 
 interface ChangeHistoryEntry {
@@ -60,6 +62,12 @@ const getAuthToken = (): string => {
     return Cookies.get('authToken') || localStorage.getItem('authToken') || localStorage.getItem('token') || '';
 };
 
+const SECTION_LABELS: Record<string, string> = {
+    company: 'Company & Contact Information',
+    transport: 'Transport & Volumetric Configuration',
+    charges: 'Basic Charges',
+};
+
 const FormBuilderPage: React.FC = () => {
     const [config, setConfig] = useState<FormConfig | null>(null);
     const [loading, setLoading] = useState(true);
@@ -70,6 +78,7 @@ const FormBuilderPage: React.FC = () => {
     const [showHistory, setShowHistory] = useState(false);
     const [history, setHistory] = useState<ChangeHistoryEntry[]>([]);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [activeSection, setActiveSection] = useState<string>('company');
 
     const pageId = 'add-vendor';
 
@@ -236,6 +245,15 @@ const FormBuilderPage: React.FC = () => {
     const visibleFields = config?.fields.filter(f => f.visible !== false).sort((a, b) => a.order - b.order) || [];
     const hiddenFields = config?.fields.filter(f => f.visible === false) || [];
 
+    // Group by section
+    const fieldsBySection = {
+        company: visibleFields.filter(f => f.section === 'company' || !f.section),
+        transport: visibleFields.filter(f => f.section === 'transport'),
+        charges: visibleFields.filter(f => f.section === 'charges'),
+    };
+
+    const currentFields = fieldsBySection[activeSection as keyof typeof fieldsBySection] || [];
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center">
@@ -293,36 +311,42 @@ const FormBuilderPage: React.FC = () => {
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 py-6">
                 <div className="flex gap-6">
-                    {/* Sidebar - Pages */}
-                    <div className="w-56 shrink-0">
+                    {/* Sidebar - Sections */}
+                    <div className="w-64 shrink-0">
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Pages</h3>
+                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Sections</h3>
                             <div className="space-y-2">
-                                <button className="w-full text-left px-3 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-200">
-                                    Add Vendor
-                                </button>
-                                <div className="px-3 py-2 text-slate-400 text-sm flex items-center justify-between">
-                                    Sign Up
-                                    <span className="text-xs bg-slate-100 px-2 py-0.5 rounded">Soon</span>
-                                </div>
-                                <div className="px-3 py-2 text-slate-400 text-sm flex items-center justify-between">
-                                    Profile
-                                    <span className="text-xs bg-slate-100 px-2 py-0.5 rounded">Soon</span>
-                                </div>
+                                {(['company', 'transport', 'charges'] as const).map((section) => (
+                                    <button
+                                        key={section}
+                                        onClick={() => setActiveSection(section)}
+                                        className={`w-full text-left px-3 py-2 rounded-lg font-medium transition-colors ${activeSection === section
+                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                            : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span>{SECTION_LABELS[section]}</span>
+                                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                                {fieldsBySection[section].length}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
 
                     {/* Main - Field Grid */}
                     <div className="flex-1">
-                        {/* Active Fields */}
+                        {/* Current Section Fields */}
                         <div className="mb-6">
                             <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                                 <CheckCircle size={20} className="text-green-500" />
-                                Active Fields ({visibleFields.length})
+                                {SECTION_LABELS[activeSection]} ({currentFields.length})
                             </h2>
                             <div className="grid grid-cols-2 gap-4">
-                                {visibleFields.map((field) => (
+                                {currentFields.map((field) => (
                                     <div
                                         key={field.fieldId}
                                         className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-shadow ${field.gridSpan === 2 ? 'col-span-2' : ''
