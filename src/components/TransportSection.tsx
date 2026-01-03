@@ -1,6 +1,7 @@
 // src/components/TransportSection.tsx
 import React from 'react';
 import { useVolumetric } from '../hooks/useVolumetric';
+import { useFormConfig } from '../hooks/useFormConfig';
 
 type Mode = 'road' | 'air' | 'rail' | 'ship';
 
@@ -23,6 +24,19 @@ export const TransportSection: React.FC<Props> = ({
     setDynamicVolumetricValue,
   } = volumetric;
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FORM BUILDER CONFIG - Dynamic labels from MongoDB
+  // ═══════════════════════════════════════════════════════════════════════════
+  const { getField } = useFormConfig('add-vendor');
+
+  // Helper: Get label with fallback
+  const getLabel = (fieldId: string, fallback: string) =>
+    getField(fieldId)?.label ?? fallback;
+
+  // Helper: Check if required
+  const isRequired = (fieldId: string) =>
+    getField(fieldId)?.required ?? true;
+
   const isCM = state.unit === 'cm';
 
   // Label + options switch based on unit
@@ -40,29 +54,30 @@ export const TransportSection: React.FC<Props> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="col-span-1">
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Transport Mode <span className="text-red-500">*</span>
+            {getLabel('transportMode', 'Transport Mode')}
+            {isRequired('transportMode') && <span className="text-red-500"> *</span>}
           </label>
           <select
             value={transportMode}
             onChange={(e) => onTransportModeChange(e.target.value as Mode)}
             className="w-full rounded-md border-slate-300 focus:ring-blue-500 focus:border-blue-500"
           >
-         {[
-  { value: 'road', label: 'Road', enabled: true },
-  { value: 'air', label: 'Air', enabled: false },
-  { value: 'rail', label: 'Rail', enabled: false },
-  { value: 'ship', label: 'Ship', enabled: false },
-].map((opt) => (
-  <option
-    key={opt.value}
-    value={opt.value}
-    disabled={!opt.enabled}
-    title={!opt.enabled ? `${opt.label} — Coming soon` : undefined}
-  >
-    {opt.label}
-    {!opt.enabled ? ' — Coming soon' : ''}
-  </option>
-))}
+            {[
+              { value: 'road', label: 'Road', enabled: true },
+              { value: 'air', label: 'Air', enabled: false },
+              { value: 'rail', label: 'Rail', enabled: false },
+              { value: 'ship', label: 'Ship', enabled: false },
+            ].map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
+                disabled={!opt.enabled}
+                title={!opt.enabled ? `${opt.label} — Coming soon` : undefined}
+              >
+                {opt.label}
+                {!opt.enabled ? ' — Coming soon' : ''}
+              </option>
+            ))}
 
           </select>
         </div>
@@ -72,7 +87,8 @@ export const TransportSection: React.FC<Props> = ({
         {/* Volumetric Unit Toggle */}
         <div className="col-span-2">
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Volumetric Unit <span className="text-red-500">*</span>
+            {getLabel('volumetricUnit', 'Volumetric Unit')}
+            {isRequired('volumetricUnit') && <span className="text-red-500"> *</span>}
           </label>
           <div className="inline-flex rounded-md shadow-sm border border-slate-300">
             <button
@@ -107,7 +123,8 @@ export const TransportSection: React.FC<Props> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="col-span-1">
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            {dynamicLabel} <span className="text-red-500">*</span>
+            {getLabel('volumetricDivisor', dynamicLabel)}
+            {isRequired('volumetricDivisor') && <span className="text-red-500"> *</span>}
           </label>
           <select
             value={selected ?? ''}

@@ -60,7 +60,7 @@
 //   if (!raw) return '';
 //   let s = String(raw).trim();
 //   s = s.replace(/,/g, '');
-  
+
 //   if (integerOnly) {
 //     // Only allow digits, no decimal point
 //     s = s.replace(/[^\d]/g, '');
@@ -69,7 +69,7 @@
 //     if (s === '') return '';
 //     return s;
 //   }
-  
+
 //   s = s.replace(/[^\d.]/g, '');
 
 //   const parts = s.split('.');
@@ -154,13 +154,13 @@
 //       onChange(0);
 //       return;
 //     }
-    
+
 //     const num = Number(sanitized);
 //     if (!Number.isFinite(num)) {
 //       onChange(0);
 //       return;
 //     }
-    
+
 //     // Clamp to [min, max]
 //     const clamped = Math.min(Math.max(num, min), max);
 //     onChange(clamped);
@@ -313,7 +313,7 @@
 //         {/* ═══════════════════════════════════════════════════════════════ */}
 //         {/* ROW 1: Docket*, Min Weight*, Min Charges* */}
 //         {/* ═══════════════════════════════════════════════════════════════ */}
-        
+
 //         <SimpleChargeField
 //           label="Docket Charges"
 //           name="docketCharges"
@@ -429,7 +429,7 @@
 //   name="fuelSurchargePct"
 //  value={
 //     chargeValues.fuelSurchargePct === 0 ||
-    
+
 //     chargeValues.fuelSurchargePct === null ||
 //     chargeValues.fuelSurchargePct === undefined
 //       ? ''
@@ -683,6 +683,7 @@ import { CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { FUEL_SURCHARGE_OPTIONS, CHARGE_MAX, ChargeCardData } from '../utils/validators';
 import { CompactChargeCard } from './CompactChargeCard';
 import { ComboInput } from './ComboInput';
+import { useFormConfig } from '../hooks/useFormConfig';
 
 // =============================================================================
 // PROPS
@@ -715,7 +716,7 @@ function sanitizeDecimalString(raw: string, precision = 2, integerOnly = false) 
   if (!raw) return '';
   let s = String(raw).trim();
   s = s.replace(/,/g, '');
-  
+
   if (integerOnly) {
     // Only allow digits, no decimal point
     s = s.replace(/[^\d]/g, '');
@@ -724,7 +725,7 @@ function sanitizeDecimalString(raw: string, precision = 2, integerOnly = false) 
     if (s === '') return '';
     return s;
   }
-  
+
   s = s.replace(/[^\d.]/g, '');
 
   const parts = s.split('.');
@@ -800,7 +801,7 @@ const SimpleChargeField: React.FC<SimpleChargeFieldProps> = ({
   required = false,
   integerOnly = false, // NEW
 }) => {
-    const displayed = displayZeroAsBlank(value);
+  const displayed = displayZeroAsBlank(value);
 
 
   const handleTextChange = (raw: string) => {
@@ -809,13 +810,13 @@ const SimpleChargeField: React.FC<SimpleChargeFieldProps> = ({
       onChange(0);
       return;
     }
-    
+
     const num = Number(sanitized);
     if (!Number.isFinite(num)) {
       onChange(0);
       return;
     }
-    
+
     // Clamp to [min, max]
     const clamped = Math.min(Math.max(num, min), max);
     onChange(clamped);
@@ -883,6 +884,19 @@ const SimpleChargeField: React.FC<SimpleChargeFieldProps> = ({
 export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
   const { charges: chargeValues, errors, setCharge, setCardField, validateField, validateCardField } = charges;
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FORM BUILDER CONFIG - Dynamic labels from MongoDB
+  // ═══════════════════════════════════════════════════════════════════════════
+  const { getField } = useFormConfig('add-vendor');
+
+  // Helper: Get label with fallback
+  const getLabel = (fieldId: string, fallback: string) =>
+    getField(fieldId)?.label ?? fallback;
+
+  // Helper: Check if required
+  const isRequired = (fieldId: string) =>
+    getField(fieldId)?.required ?? false;
+
   // Handler for fuel surcharge with 0-50 validation
   const handleFuelSurchargeChange = (rawValue: string) => {
     const sanitized = sanitizeDecimalString(rawValue, 0, true); // integer only
@@ -913,9 +927,9 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* ROW 1: Docket*, Min Weight*, Min Charges* */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        
+
         <SimpleChargeField
-          label="Docket Charges"
+          label={getLabel('docketCharges', 'Docket Charges')}
           name="docketCharges"
           value={chargeValues.docketCharges}
           onChange={(val) => setCharge('docketCharges', val)}
@@ -925,12 +939,12 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           max={CHARGE_MAX}
           maxLength={10}
           precision={0}
-          required={true}
+          required={isRequired('docketCharges')}
           integerOnly={true}
         />
 
         <SimpleChargeField
-          label="Min Chargeable Weight"
+          label={getLabel('minWeightKg', 'Min Chargeable Weight')}
           name="minWeightKg"
           value={chargeValues.minWeightKg}
           onChange={(val) => setCharge('minWeightKg', val)}
@@ -940,12 +954,12 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           max={CHARGE_MAX}
           maxLength={7}
           precision={0}
-          required={false}
+          required={isRequired('minWeightKg')}
           integerOnly={true}
         />
 
         <SimpleChargeField
-          label="Minimum Charges"
+          label={getLabel('minimumCharges', 'Minimum Charges')}
           name="minCharges"
           value={chargeValues.minCharges}
           onChange={(val) => setCharge('minCharges', val)}
@@ -955,7 +969,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           max={CHARGE_MAX}
           maxLength={10}
           precision={0}
-          required={false}
+          required={isRequired('minimumCharges')}
           integerOnly={true}
         />
 
@@ -964,7 +978,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
         {/* ═══════════════════════════════════════════════════════════════ */}
 
         <SimpleChargeField
-          label="Hamali Charges"
+          label={getLabel('hamaliCharges', 'Hamali Charges')}
           name="hamaliCharges"
           value={chargeValues.hamaliCharges}
           onChange={(val) => setCharge('hamaliCharges', val)}
@@ -974,12 +988,12 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           max={CHARGE_MAX}
           maxLength={10}
           precision={0}
-          required={false}
+          required={isRequired('hamaliCharges')}
           integerOnly={true}
         />
 
         <SimpleChargeField
-          label="Green Tax / NGT"
+          label={getLabel('greenTax', 'Green Tax / NGT')}
           name="greenTax"
           value={chargeValues.greenTax}
           onChange={(val) => setCharge('greenTax', val)}
@@ -989,12 +1003,12 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           max={CHARGE_MAX}
           maxLength={10}
           precision={0}
-          required={false}
+          required={isRequired('greenTax')}
           integerOnly={true}
         />
 
         <SimpleChargeField
-          label="Misc / AOC Charges"
+          label={getLabel('miscCharges', 'Misc / AOC Charges')}
           name="miscCharges"
           value={chargeValues.miscCharges}
           onChange={(val) => setCharge('miscCharges', val)}
@@ -1004,7 +1018,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           max={CHARGE_MAX}
           maxLength={10}
           precision={0}
-          required={false}
+          required={isRequired('miscCharges')}
           integerOnly={true}
         />
 
@@ -1018,7 +1032,8 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             htmlFor="fuelSurchargePct"
             className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1"
           >
-            Fuel Surcharge <span className="text-red-500">*</span>
+            {getLabel('fuelSurchargePct', 'Fuel Surcharge')}
+            {isRequired('fuelSurchargePct') && <span className="text-red-500"> *</span>}
           </label>
 
           <ComboInput
@@ -1042,15 +1057,15 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               handleFuelSurchargeChange(pasted);
             }}
           />
-          
+
           {!errors.fuelSurchargePct && (
             <p className="mt-1 text-xs text-slate-500">Max allowed is 50%</p>
           )}
         </div>
 
-        {/* DACC Charges - NEW FIELD */}
+        {/* DACC Charges */}
         <SimpleChargeField
-          label="DACC Charges"
+          label={getLabel('daccCharges', 'DACC Charges')}
           name="daccCharges"
           value={chargeValues.daccCharges}
           onChange={(val) => setCharge('daccCharges', val)}
@@ -1060,7 +1075,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           max={10000}
           maxLength={10}
           precision={0}
-          required={false}
+          required={isRequired('daccCharges')}
           integerOnly={true}
         />
 
@@ -1174,9 +1189,9 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
                   ROV/FOV = Invoice Value Charges
                 </h4>
                 <p className="text-xs text-blue-800 leading-relaxed">
-                  The ROV (Risk of Value) charges you configure above will automatically be used 
-                  for invoice value calculations. The <strong>Variable (%)</strong> becomes the invoice percentage, 
-                  and <strong>Fixed (₹)</strong> becomes the minimum invoice amount. These values will be applied 
+                  The ROV (Risk of Value) charges you configure above will automatically be used
+                  for invoice value calculations. The <strong>Variable (%)</strong> becomes the invoice percentage,
+                  and <strong>Fixed (₹)</strong> becomes the minimum invoice amount. These values will be applied
                   to shipment invoice values when calculating total freight costs.
                 </p>
               </div>
