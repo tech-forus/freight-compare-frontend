@@ -40,6 +40,7 @@ import VendorApprovalPage from './pages/VendorApprovalPage';
 import UserManagementPage from './pages/UserManagementPage';
 import CustomerManagementPage from './pages/CustomerManagementPage';
 import TransporterManagementPage from './pages/TransporterManagementPage';
+import FormBuilderPage from './pages/FormBuilderPage';
 
 export const PrivateRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -236,6 +237,15 @@ function App() {
               element={
                 <SuperAdminRoute>
                   <TransporterManagementPage />
+                </SuperAdminRoute>
+              }
+            />
+
+            <Route
+              path="/super-admin/form-builder"
+              element={
+                <SuperAdminRoute>
+                  <FormBuilderPage />
                 </SuperAdminRoute>
               }
             />

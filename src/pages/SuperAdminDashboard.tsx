@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Users, CheckSquare, LayoutDashboard } from 'lucide-react';
+import { Users, CheckSquare, LayoutDashboard, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SuperAdminDashboard: React.FC = () => {
@@ -36,6 +36,14 @@ const SuperAdminDashboard: React.FC = () => {
       color: 'bg-blue-500',
       hoverColor: 'hover:bg-blue-600',
       path: '/super-admin/user-management',
+    },
+    {
+      title: 'Form Builder',
+      description: 'Customize Add Vendor form fields',
+      icon: Settings,
+      color: 'bg-purple-500',
+      hoverColor: 'hover:bg-purple-600',
+      path: '/super-admin/form-builder',
     },
   ];
 
