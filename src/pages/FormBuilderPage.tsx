@@ -227,20 +227,6 @@ const FormBuilderPage: React.FC = () => {
         setShowHistory(true);
     };
 
-    // Field type badge color
-    const getTypeBadgeColor = (type: string) => {
-        const colors: Record<string, string> = {
-            text: 'bg-blue-100 text-blue-700',
-            email: 'bg-purple-100 text-purple-700',
-            textarea: 'bg-green-100 text-green-700',
-            slider: 'bg-orange-100 text-orange-700',
-            buttons: 'bg-pink-100 text-pink-700',
-            number: 'bg-cyan-100 text-cyan-700',
-            dropdown: 'bg-indigo-100 text-indigo-700',
-        };
-        return colors[type] || 'bg-gray-100 text-gray-700';
-    };
-
     // Visible and hidden fields
     const visibleFields = config?.fields.filter(f => f.visible !== false).sort((a, b) => a.order - b.order) || [];
     const hiddenFields = config?.fields.filter(f => f.visible === false) || [];
@@ -349,16 +335,11 @@ const FormBuilderPage: React.FC = () => {
                                 {currentFields.map((field) => (
                                     <div
                                         key={field.fieldId}
-                                        className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-shadow ${field.gridSpan === 2 ? 'col-span-2' : ''
-                                            }`}
+                                        className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-shadow"
                                     >
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div>
-                                                <h4 className="font-semibold text-slate-800">{field.label}</h4>
-                                                <span className={`text-xs px-2 py-0.5 rounded-full ${getTypeBadgeColor(field.type)}`}>
-                                                    {field.type}
-                                                </span>
-                                            </div>
+                                        {/* Header: Label + Actions */}
+                                        <div className="flex items-start justify-between mb-3">
+                                            <h4 className="font-semibold text-slate-800">{field.label}</h4>
                                             <div className="flex items-center gap-1">
                                                 <button
                                                     onClick={() => openEditor(field)}
@@ -378,30 +359,27 @@ const FormBuilderPage: React.FC = () => {
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="text-sm text-slate-500 space-y-1">
-                                            {field.constraints.maxLength && (
-                                                <div>Max: {field.constraints.maxLength} chars</div>
-                                            )}
-                                            {field.constraints.minLength && (
-                                                <div>Min: {field.constraints.minLength} chars</div>
-                                            )}
-                                            {field.constraints.pattern && (
-                                                <div className="text-xs text-slate-400 truncate">Pattern: {field.constraints.pattern}</div>
-                                            )}
-                                            {field.type === 'slider' && (
-                                                <div>Range: {field.constraints.min} - {field.constraints.max}</div>
-                                            )}
-                                            {field.options && field.options.length > 0 && (
-                                                <div>Options: {field.options.map(o => o.label).join(', ')}</div>
-                                            )}
-                                            <div className="flex items-center gap-2 pt-1">
-                                                <span className={`text-xs px-2 py-0.5 rounded ${field.required ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                    {field.required ? 'Required' : 'Optional'}
+
+                                        {/* Field ID */}
+                                        <div className="text-xs text-slate-400 mb-2 font-mono">
+                                            Field ID: {field.fieldId}
+                                        </div>
+
+                                        {/* Constraints: Min/Max + Required */}
+                                        <div className="flex items-center gap-2 flex-wrap text-sm">
+                                            {field.constraints.minLength != null && (
+                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
+                                                    Min: {field.constraints.minLength}
                                                 </span>
-                                                {field.gridSpan === 2 && (
-                                                    <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded">Full Width</span>
-                                                )}
-                                            </div>
+                                            )}
+                                            {field.constraints.maxLength != null && (
+                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
+                                                    Max: {field.constraints.maxLength}
+                                                </span>
+                                            )}
+                                            <span className={`text-xs px-2 py-0.5 rounded ${field.required ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                {field.required ? 'Required' : 'Optional'}
+                                            </span>
                                         </div>
                                     </div>
                                 ))}
@@ -410,7 +388,7 @@ const FormBuilderPage: React.FC = () => {
 
                         {/* Deleted Fields */}
                         {hiddenFields.length > 0 && (
-                            <div>
+                            <div className="mt-6">
                                 <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                                     <XCircle size={20} className="text-red-400" />
                                     Deleted Fields ({hiddenFields.length})
@@ -424,7 +402,7 @@ const FormBuilderPage: React.FC = () => {
                                             <div className="flex items-start justify-between">
                                                 <div>
                                                     <h4 className="font-semibold text-slate-600 line-through">{field.label}</h4>
-                                                    <span className="text-xs text-slate-400">{field.type}</span>
+                                                    <div className="text-xs text-slate-400 font-mono">Field ID: {field.fieldId}</div>
                                                 </div>
                                                 <button
                                                     onClick={() => handleRestoreField(field.fieldId)}
