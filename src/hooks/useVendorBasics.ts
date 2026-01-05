@@ -5,21 +5,55 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import {
-  validateCompanyName,
-  validateContactName,
   validatePhone,
   validateEmail,
   validateGST,
-  validateDisplayName,
-  validateSubVendor,
-  validateVendorCode,
   validatePrimaryContactName,
   validatePrimaryContactPhone,
   validatePrimaryContactEmail,
-  validateAddress,
 } from '../utils/validators';
 import { VendorBasics, persistDraft } from '../store/draftStore';
 import { emitDebug } from '../utils/debug';
+import { useFormConfig } from './useFormConfig';
+
+// =============================================================================
+// HELPER: Dynamic Length Validator
+// =============================================================================
+
+/**
+ * Validates field length dynamically based on form config constraints
+ * @param value - Field value to validate
+ * @param fieldLabel - Human-readable field name for error messages
+ * @param minLength - Minimum length (optional, from form config)
+ * @param maxLength - Maximum length (optional, from form config)
+ * @param isRequired - Whether field is required
+ * @returns Error message or empty string if valid
+ */
+const validateDynamicLength = (
+  value: string,
+  fieldLabel: string,
+  minLength?: number | null,
+  maxLength?: number | null,
+  isRequired?: boolean
+): string => {
+  // If required and empty, show error
+  if (!value && isRequired) return `${fieldLabel} is required`;
+
+  // If optional and empty, skip validation
+  if (!value) return '';
+
+  // Validate minimum length (only if field has a value)
+  if (minLength != null && value.length < minLength) {
+    return `${fieldLabel} must be at least ${minLength} character${minLength !== 1 ? 's' : ''}`;
+  }
+
+  // Validate maximum length
+  if (maxLength != null && value.length > maxLength) {
+    return `${fieldLabel} must be at most ${maxLength} character${maxLength !== 1 ? 's' : ''}`;
+  }
+
+  return '';
+};
 
 // =============================================================================
 // TYPES
@@ -100,6 +134,9 @@ export const useVendorBasics = (
   const [basics, setBasics] = useState<VendorBasics>(defaultBasics);
   const [errors, setErrors] = useState<VendorBasicsErrors>({});
 
+  // Get dynamic form configuration for field constraints
+  const { getField, getConstraint } = useFormConfig('add-vendor');
+
   // Throttled draft persistence
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -169,28 +206,74 @@ export const useVendorBasics = (
 
       switch (field) {
         case 'companyName':
-          error = validateCompanyName(basics.companyName);
+          // Use dynamic validation with form config constraints
+          error = validateDynamicLength(
+            basics.companyName,
+            'Company name',
+            getConstraint('companyName', 'minLength', 1) as number,
+            getConstraint('companyName', 'maxLength', 60) as number,
+            getField('companyName')?.required ?? true
+          );
           break;
         case 'contactPersonName':
-          error = validateContactName(basics.contactPersonName);
+          // Use dynamic validation + alphabetic check
+          error = validateDynamicLength(
+            basics.contactPersonName,
+            'Contact person name',
+            getConstraint('contactPersonName', 'minLength', 1) as number,
+            getConstraint('contactPersonName', 'maxLength', 30) as number,
+            getField('contactPersonName')?.required ?? true
+          );
+          // Additional alphabetic validation
+          if (!error && basics.contactPersonName && !/^[a-zA-Z\s\-']+$/.test(basics.contactPersonName)) {
+            error = 'Contact name can only contain letters, spaces, hyphens, and apostrophes';
+          }
           break;
         case 'vendorPhoneNumber':
+          // Phone validation remains hardcoded (must be exactly 10 digits)
           error = validatePhone(basics.vendorPhoneNumber);
           break;
         case 'vendorEmailAddress':
+          // Email validation remains hardcoded (format validation)
           error = validateEmail(basics.vendorEmailAddress);
           break;
         case 'gstin':
+          // GST validation remains hardcoded (15 chars + checksum by law)
           error = validateGST(basics.gstin || '');
           break;
         case 'displayName':
-          error = validateDisplayName(basics.displayName);
+          // Use dynamic validation
+          error = validateDynamicLength(
+            basics.displayName,
+            'Display name',
+            getConstraint('displayName', 'minLength', null) as number,
+            getConstraint('displayName', 'maxLength', 30) as number,
+            getField('displayName')?.required ?? false
+          );
           break;
         case 'subVendor':
-          error = validateSubVendor(basics.subVendor);
+          // Use dynamic validation (optional field, validate only if has value)
+          error = validateDynamicLength(
+            basics.subVendor,
+            'Sub transporter',
+            getConstraint('subVendor', 'minLength', null) as number,
+            getConstraint('subVendor', 'maxLength', 20) as number,
+            getField('subVendor')?.required ?? false
+          );
           break;
         case 'vendorCode':
-          error = validateVendorCode(basics.vendorCode);
+          // Use dynamic validation + alphanumeric check
+          error = validateDynamicLength(
+            basics.vendorCode,
+            'Vendor code',
+            getConstraint('vendorCode', 'minLength', null) as number,
+            getConstraint('vendorCode', 'maxLength', 20) as number,
+            getField('vendorCode')?.required ?? false
+          );
+          // Additional alphanumeric validation (only if field has value)
+          if (!error && basics.vendorCode && !/^[A-Z0-9]+$/.test(basics.vendorCode.toUpperCase())) {
+            error = 'Vendor code can only contain letters and numbers';
+          }
           break;
         case 'primaryContactName':
           error = validatePrimaryContactName(basics.primaryContactName);
@@ -202,7 +285,14 @@ export const useVendorBasics = (
           error = validatePrimaryContactEmail(basics.primaryContactEmail);
           break;
         case 'address':
-          error = validateAddress(basics.address);
+          // Use dynamic validation
+          error = validateDynamicLength(
+            basics.address,
+            'Address',
+            getConstraint('address', 'minLength', 1) as number,
+            getConstraint('address', 'maxLength', 150) as number,
+            getField('address')?.required ?? true
+          );
           break;
 
         case 'transportMode':
@@ -246,7 +336,7 @@ export const useVendorBasics = (
 
       return true;
     },
-    [basics]
+    [basics, getField, getConstraint]
   );
 
   /**
@@ -286,28 +376,74 @@ export const useVendorBasics = (
 
       switch (field) {
         case 'companyName':
-          error = validateCompanyName(basics.companyName);
+          // Use dynamic validation with form config constraints
+          error = validateDynamicLength(
+            basics.companyName,
+            'Company name',
+            getConstraint('companyName', 'minLength', 1) as number,
+            getConstraint('companyName', 'maxLength', 60) as number,
+            getField('companyName')?.required ?? true
+          );
           break;
         case 'contactPersonName':
-          error = validateContactName(basics.contactPersonName);
+          // Use dynamic validation + alphabetic check
+          error = validateDynamicLength(
+            basics.contactPersonName,
+            'Contact person name',
+            getConstraint('contactPersonName', 'minLength', 1) as number,
+            getConstraint('contactPersonName', 'maxLength', 30) as number,
+            getField('contactPersonName')?.required ?? true
+          );
+          // Additional alphabetic validation
+          if (!error && basics.contactPersonName && !/^[a-zA-Z\s\-']+$/.test(basics.contactPersonName)) {
+            error = 'Contact name can only contain letters, spaces, hyphens, and apostrophes';
+          }
           break;
         case 'vendorPhoneNumber':
+          // Phone validation remains hardcoded (must be exactly 10 digits)
           error = validatePhone(basics.vendorPhoneNumber);
           break;
         case 'vendorEmailAddress':
+          // Email validation remains hardcoded (format validation)
           error = validateEmail(basics.vendorEmailAddress);
           break;
         case 'gstin':
+          // GST validation remains hardcoded (15 chars + checksum by law)
           error = validateGST(basics.gstin || '');
           break;
         case 'displayName':
-          error = validateDisplayName(basics.displayName);
+          // Use dynamic validation
+          error = validateDynamicLength(
+            basics.displayName,
+            'Display name',
+            getConstraint('displayName', 'minLength', null) as number,
+            getConstraint('displayName', 'maxLength', 30) as number,
+            getField('displayName')?.required ?? false
+          );
           break;
         case 'subVendor':
-          error = validateSubVendor(basics.subVendor);
+          // Use dynamic validation (optional field, validate only if has value)
+          error = validateDynamicLength(
+            basics.subVendor,
+            'Sub transporter',
+            getConstraint('subVendor', 'minLength', null) as number,
+            getConstraint('subVendor', 'maxLength', 20) as number,
+            getField('subVendor')?.required ?? false
+          );
           break;
         case 'vendorCode':
-          error = validateVendorCode(basics.vendorCode);
+          // Use dynamic validation + alphanumeric check
+          error = validateDynamicLength(
+            basics.vendorCode,
+            'Vendor code',
+            getConstraint('vendorCode', 'minLength', null) as number,
+            getConstraint('vendorCode', 'maxLength', 20) as number,
+            getField('vendorCode')?.required ?? false
+          );
+          // Additional alphanumeric validation (only if field has value)
+          if (!error && basics.vendorCode && !/^[A-Z0-9]+$/.test(basics.vendorCode.toUpperCase())) {
+            error = 'Vendor code can only contain letters and numbers';
+          }
           break;
         case 'primaryContactName':
           error = validatePrimaryContactName(basics.primaryContactName);
@@ -319,7 +455,14 @@ export const useVendorBasics = (
           error = validatePrimaryContactEmail(basics.primaryContactEmail);
           break;
         case 'address':
-          error = validateAddress(basics.address);
+          // Use dynamic validation
+          error = validateDynamicLength(
+            basics.address,
+            'Address',
+            getConstraint('address', 'minLength', 1) as number,
+            getConstraint('address', 'maxLength', 150) as number,
+            getField('address')?.required ?? true
+          );
           break;
 
         case 'transportMode':
@@ -363,7 +506,7 @@ export const useVendorBasics = (
     }
 
     return isValid;
-  }, [basics]);
+  }, [basics, getField, getConstraint]);
 
   /**
    * Reset to default state

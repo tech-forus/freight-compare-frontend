@@ -20,6 +20,7 @@ interface FieldConstraints {
 interface FieldOption {
     value: string;
     label: string;
+    enabled?: boolean;
 }
 
 interface FieldConfig {
@@ -64,7 +65,7 @@ const getAuthToken = (): string => {
 
 const SECTION_LABELS: Record<string, string> = {
     company: 'Company & Contact Information',
-    transport: 'Transport & Volumetric Configuration',
+    transport: 'Transport Mode Configuration',
     charges: 'Basic Charges',
 };
 
@@ -227,6 +228,22 @@ const FormBuilderPage: React.FC = () => {
         setShowHistory(true);
     };
 
+    // Toggle transport mode enabled/disabled
+    const handleToggleTransportMode = async (modeValue: string, enabled: boolean) => {
+        const transportModeField = config?.fields.find(f => f.fieldId === 'transportMode');
+        if (!transportModeField) return;
+
+        // Update options with the new enabled state
+        const updatedOptions = (transportModeField.options || []).map(opt =>
+            opt.value === modeValue ? { ...opt, enabled } : opt
+        );
+
+        await handleUpdateField('transportMode', { options: updatedOptions });
+    };
+
+    // Get transport mode field for special rendering
+    const transportModeField = config?.fields.find(f => f.fieldId === 'transportMode' && f.section === 'transport');
+
     // Visible and hidden fields
     const visibleFields = config?.fields.filter(f => f.visible !== false).sort((a, b) => a.order - b.order) || [];
     const hiddenFields = config?.fields.filter(f => f.visible === false) || [];
@@ -329,61 +346,133 @@ const FormBuilderPage: React.FC = () => {
                         <div className="mb-6">
                             <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                                 <CheckCircle size={20} className="text-green-500" />
-                                {SECTION_LABELS[activeSection]} ({currentFields.length})
+                                {SECTION_LABELS[activeSection]} {activeSection !== 'transport' && `(${currentFields.length})`}
                             </h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                {currentFields.map((field) => (
-                                    <div
-                                        key={field.fieldId}
-                                        className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-shadow"
-                                    >
-                                        {/* Header: Label + Actions */}
-                                        <div className="flex items-start justify-between mb-3">
-                                            <h4 className="font-semibold text-slate-800">{field.label}</h4>
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    onClick={() => openEditor(field)}
-                                                    disabled={saving}
-                                                    className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteField(field.fieldId)}
-                                                    disabled={saving}
-                                                    className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+
+                            {/* Special UI for Transport Mode Configuration */}
+                            {activeSection === 'transport' && transportModeField && (
+                                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                                    <div className="mb-4">
+                                        <h3 className="text-lg font-semibold text-slate-800 mb-1">Available Transport Modes</h3>
+                                        <p className="text-sm text-slate-500">
+                                            Enable or disable transport modes that vendors can select. Only enabled modes will be available in the Add Vendor form.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {(transportModeField.options || []).map((opt) => (
+                                            <div
+                                                key={opt.value}
+                                                className={`rounded-xl border-2 p-4 transition-all ${opt.enabled !== false
+                                                        ? 'border-green-200 bg-green-50'
+                                                        : 'border-slate-200 bg-slate-50'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${opt.enabled !== false
+                                                                ? 'bg-green-100 text-green-600'
+                                                                : 'bg-slate-200 text-slate-500'
+                                                            }`}>
+                                                            {opt.value === 'road' && '🚛'}
+                                                            {opt.value === 'air' && '✈️'}
+                                                            {opt.value === 'rail' && '🚆'}
+                                                            {opt.value === 'ship' && '🚢'}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-slate-800">{opt.label}</h4>
+                                                            <span className={`text-xs ${opt.enabled !== false
+                                                                    ? 'text-green-600'
+                                                                    : 'text-slate-500'
+                                                                }`}>
+                                                                {opt.enabled !== false ? 'Enabled' : 'Disabled'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Toggle Switch */}
+                                                    <button
+                                                        onClick={() => handleToggleTransportMode(opt.value, opt.enabled === false)}
+                                                        disabled={saving}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${opt.enabled !== false
+                                                                ? 'bg-green-500'
+                                                                : 'bg-slate-300'
+                                                            } ${saving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                    >
+                                                        <span
+                                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${opt.enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                                                                }`}
+                                                        />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                        <p className="text-sm text-blue-700">
+                                            <strong>Note:</strong> Disabled transport modes will appear grayed out in the Add Vendor form with "Coming soon" label.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Regular field grid for non-transport sections */}
+                            {activeSection !== 'transport' && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {currentFields.map((field) => (
+                                        <div
+                                            key={field.fieldId}
+                                            className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-shadow"
+                                        >
+                                            {/* Header: Label + Actions */}
+                                            <div className="flex items-start justify-between mb-3">
+                                                <h4 className="font-semibold text-slate-800">{field.label}</h4>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => openEditor(field)}
+                                                        disabled={saving}
+                                                        className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Edit"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteField(field.fieldId)}
+                                                        disabled={saving}
+                                                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Field ID */}
+                                            <div className="text-xs text-slate-400 mb-2 font-mono">
+                                                Field ID: {field.fieldId}
+                                            </div>
+
+                                            {/* Constraints: Min/Max + Required */}
+                                            <div className="flex items-center gap-2 flex-wrap text-sm">
+                                                {field.constraints.minLength != null && (
+                                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
+                                                        Min: {field.constraints.minLength}
+                                                    </span>
+                                                )}
+                                                {field.constraints.maxLength != null && (
+                                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
+                                                        Max: {field.constraints.maxLength}
+                                                    </span>
+                                                )}
+                                                <span className={`text-xs px-2 py-0.5 rounded ${field.required ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {field.required ? 'Required' : 'Optional'}
+                                                </span>
                                             </div>
                                         </div>
-
-                                        {/* Field ID */}
-                                        <div className="text-xs text-slate-400 mb-2 font-mono">
-                                            Field ID: {field.fieldId}
-                                        </div>
-
-                                        {/* Constraints: Min/Max + Required */}
-                                        <div className="flex items-center gap-2 flex-wrap text-sm">
-                                            {field.constraints.minLength != null && (
-                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
-                                                    Min: {field.constraints.minLength}
-                                                </span>
-                                            )}
-                                            {field.constraints.maxLength != null && (
-                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
-                                                    Max: {field.constraints.maxLength}
-                                                </span>
-                                            )}
-                                            <span className={`text-xs px-2 py-0.5 rounded ${field.required ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                {field.required ? 'Required' : 'Optional'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Deleted Fields */}
