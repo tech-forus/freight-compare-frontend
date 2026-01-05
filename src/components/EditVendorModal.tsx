@@ -2141,37 +2141,36 @@ const EditVendorModal: React.FC<EditVendorModalProps> = ({ vendor, onClose, onSa
               )}
             </div>
           </div>
-      </div>
-    </form>
 
-        {/* Footer - UNCHANGED */ }
-  <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex gap-3 rounded-b-lg">
-    <button
-      type="button"
-      onClick={onClose}
-      disabled={isSubmitting}
-      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-    >
-      Cancel
-    </button>
-    <button
-      type="button"
-      onClick={handleSubmit}
-      disabled={isSubmitting}
-      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-    >
-      {isSubmitting ? (
-        <>
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-          Saving...
-        </>
-      ) : (
-        'Save Changes'
-      )}
-    </button>
-  </div>
-      </div >
-    </div >
+          {/* Footer - UNCHANGED */}
+          <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex gap-3 rounded-b-lg mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+          </div>
+      </form>
+      </div>
+    </div>
   );
 };
 
