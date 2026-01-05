@@ -9,7 +9,7 @@ import { PincodeProvider } from './context/PincodeContext';
 import MainLayout from './components/layout/MainLayout';
 
 // Pages
-import CalculatorPage from './pages/CalculatorPage';
+import CalculatorPage from './CalculatorPage';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';

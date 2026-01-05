@@ -277,8 +277,8 @@ export default function InfoCarousel() {
                                             key={index}
                                             onClick={() => goToIndex(index)}
                                             className={`rounded-full transition-all ${index === currentIndex
-                                                    ? "w-6 h-2 bg-gradient-to-r from-indigo-600 to-purple-600"
-                                                    : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
+                                                ? "w-6 h-2 bg-gradient-to-r from-indigo-600 to-purple-600"
+                                                : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
                                                 }`}
                                             aria-label={`Go to fact ${index + 1}`}
                                         />

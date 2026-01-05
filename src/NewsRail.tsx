@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { ExternalLink, Newspaper, Loader2, ChevronLeft, ChevronRight, Eye, EyeOff, RotateCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchIndianBusinessNews } from "../services/newsService";
+import { fetchIndianBusinessNews } from "./services/newsService";
 
 export default function NewsRail() {
     const [articles, setArticles] = useState<any[]>([]);
@@ -230,8 +230,8 @@ export default function NewsRail() {
                                                     onClick={() => goToIndex(i)}
                                                     aria-label={`Go to article ${i + 1}`}
                                                     className={`rounded-full transition-all ${i === index
-                                                            ? "w-6 h-2 bg-gradient-to-r from-indigo-600 to-purple-600"
-                                                            : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
+                                                        ? "w-6 h-2 bg-gradient-to-r from-indigo-600 to-purple-600"
+                                                        : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
                                                         }`}
                                                 />
                                             ))}
