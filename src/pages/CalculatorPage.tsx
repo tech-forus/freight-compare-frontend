@@ -57,6 +57,9 @@ import { getTemporaryTransporters } from "../services/api";
 import NewsPopup from "../components/NewsPopup";
 import { incrementCalculatorUsageCount, shouldShowNewsPopup } from "../services/newsService";
 
+// 🔽 Fixed left sidebar for news (always visible on desktop)
+import NewsSidebar from "../components/NewsSidebar";
+
 // -----------------------------------------------------------------------------
 // Limits
 // -----------------------------------------------------------------------------
@@ -1052,7 +1055,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
       // ---------- Optional: price rounding for tied-up vendors ----------
       tied.forEach((quote) => {
         if (quote.companyName === "DP World") return;
-        const round5 = (x: number) => Math.round((x * 5.0) / 10) * 10;
+        // FIX: Original formula `(x * 5.0) / 10 * 10` was BUGGY - it multiplied by 5!
+        // Correct formula: round to nearest 10 (standard pricing convention)
+        const round5 = (x: number) => Math.round(x / 10) * 10;
         if (typeof quote.totalCharges === "number")
           quote.totalCharges = round5(quote.totalCharges);
         if (typeof quote.price === "number") quote.price = round5(quote.price);
@@ -1170,11 +1175,15 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
   return (
     <div className="min-h-screen w-full bg-slate-50 font-sans" onKeyDown={handleKeyDown}>
+      {/* 📰 Fixed News Sidebar - visible on desktop (xl screens and above) */}
+      <NewsSidebar />
+
       <div
         className="absolute top-0 left-0 w-full h-80 bg-gradient-to-br from-indigo-50 to-purple-50"
         style={{ clipPath: "polygon(0 0, 100% 0, 100% 65%, 0% 100%)" }}
       />
-      <div className="relative max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+      {/* Main content - shifts right on xl screens to make room for sidebar */}
+      <div className="relative max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 xl:ml-[320px] xl:mr-4 xl:max-w-none 2xl:max-w-5xl 2xl:ml-[340px]">
         <header className="text-center py-8">
           <motion.h1
             initial={{ y: -20, opacity: 0 }}
