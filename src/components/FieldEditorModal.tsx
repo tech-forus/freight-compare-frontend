@@ -45,6 +45,7 @@ const FieldEditorModal: React.FC<FieldEditorModalProps> = ({ field, onSave, onCl
         required: field.required,
         maxLength: field.constraints.maxLength ?? '',
         minLength: field.constraints.minLength ?? '',
+        max: field.constraints.max ?? '', // For number fields (charges)
     });
 
     // Handle input changes
@@ -61,6 +62,7 @@ const FieldEditorModal: React.FC<FieldEditorModalProps> = ({ field, onSave, onCl
                 ...field.constraints,
                 maxLength: formData.maxLength ? Number(formData.maxLength) : null,
                 minLength: formData.minLength ? Number(formData.minLength) : null,
+                max: formData.max ? Number(formData.max) : null, // Save max for number fields
             },
         };
         onSave(updates);
@@ -97,31 +99,53 @@ const FieldEditorModal: React.FC<FieldEditorModalProps> = ({ field, onSave, onCl
                         />
                     </div>
 
-                    {/* Min/Max Length */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Min/Max Length (for text fields) */}
+                    {field.type === 'text' || field.type === 'textarea' || field.type === 'email' ? (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Min Length</label>
+                                <input
+                                    type="number"
+                                    value={formData.minLength}
+                                    onChange={e => handleChange('minLength', e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="e.g., 1"
+                                    min="0"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Max Length</label>
+                                <input
+                                    type="number"
+                                    value={formData.maxLength}
+                                    onChange={e => handleChange('maxLength', e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="e.g., 60"
+                                    min="0"
+                                />
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {/* Max Value (for number fields - charges) */}
+                    {field.type === 'number' ? (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Min Length</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Max Value (Auto-Clamp Limit)
+                            </label>
                             <input
                                 type="number"
-                                value={formData.minLength}
-                                onChange={e => handleChange('minLength', e.target.value)}
+                                value={formData.max}
+                                onChange={e => handleChange('max', e.target.value)}
                                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="e.g., 1"
+                                placeholder="e.g., 100000"
                                 min="0"
                             />
+                            <p className="mt-1 text-xs text-slate-500">
+                                Values entered by vendors will be automatically clamped to this maximum
+                            </p>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Max Length</label>
-                            <input
-                                type="number"
-                                value={formData.maxLength}
-                                onChange={e => handleChange('maxLength', e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="e.g., 60"
-                                min="0"
-                            />
-                        </div>
-                    </div>
+                    ) : null}
 
                     {/* Required Toggle */}
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">

@@ -465,6 +465,11 @@ const FormBuilderPage: React.FC = () => {
                                                         Max: {field.constraints.maxLength}
                                                     </span>
                                                 )}
+                                                {field.constraints.max != null && field.type === 'number' && (
+                                                    <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-xs">
+                                                        Max Value: {field.constraints.max}
+                                                    </span>
+                                                )}
                                                 <span className={`text-xs px-2 py-0.5 rounded ${field.required ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
                                                     {field.required ? 'Required' : 'Optional'}
                                                 </span>
