@@ -6,6 +6,7 @@ import {
   Calculator as CalculatorIcon,
   ChevronRight,
   Clock,
+  Handshake,
   IndianRupee,
   Loader2,
   Navigation,
@@ -1039,7 +1040,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
       );
 
       // Filter out test/dummy PUBLIC transporters from results (only applies to 'others', not tied-up)
-      const excludedNamePatterns = ['tester', 'dummy', 'vellore'];
+      const excludedNamePatterns = ['tester', 'dummy', 'vellore', 'test'];
       const isExcludedVendor = (name: string): boolean => {
         const lowerName = (name || "").trim().toLowerCase();
         return excludedNamePatterns.some(pattern => lowerName.includes(pattern));
@@ -2784,6 +2785,13 @@ const VendorResultCard = ({
             <h3 className="font-bold text-lg text-slate-800 truncate">
               {quote.companyName}
             </h3>
+
+            {/* Our Partner Badge - for Wheelseye vendors */}
+            {quote.companyName === "Wheelseye FTL" && (
+              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-black to-blue-900 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
+                <Handshake size={12} /> Our Partner
+              </span>
+            )}
 
             {/* Verification Badge - placed before other badges */}
             <VerificationBadge status={getVerificationStatus(quote, vendorStatusMap)} />
