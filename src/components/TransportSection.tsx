@@ -5,6 +5,12 @@ import { useFormConfig } from '../hooks/useFormConfig';
 
 type Mode = 'road' | 'air' | 'rail' | 'ship';
 
+interface TransportModeOption {
+  value: string;
+  label: string;
+  enabled?: boolean;
+}
+
 interface Props {
   transportMode: Mode;
   onTransportModeChange: (m: Mode) => void;
@@ -25,7 +31,7 @@ export const TransportSection: React.FC<Props> = ({
   } = volumetric;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FORM BUILDER CONFIG - Dynamic labels from MongoDB
+  // FORM BUILDER CONFIG - Dynamic labels and options from MongoDB
   // ═══════════════════════════════════════════════════════════════════════════
   const { getField } = useFormConfig('add-vendor');
 
@@ -37,6 +43,15 @@ export const TransportSection: React.FC<Props> = ({
   const isRequired = (fieldId: string) =>
     getField(fieldId)?.required ?? true;
 
+  // Get transport mode options from form config (respects super admin toggle)
+  const transportModeField = getField('transportMode');
+  const transportModeOptions: TransportModeOption[] = transportModeField?.options || [
+    { value: 'road', label: 'Road', enabled: true },
+    { value: 'air', label: 'Air', enabled: false },
+    { value: 'rail', label: 'Rail', enabled: false },
+    { value: 'ship', label: 'Ship', enabled: false },
+  ];
+
   const isCM = state.unit === 'cm';
 
   // Label + options switch based on unit
@@ -47,7 +62,7 @@ export const TransportSection: React.FC<Props> = ({
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-900 mb-4">
-        Transport &amp; Volumetric Configuration
+        Transport & Volumetric Configuration
       </h2>
 
       {/* Transport Mode */}
@@ -62,23 +77,17 @@ export const TransportSection: React.FC<Props> = ({
             onChange={(e) => onTransportModeChange(e.target.value as Mode)}
             className="w-full rounded-md border-slate-300 focus:ring-blue-500 focus:border-blue-500"
           >
-            {[
-              { value: 'road', label: 'Road', enabled: true },
-              { value: 'air', label: 'Air', enabled: false },
-              { value: 'rail', label: 'Rail', enabled: false },
-              { value: 'ship', label: 'Ship', enabled: false },
-            ].map((opt) => (
+            {transportModeOptions.map((opt) => (
               <option
                 key={opt.value}
                 value={opt.value}
-                disabled={!opt.enabled}
-                title={!opt.enabled ? `${opt.label} — Coming soon` : undefined}
+                disabled={opt.enabled === false}
+                title={opt.enabled === false ? `${opt.label} — Coming soon` : undefined}
               >
                 {opt.label}
-                {!opt.enabled ? ' — Coming soon' : ''}
+                {opt.enabled === false ? ' — Coming soon' : ''}
               </option>
             ))}
-
           </select>
         </div>
 
