@@ -144,6 +144,7 @@ type ZonePriceMatrixLS = {
 };
 interface VendorSuggestion {
   id: string;
+  source?: 'public' | 'temporary';  // Added for lazy-load routing
   displayName: string;
   companyName: string;
   legalCompanyName: string;
@@ -162,7 +163,24 @@ interface VendorSuggestion {
   pincode: string | number;
   transportMode: string;
   rating: number;
-  zones: string[];
+  zones?: string[];  // Made optional for minimal search response
+  zoneCount?: number;  // Added for minimal search response
+  zoneConfigs?: Array<{
+    zoneCode: string;
+    zoneName: string;
+    region: string;
+    selectedStates: string[];
+    selectedCities: string[];
+    isComplete: boolean;
+  }>;
+  serviceability?: Array<{
+    pincode: string;
+    zone: string;
+    state: string;
+    city: string;
+    isODA?: boolean;
+    active?: boolean;
+  }>;
   zoneMatrixStructure: Record<string, Record<string, string>>;
   volumetricUnit: string;
   divisor: number;
@@ -410,28 +428,64 @@ export const AddVendor: React.FC = () => {
     []
   );
 
-  // Auto-select handler
+  // Auto-select handler - NOW WITH LAZY LOADING
   const handleVendorAutoSelect = useCallback(async (vendor: VendorSuggestion) => {
-    console.log('[AutoFill] selecting vendor', vendor);
+    console.log('[AutoFill] User selected vendor from dropdown:', vendor.companyName, vendor.id);
 
-    // Use the shared autofill logic; blank cells default to '' (editable)
-    await applyVendorAutofill(vendor, { blankCellValue: '' });
-
-    // UI bookkeeping (toasts + dropdown cleanup)
-    setIsAutoFilled(true);
-    setAutoFilledFromName(vendor.displayName || vendor.companyName || vendor.legalCompanyName || '');
-    setAutoFilledFromId(vendor.id || null);
+    // Show loading state
     setShowDropdown(false);
     setSuggestions([]);
     setHighlightedIndex(-1);
 
+    let fullVendorData = vendor;
+
+    // 🔥 LAZY LOAD: Fetch full details from backend (if minimal data from search)
+    if (!vendor.serviceability || vendor.serviceability.length === 0 || !vendor.zones || vendor.zones.length === 0) {
+      console.log('[AutoFill] Fetching full vendor details for autofill...');
+      toast.loading('Loading transporter details...', { id: 'autofill-loading' });
+
+      try {
+        const token = getAuthToken();
+        const url = `${API_BASE}/api/transporter/transporter-for-autofill?id=${encodeURIComponent(vendor.id || '')}&source=${encodeURIComponent(vendor.source || 'temporary')}`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            fullVendorData = data.data;
+            console.log('[AutoFill] Fetched full vendor data:', fullVendorData);
+          }
+        }
+        toast.dismiss('autofill-loading');
+      } catch (err) {
+        console.error('[AutoFill] Failed to fetch full details:', err);
+        toast.dismiss('autofill-loading');
+        // Continue with minimal data - will still work, just no serviceability
+      }
+    }
+
+    // Use the shared autofill logic; blank cells default to '' (editable)
+    await applyVendorAutofill(fullVendorData, { blankCellValue: '' });
+
+    // UI bookkeeping (toasts + dropdown cleanup)
+    setIsAutoFilled(true);
+    setAutoFilledFromName(fullVendorData.displayName || fullVendorData.companyName || fullVendorData.legalCompanyName || '');
+    setAutoFilledFromId(fullVendorData.id || null);
+
     // Calculate zone count from multiple sources
-    const zoneCount = vendor.serviceability?.length
-      ? new Set(vendor.serviceability.map((s: any) => s.zone)).size
-      : vendor.zoneConfigs?.length || vendor.zones?.length || 0;
+    const zoneCount = fullVendorData.serviceability?.length
+      ? new Set(fullVendorData.serviceability.map((s: any) => s.zone)).size
+      : fullVendorData.zoneConfigs?.length || fullVendorData.zones?.length || (fullVendorData as any).zoneCount || 0;
 
     toast.success(
-      `Auto-filled from "${vendor.displayName || vendor.companyName}". ${zoneCount} zone${zoneCount !== 1 ? 's' : ''} configured. Fill prices manually.`,
+      `Auto-filled from "${fullVendorData.displayName || fullVendorData.companyName}". ${zoneCount} zone${zoneCount !== 1 ? 's' : ''} configured. Fill prices manually.`,
       { duration: 5000 }
     );
   }, [applyVendorAutofill]);
