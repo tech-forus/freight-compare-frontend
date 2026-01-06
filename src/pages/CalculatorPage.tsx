@@ -2910,7 +2910,7 @@ const VendorResultCard = ({
                 {isExpanded && <BifurcationDetails quote={quote} />}
             </AnimatePresence>
         </div>
-  
+    );
 };
 
 export default CalculatorPage;
