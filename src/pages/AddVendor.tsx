@@ -411,11 +411,11 @@ export const AddVendor: React.FC = () => {
   );
 
   // Auto-select handler
-  const handleVendorAutoSelect = useCallback((vendor: VendorSuggestion) => {
+  const handleVendorAutoSelect = useCallback(async (vendor: VendorSuggestion) => {
     console.log('[AutoFill] selecting vendor', vendor);
 
     // Use the shared autofill logic; blank cells default to '' (editable)
-    applyVendorAutofill(vendor, { blankCellValue: '' });
+    await applyVendorAutofill(vendor, { blankCellValue: '' });
 
     // UI bookkeeping (toasts + dropdown cleanup)
     setIsAutoFilled(true);
@@ -425,8 +425,13 @@ export const AddVendor: React.FC = () => {
     setSuggestions([]);
     setHighlightedIndex(-1);
 
+    // Calculate zone count from multiple sources
+    const zoneCount = vendor.serviceability?.length
+      ? new Set(vendor.serviceability.map((s: any) => s.zone)).size
+      : vendor.zoneConfigs?.length || vendor.zones?.length || 0;
+
     toast.success(
-      `Auto-filled from "${vendor.displayName || vendor.companyName}". ${vendor.zones?.length || 0} zones loaded (prices blank).`,
+      `Auto-filled from "${vendor.displayName || vendor.companyName}". ${zoneCount} zone${zoneCount !== 1 ? 's' : ''} configured. Fill prices manually.`,
       { duration: 5000 }
     );
   }, [applyVendorAutofill]);

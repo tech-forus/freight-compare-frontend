@@ -2,6 +2,72 @@
 import { useCallback } from 'react';
 
 const ZPM_KEY = 'zonePriceMatrixData';
+
+/**
+ * Helper function to convert pincode array to city and state names
+ * @param pincodes - Array of pincodes (strings like "110001")
+ * @returns Promise<{cities: string[], states: string[]}> - Unique city and state names
+ */
+async function convertPincodesToCities(pincodes: string[]): Promise<{ cities: string[]; states: string[] }> {
+  if (!pincodes || pincodes.length === 0) {
+    return { cities: [], states: [] };
+  }
+
+  try {
+    // Fetch pincodes.json from public directory
+    const response = await fetch('/pincodes.json', { cache: 'force-cache' });
+    if (!response.ok) {
+      console.warn('[AutoFill] Failed to fetch pincodes.json:', response.status);
+      return { cities: [], states: [] };
+    }
+
+    const pincodeData = await response.json();
+    const pincodeMap = new Map<string, { city: string; state: string; zone: string }>();
+
+    // Build lookup map
+    pincodeData.forEach((row: any) => {
+      if (row.pincode && row.city) {
+        pincodeMap.set(String(row.pincode).trim(), {
+          city: row.city,
+          state: row.state || '',
+          zone: row.zone || ''
+        });
+      }
+    });
+
+    // Convert pincodes to cities and states
+    const cities = new Set<string>();
+    const states = new Set<string>();
+
+    pincodes.forEach(pin => {
+      const pincode = String(pin).trim();
+      const data = pincodeMap.get(pincode);
+      if (data && data.city) {
+        cities.add(data.city);
+        if (data.state) states.add(data.state);
+      }
+    });
+
+    return {
+      cities: Array.from(cities),
+      states: Array.from(states)
+    };
+  } catch (error) {
+    console.error('[AutoFill] Error converting pincodes to cities:', error);
+    return { cities: [], states: [] };
+  }
+}
+
+/**
+ * Check if a string array contains pincodes (6-digit numbers)
+ */
+function isPincodeArray(arr: string[]): boolean {
+  if (!arr || arr.length === 0) return false;
+  // Check if at least 50% of entries are 6-digit numbers
+  const pincodePattern = /^\d{6}$/;
+  const pincodeCount = arr.filter(item => pincodePattern.test(String(item))).length;
+  return pincodeCount >= arr.length * 0.5;
+}
 type VendorSuggestion = {
   id?: string;
   displayName?: string;
@@ -121,7 +187,7 @@ export function useVendorAutofill(params: {
   } = params;
 
   const applyVendorAutofill = useCallback(
-    (vendor: VendorSuggestion, opts?: AutofillOptions) => {
+    async (vendor: VendorSuggestion, opts?: AutofillOptions) => {
       const o: AutofillOptions = {
         overwriteBasics: true,
         overwriteGeo: true,
@@ -266,43 +332,149 @@ export function useVendorAutofill(params: {
       // 5) Zones -> Use zoneConfigs if available, otherwise build from zones array
       const hasZoneConfigs = Array.isArray(vendor.zoneConfigs) && vendor.zoneConfigs.length > 0;
       const hasZones = Array.isArray(vendor.zones) && vendor.zones.length > 0;
+      const hasExistingPriceChart = vendor.priceChart && Object.keys(vendor.priceChart).length > 0;
 
-      if (o.overwriteZones && (hasZoneConfigs || hasZones)) {
+      if (o.overwriteZones && (hasZoneConfigs || hasZones || hasExistingPriceChart)) {
         const blank = o.blankCellValue;
 
-        // Build empty price matrix
-        const zoneCodes = hasZoneConfigs
-          ? vendor.zoneConfigs!.map(z => z.zoneCode)
-          : vendor.zones!;
+        // 🔥 FIX: Use priceChart keys as zone source if zones array is empty
+        let zoneCodes: string[] = [];
+        if (hasZoneConfigs) {
+          zoneCodes = vendor.zoneConfigs!.map(z => z.zoneCode);
+        } else if (hasZones) {
+          zoneCodes = vendor.zones!;
+        } else if (hasExistingPriceChart) {
+          // Derive zones from priceChart keys
+          zoneCodes = Object.keys(vendor.priceChart!);
+        }
 
-        const emptyPriceMatrix: Record<string, Record<string, any>> = {};
+        // 🔥 FIXED: ALWAYS create blank matrix - NEVER copy prices from vendor
+        // Rule: Every vendor has unique prices - structure only, no values
+        let finalPriceMatrix: Record<string, Record<string, any>> = {};
+
+        // Create completely empty matrix for all zone combinations
         for (const fromZone of zoneCodes) {
-          emptyPriceMatrix[fromZone] = {};
+          finalPriceMatrix[fromZone] = {};
           for (const toZone of zoneCodes) {
-            emptyPriceMatrix[fromZone][toZone] = blank;
+            finalPriceMatrix[fromZone][toZone] = blank;  // Always empty ('')
           }
         }
 
-        // Build wizard zones array - use full zoneConfigs if available
-        const wizardZones = hasZoneConfigs
-          ? vendor.zoneConfigs!.map(z => ({
-            zoneCode: z.zoneCode,
-            zoneName: z.zoneName || z.zoneCode,
-            region: z.region || 'North',
-            selectedStates: z.selectedStates || [],
-            selectedCities: z.selectedCities || [],
-            isComplete: z.isComplete || (z.selectedCities && z.selectedCities.length > 0),
-          }))
-          : vendor.zones!.map((z) => ({
-            zoneCode: z,
-            zoneName: z,
-            region: 'North' as const,
-            selectedStates: [],
-            selectedCities: [],
-            isComplete: false,
+        console.log('[AutoFill] Created EMPTY price matrix structure:', {
+          zoneCodes,
+          totalCells: zoneCodes.length * zoneCodes.length,
+          sampleValue: blank,
+          note: 'Prices NEVER copied - user must fill manually'
+        });
+
+        // 🔥 COMPLETE FALLBACK CHAIN: Convert pincodes → cities with multiple data sources
+        // Priority: serviceability > zoneConfigs > zones > fallback
+        let wizardZones: any[] = [];
+
+        // PRIORITY 1: Use serviceability data (most complete - has pincode→city mapping)
+        if (vendor.serviceability && Array.isArray(vendor.serviceability) && vendor.serviceability.length > 0) {
+          console.log('[AutoFill] Using serviceability data (Priority 1):', vendor.serviceability.length, 'entries');
+
+          // Group by zone to build zone configs
+          const zoneMap = new Map<string, { cities: Set<string>; states: Set<string>; pincodes: Set<string> }>();
+
+          vendor.serviceability.forEach((entry: any) => {
+            if (!entry.zone) return;
+
+            if (!zoneMap.has(entry.zone)) {
+              zoneMap.set(entry.zone, {
+                cities: new Set(),
+                states: new Set(),
+                pincodes: new Set()
+              });
+            }
+
+            const zoneData = zoneMap.get(entry.zone)!;
+            if (entry.city) zoneData.cities.add(entry.city);
+            if (entry.state) zoneData.states.add(entry.state);
+            if (entry.pincode) zoneData.pincodes.add(entry.pincode);
+          });
+
+          wizardZones = Array.from(zoneMap.entries()).map(([zoneCode, data]) => ({
+            zoneCode,
+            zoneName: zoneCode,
+            region: zoneCode.startsWith('N') ? 'North' :
+                   zoneCode.startsWith('S') ? 'South' :
+                   zoneCode.startsWith('E') ? 'East' :
+                   zoneCode.startsWith('W') ? 'West' :
+                   zoneCode.startsWith('C') ? 'Central' : 'Other',
+            selectedStates: Array.from(data.states),
+            selectedCities: Array.from(data.cities),
+            isComplete: data.cities.size > 0,
           }));
 
-        console.log('[AutoFill] Built wizard zones:', wizardZones);
+          console.log('[AutoFill] Built zones from serviceability:', wizardZones);
+        }
+        // PRIORITY 2: Use zoneConfigs with pincode conversion
+        else if (hasZoneConfigs) {
+          console.log('[AutoFill] Using zoneConfigs (Priority 2) - converting pincodes to cities');
+
+          wizardZones = await Promise.all(
+            vendor.zoneConfigs!.map(async (z) => {
+              let cities = z.selectedCities || [];
+              let states = z.selectedStates || [];
+
+              // Check if selectedCities contains pincodes (6-digit numbers)
+              if (isPincodeArray(cities)) {
+                console.log(`[AutoFill] Zone ${z.zoneCode}: Converting ${cities.length} pincodes to cities`);
+                const converted = await convertPincodesToCities(cities);
+                cities = converted.cities;
+                states = converted.states;
+                console.log(`[AutoFill] Zone ${z.zoneCode}: Converted to ${cities.length} cities, ${states.length} states`);
+              }
+
+              return {
+                zoneCode: z.zoneCode,
+                zoneName: z.zoneName || z.zoneCode,
+                region: z.region || (z.zoneCode.startsWith('N') ? 'North' :
+                       z.zoneCode.startsWith('S') ? 'South' :
+                       z.zoneCode.startsWith('E') ? 'East' :
+                       z.zoneCode.startsWith('W') ? 'West' :
+                       z.zoneCode.startsWith('C') ? 'Central' : 'Other'),
+                selectedStates: states,
+                selectedCities: cities,
+                isComplete: cities.length > 0,
+              };
+            })
+          );
+
+          console.log('[AutoFill] Built zones from zoneConfigs after conversion:', wizardZones);
+        }
+        // PRIORITY 3 & 4: Use zones array OR zone code fallback
+        else {
+          console.log('[AutoFill] Using zone codes only (Priority 3/4) - creating zone structure with regional fallback');
+
+          wizardZones = zoneCodes.map((z) => ({
+            zoneCode: z,
+            zoneName: `${z} Zone`,
+            region: z.startsWith('N') ? 'North' :
+                   z.startsWith('S') ? 'South' :
+                   z.startsWith('E') ? 'East' :
+                   z.startsWith('W') ? 'West' :
+                   z.startsWith('C') ? 'Central' : 'Other',
+            selectedStates: [],
+            selectedCities: [],
+            isComplete: false,  // No cities - user must fill manually
+          }));
+
+          console.log('[AutoFill] Built zones from zone codes (fallback):', wizardZones);
+        }
+
+        console.log('[AutoFill] Final wizard zones:', {
+          totalZones: wizardZones.length,
+          zonesWithCities: wizardZones.filter(z => z.selectedCities.length > 0).length,
+          zonesEmpty: wizardZones.filter(z => z.selectedCities.length === 0).length,
+          zones: wizardZones.map(z => ({
+            code: z.zoneCode,
+            cities: z.selectedCities.length,
+            states: z.selectedStates.length
+          }))
+        });
 
         // For legacy selectedZones format
         const selectedZonesForWizard = zoneCodes.map((z) => ({ zoneCode: z, zoneName: z }));
@@ -310,13 +482,14 @@ export function useVendorAutofill(params: {
         // Write legacy zpm (optional)
         if (o.writeLegacyZpm) {
           try {
-            const zpmData = { zones: zoneCodes, priceMatrix: emptyPriceMatrix, timestamp: new Date().toISOString() };
+            const zpmData = { zones: zoneCodes, priceMatrix: finalPriceMatrix, timestamp: new Date().toISOString() };
             localStorage.setItem(ZPM_KEY, JSON.stringify(zpmData));
             if (typeof setZpm === 'function') setZpm(zpmData);
           } catch (err) {
             console.warn('autofill: failed writing ZPM_KEY', err);
           }
         }
+
 
         // Write wizard state with full zone configs
         try {
@@ -330,7 +503,7 @@ export function useVendorAutofill(params: {
             ...wizardState,
             selectedZones: selectedZonesForWizard,
             zones: wizardZones,  // Full zone configs with cities/states
-            priceMatrix: emptyPriceMatrix,
+            priceMatrix: finalPriceMatrix,
             step: o.wizardStep,
             lastUpdated: new Date().toISOString(),
             autoFilledFrom: { vendorId: vendor.id, vendorName: vendor.displayName || vendor.companyName || '' },
@@ -342,7 +515,7 @@ export function useVendorAutofill(params: {
               ...(prev || {}),
               selectedZones: selectedZonesForWizard,
               zones: wizardZones,
-              priceMatrix: emptyPriceMatrix,
+              priceMatrix: finalPriceMatrix,
             }));
           }
 
