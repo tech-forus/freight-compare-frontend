@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { ExternalLink, Newspaper, Loader2, ChevronLeft, ChevronRight, Eye, EyeOff, RotateCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchIndianBusinessNews } from "./services/newsService";
+import { fetchIndianBusinessNews } from "../services/newsService";
 
 export default function NewsRail() {
     const [articles, setArticles] = useState<any[]>([]);
