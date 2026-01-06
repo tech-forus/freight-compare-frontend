@@ -132,7 +132,7 @@ function readSimpleCharge(root: any, ...keys: string[]): number {
 
 // ✅ Use your deployed backend (from the "working" version)
 const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL || 'freight-compare-backend-production.up.railway.app').replace(/\/+$/, '');
+  (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 const ZPM_KEY = 'zonePriceMatrixData';
 
@@ -144,7 +144,6 @@ type ZonePriceMatrixLS = {
 };
 interface VendorSuggestion {
   id: string;
-  source?: 'public' | 'temporary';  // Added for lazy-load routing
   displayName: string;
   companyName: string;
   legalCompanyName: string;
@@ -163,24 +162,7 @@ interface VendorSuggestion {
   pincode: string | number;
   transportMode: string;
   rating: number;
-  zones?: string[];  // Made optional for minimal search response
-  zoneCount?: number;  // Added for minimal search response
-  zoneConfigs?: Array<{
-    zoneCode: string;
-    zoneName: string;
-    region: string;
-    selectedStates: string[];
-    selectedCities: string[];
-    isComplete: boolean;
-  }>;
-  serviceability?: Array<{
-    pincode: string;
-    zone: string;
-    state: string;
-    city: string;
-    isODA?: boolean;
-    active?: boolean;
-  }>;
+  zones: string[];
   zoneMatrixStructure: Record<string, Record<string, string>>;
   volumetricUnit: string;
   divisor: number;
@@ -428,67 +410,48 @@ export const AddVendor: React.FC = () => {
     []
   );
 
-  // Auto-select handler - NOW WITH LAZY LOADING
-  const handleVendorAutoSelect = useCallback(async (vendor: VendorSuggestion) => {
-    console.log('[AutoFill] User selected vendor from dropdown:', vendor.companyName, vendor.id);
+  // Auto-select handler (FIXED – sync wrapper)
+  const handleVendorAutoSelect = useCallback(
+    (vendor: VendorSuggestion) => {
+      console.log('[AutoFill] selecting vendor', vendor);
 
-    // Show loading state
-    setShowDropdown(false);
-    setSuggestions([]);
-    setHighlightedIndex(-1);
+      // 🔑 IMPORTANT: keep handler sync, run async logic inside
+      (async () => {
+        try {
+          await applyVendorAutofill(vendor, { blankCellValue: '' });
 
-    let fullVendorData = vendor;
+          // UI bookkeeping (AFTER autofill completes)
+          setIsAutoFilled(true);
+          setAutoFilledFromName(
+            vendor.displayName || vendor.companyName || vendor.legalCompanyName || ''
+          );
+          setAutoFilledFromId(vendor.id || null);
+          setShowDropdown(false);
+          setSuggestions([]);
+          setHighlightedIndex(-1);
 
-    // 🔥 LAZY LOAD: Fetch full details from backend (if minimal data from search)
-    if (!vendor.serviceability || vendor.serviceability.length === 0 || !vendor.zones || vendor.zones.length === 0) {
-      console.log('[AutoFill] Fetching full vendor details for autofill...');
-      toast.loading('Loading transporter details...', { id: 'autofill-loading' });
-
-      try {
-        const token = getAuthToken();
-        const url = `${API_BASE}/api/transporter/transporter-for-autofill?id=${encodeURIComponent(vendor.id || '')}&source=${encodeURIComponent(vendor.source || 'temporary')}`;
-
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data) {
-            fullVendorData = data.data;
-            console.log('[AutoFill] Fetched full vendor data:', fullVendorData);
-          }
+          toast.success(
+            `Auto-filled from "${vendor.displayName || vendor.companyName}". ${vendor.zones?.length || 0
+            } zones loaded (prices blank).`,
+            { duration: 5000 }
+          );
+        } catch (err) {
+          console.error('[AutoFill] Auto-fill failed', err);
+          toast.error('Failed to auto-fill vendor');
         }
-        toast.dismiss('autofill-loading');
-      } catch (err) {
-        console.error('[AutoFill] Failed to fetch full details:', err);
-        toast.dismiss('autofill-loading');
-        // Continue with minimal data - will still work, just no serviceability
-      }
-    }
+      })();
+    },
+    [
+      applyVendorAutofill,
+      setIsAutoFilled,
+      setAutoFilledFromName,
+      setAutoFilledFromId,
+      setShowDropdown,
+      setSuggestions,
+      setHighlightedIndex,
+    ]
+  );
 
-    // Use the shared autofill logic; blank cells default to '' (editable)
-    await applyVendorAutofill(fullVendorData, { blankCellValue: '' });
-
-    // UI bookkeeping (toasts + dropdown cleanup)
-    setIsAutoFilled(true);
-    setAutoFilledFromName(fullVendorData.displayName || fullVendorData.companyName || fullVendorData.legalCompanyName || '');
-    setAutoFilledFromId(fullVendorData.id || null);
-
-    // Calculate zone count from multiple sources
-    const zoneCount = fullVendorData.serviceability?.length
-      ? new Set(fullVendorData.serviceability.map((s: any) => s.zone)).size
-      : fullVendorData.zoneConfigs?.length || fullVendorData.zones?.length || (fullVendorData as any).zoneCount || 0;
-
-    toast.success(
-      `Auto-filled from "${fullVendorData.displayName || fullVendorData.companyName}". ${zoneCount} zone${zoneCount !== 1 ? 's' : ''} configured. Fill prices manually.`,
-      { duration: 5000 }
-    );
-  }, [applyVendorAutofill]);
 
   // Clear auto-fill
   const clearAutoFill = useCallback(() => {

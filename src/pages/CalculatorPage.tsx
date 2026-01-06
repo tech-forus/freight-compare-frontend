@@ -2328,7 +2328,7 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
         { label: "Insurance Charges", keys: ["insuaranceCharges", "insuranceCharges", "insurance_charges", "insurance"] },
         { label: "Green Tax", keys: ["greenTax", "green_tax", "green"] },
         { label: "Appointment Charges", keys: ["appointmentCharges", "appointment_charges", "appointment"] },
-        { label: "Minimum Charges", keys: ["minCharges", "minimum_charges", "minimum"] },
+        // NOTE: Minimum Charges removed from display - it's a floor constraint (effectiveBaseFreight = MAX(baseFreight, minCharges)), not an additive fee
         { label: "ROV Charges", keys: ["rovCharges", "rov_charges", "rov"] },
         { label: "FM Charges", keys: ["fmCharges", "fm_charges", "fm"] },
         { label: "Miscellaneous Charges", keys: ["miscCharges", "miscellaneous_charges", "misc"] },
