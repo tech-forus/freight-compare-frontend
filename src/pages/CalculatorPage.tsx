@@ -1135,8 +1135,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 setTimeout(() => {
                     document.getElementById("results")?.scrollIntoView({
                         behavior: "smooth",
+                        block: "start",
                     });
-                }, 50);
+                }, 100);
             }
         }
     };
