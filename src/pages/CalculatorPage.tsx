@@ -1,6 +1,6 @@
 // frontend/src/pages/CalculatorPage.tsx
 import NewsRail from "../components/NewsRail";
-import CalculateHelpRail from "../components/CalculateHelpRail";
+import CalculatorHelpRail from "../components/CalculatorHelpRail";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -1055,7 +1055,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             // ---------- Optional: price rounding for tied-up vendors ----------
             tied.forEach((quote) => {
                 if (quote.companyName === "DP World") return;
-                const round5 = (x: number) => Math.round((x * 5.0) / 10) * 10;
+                const round5 = (x: number) => Math.round(x / 5) * 5;
                 if (typeof quote.totalCharges === "number")
                     quote.totalCharges = round5(quote.totalCharges);
                 if (typeof quote.price === "number") quote.price = round5(quote.price);
@@ -2144,7 +2144,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
                     {/* RIGHT: Help Rail - Hidden on smaller screens */}
                     <div className="hidden xl:block w-64 flex-shrink-0 sticky top-8">
-                        <CalculateHelpRail />
+                        <CalculatorHelpRail />
                     </div>
                 </div>
             </div>
@@ -2910,7 +2910,7 @@ const VendorResultCard = ({
                 {isExpanded && <BifurcationDetails quote={quote} />}
             </AnimatePresence>
         </div>
-    );
+  
 };
 
 export default CalculatorPage;
