@@ -76,7 +76,7 @@ export default function NewsRail() {
     };
 
     return (
-        <aside className="hidden xl:flex w-64 flex-shrink-0 items-center justify-center" style={{ minHeight: '100vh' }}>
+        <aside className="hidden xl:flex w-full flex-shrink-0 items-center justify-center" style={{ minHeight: '100vh' }}>
             <div className="sticky top-1/2 -translate-y-1/2 w-full">
                 <AnimatePresence mode="wait">
                     {isVisible ? (
@@ -88,7 +88,7 @@ export default function NewsRail() {
                             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                             onMouseEnter={() => setIsPaused(true)}
                             onMouseLeave={() => setIsPaused(false)}
-                            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-300 relative"
+                            className="bg-white border border-slate-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 relative"
                         >
                             {/* Header with controls */}
                             <div className="flex items-center justify-between mb-5">
@@ -169,7 +169,7 @@ export default function NewsRail() {
                             {!loading && articles.length > 0 && (
                                 <>
                                     {/* Main content area */}
-                                    <div className="relative h-48 mb-4 overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+                                    <div className="relative h-56 mb-5 overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-5">
                                         <AnimatePresence mode="wait" initial={false}>
                                             <motion.a
                                                 key={index}

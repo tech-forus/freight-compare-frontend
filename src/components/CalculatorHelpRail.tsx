@@ -111,7 +111,7 @@ export default function InfoCarousel() {
 
     return (
         <aside
-            className="hidden xl:flex w-64 flex-shrink-0 items-center justify-center"
+            className="hidden xl:flex w-full flex-shrink-0 items-center justify-center"
             style={{ minHeight: '100vh' }}
         >
             <div className="sticky top-1/2 -translate-y-1/2 w-full">
@@ -125,7 +125,7 @@ export default function InfoCarousel() {
                             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                             onMouseEnter={() => setIsPaused(true)}
                             onMouseLeave={() => setIsPaused(false)}
-                            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-300 relative"
+                            className="bg-white border border-slate-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 relative"
                         >
                             {/* Header */}
                             <div className="flex items-center justify-between mb-5">
@@ -165,7 +165,7 @@ export default function InfoCarousel() {
                             </div>
 
                             {/* Main Content - Single Fact Display */}
-                            <div className="relative h-56 mb-4 overflow-hidden">
+                            <div className="relative h-64 mb-5 overflow-hidden">
                                 <AnimatePresence mode="wait" initial={false}>
                                     <motion.div
                                         key={currentIndex}
