@@ -40,15 +40,16 @@ async function loadPincodeData(): Promise<void> {
 }
 
 /**
- * Get city/state info for a pincode from pincodes.json
+ * Get city/state/zone info for a pincode from pincodes.json
  */
-function getPincodeInfo(pincode: string): { city: string; state: string } | null {
+function getPincodeInfo(pincode: string): { city: string; state: string; zone: string } | null {
     if (!pincodeMap) return null;
     const entry = pincodeMap.get(String(pincode).trim());
     if (!entry) return null;
     return {
         city: entry.city || '',
-        state: entry.state || ''
+        state: entry.state || '',
+        zone: (entry.zone || '').toUpperCase()  // Master zone from YOUR pincodes.json
     };
 }
 
@@ -64,6 +65,7 @@ function codeToRegion(code: string): RegionGroup {
     if (firstChar === 'E') return 'East';
     if (firstChar === 'W') return 'West';
     if (firstChar === 'C') return 'Central';
+    if (firstChar === 'X') return 'Special' as RegionGroup;  // X1, X2, X3 - Special zones
     return 'North';
 }
 
@@ -122,22 +124,20 @@ export async function processServiceability(
         const pincode = String(entry.pincode || '').trim();
         if (!pincode || pincode.length !== 6) continue;
 
-        let zone = (entry.zone || '').toUpperCase().trim();
-        let city = (entry.city || '').trim();
-        let state = (entry.state || '').trim();
+        // CRITICAL: Look up zone from YOUR master pincodes.json, NOT vendor's zone
+        const pincodeInfo = getPincodeInfo(pincode);
 
-        // Skip if no zone
-        if (!zone) continue;
-
-        // If city/state missing, try to derive from pincodes.json
-        if (!city || !state) {
-            const pincodeInfo = getPincodeInfo(pincode);
-            if (pincodeInfo) {
-                if (!city) city = pincodeInfo.city;
-                if (!state) state = pincodeInfo.state;
-                enrichedCount++;
-            }
+        // Skip pincodes not found in your master data
+        if (!pincodeInfo || !pincodeInfo.zone) {
+            console.warn(`[ServiceabilityProcessor] Pincode ${pincode} not in master zone mapping, skipping`);
+            continue;
         }
+
+        // Use YOUR zone, city, state from master pincodes.json
+        const zone = pincodeInfo.zone;
+        const city = pincodeInfo.city || (entry.city || '').trim();
+        const state = pincodeInfo.state || (entry.state || '').trim();
+        enrichedCount++;
 
         // Initialize zone data if needed
         if (!zoneDataMap.has(zone)) {

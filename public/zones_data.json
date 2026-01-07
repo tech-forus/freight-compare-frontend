@@ -30,6 +30,11 @@
       "S1",
       "S2",
       "S3"
+    ],
+    "Special": [
+      "X1",
+      "X2",
+      "X3"
     ]
   },
   "zones": {
@@ -318,15 +323,33 @@
       ],
       "limitedCities": {}
     },
-    "ROI": {
-      "code": "ROI",
-      "region": "Rest of India",
+    "X1": {
+      "code": "X1",
+      "region": "Special",
       "type": "special",
-      "remarks": "Rest of India - Remote Areas",
+      "remarks": "Andaman & Nicobar Islands",
       "states": [
-        "Andaman and Nicobar",
-        "Ladakh",
+        "Andaman and Nicobar"
+      ],
+      "limitedCities": {}
+    },
+    "X2": {
+      "code": "X2",
+      "region": "Special",
+      "type": "special",
+      "remarks": "Lakshadweep",
+      "states": [
         "Lakshadweep"
+      ],
+      "limitedCities": {}
+    },
+    "X3": {
+      "code": "X3",
+      "region": "Special",
+      "type": "special",
+      "remarks": "Leh Ladakh",
+      "states": [
+        "Ladakh"
       ],
       "limitedCities": {}
     }
@@ -558,9 +581,9 @@
     "Andaman and Nicobar": {
       "name": "Andaman and Nicobar",
       "zones": [
-        "ROI"
+        "X1"
       ],
-      "primaryZone": "ROI"
+      "primaryZone": "X1"
     },
     "Chandigarh": {
       "name": "Chandigarh",
@@ -604,16 +627,16 @@
     "Ladakh": {
       "name": "Ladakh",
       "zones": [
-        "ROI"
+        "X3"
       ],
-      "primaryZone": "ROI"
+      "primaryZone": "X3"
     },
     "Lakshadweep": {
       "name": "Lakshadweep",
       "zones": [
-        "ROI"
+        "X2"
       ],
-      "primaryZone": "ROI"
+      "primaryZone": "X2"
     },
     "Puducherry": {
       "name": "Puducherry",
@@ -737,7 +760,7 @@
       "NE1"
     ],
     "Andaman and Nicobar": [
-      "ROI"
+      "X1"
     ],
     "Chandigarh": [
       "N1",
@@ -759,10 +782,10 @@
       "N4"
     ],
     "Ladakh": [
-      "ROI"
+      "X3"
     ],
     "Lakshadweep": [
-      "ROI"
+      "X2"
     ],
     "Puducherry": [
       "S2",
