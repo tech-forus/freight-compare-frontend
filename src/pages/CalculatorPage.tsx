@@ -1037,20 +1037,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             if (ftlQuote) others.unshift({ ...ftlQuote, isSpecialVendor: true });
             if (wheelseyeQuote) others.unshift({ ...wheelseyeQuote, isSpecialVendor: true });
 
-            // Remove specific vendor(s) from tied-up view
-            tied = tied.filter(
-                (q) => (q.companyName || "").trim().toLowerCase() !== "testvendor1"
-            );
-
-            // Filter out test/dummy PUBLIC transporters from results (only applies to 'others', not tied-up)
-            const excludedNamePatterns = ['tester', 'dummy', 'vellore'];
-            const isExcludedVendor = (name: string): boolean => {
-                const lowerName = (name || "").trim().toLowerCase();
-                return excludedNamePatterns.some(pattern => lowerName.includes(pattern));
-            };
-
-            // Only filter public transporters, NOT tied-up vendors
-            others = others.filter((q) => !isExcludedVendor(q.companyName || ""));
+            // Note: Test/dummy transporter filtering is now handled in the backend
+            // See backend/controllers/transportController.js - filters applied to all queries
 
             // ---------- Optional: price rounding for tied-up vendors ----------
             tied.forEach((quote) => {
@@ -1130,21 +1118,19 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             setCalculationProgress("");
             setIsCalculating(false);
 
-            // 📰 Only auto-scroll if news popup is NOT open (user will click button to scroll)
-            if (!showNewsPopup) {
-                // Wait for render + animation to complete before scrolling
-                setTimeout(() => {
-                    // Try to scroll to first-results (tied-up vendors), fallback to results container
-                    const firstResults = document.getElementById("first-results");
-                    const resultsContainer = document.getElementById("results");
-                    const scrollTarget = firstResults || resultsContainer;
+            // 📰 Auto-scroll to results after every calculation
+            // Wait for render + animation to complete before scrolling
+            setTimeout(() => {
+                // Try to scroll to first-results (tied-up vendors), fallback to results container
+                const firstResults = document.getElementById("first-results");
+                const resultsContainer = document.getElementById("results");
+                const scrollTarget = firstResults || resultsContainer;
 
-                    scrollTarget?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                    });
-                }, 300);
-            }
+                scrollTarget?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            }, 300);
         }
     };
 
