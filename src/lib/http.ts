@@ -55,14 +55,24 @@ const http = axios.create({
   headers: { "Content-Type": "application/json", Accept: "application/json" },
 });
 
+// Helper to get cookie value by name
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 // 🔐 Attach Authorization token to every request (Super Admin actions need this)
 http.interceptors.request.use(
   (config) => {
     try {
-      // Adjust key name ONLY if your app uses a different one
+      // Check multiple sources for the token:
+      // 1. localStorage (legacy/fallback)
+      // 2. authToken cookie (current auth flow uses this)
       const token =
         localStorage.getItem("accessToken") ||
-        localStorage.getItem("token");
+        localStorage.getItem("token") ||
+        getCookie("authToken");
 
       if (token) {
         config.headers = config.headers ?? {};
