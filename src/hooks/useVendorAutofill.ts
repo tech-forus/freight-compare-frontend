@@ -375,8 +375,37 @@ export function useVendorAutofill(params: {
         if (vendor.serviceability && Array.isArray(vendor.serviceability) && vendor.serviceability.length > 0) {
           console.log('[AutoFill] Using serviceability data (Priority 1):', vendor.serviceability.length, 'entries');
 
+          // 🔥 FIX: Check if serviceability has empty city/state (public transporters issue)
+          // If so, we need to enrich from pincodes.json
+          const hasCityData = vendor.serviceability.some((s: any) => s.city && s.city.trim());
+          console.log('[AutoFill] Serviceability has city data:', hasCityData);
+
           // Group by zone to build zone configs
           const zoneMap = new Map<string, { cities: Set<string>; states: Set<string>; pincodes: Set<string> }>();
+
+          // 🔥 FIX: If no city data, fetch pincodes.json to enrich
+          let pincodeEnrichmentMap: Map<string, { city: string; state: string }> | null = null;
+          if (!hasCityData) {
+            console.log('[AutoFill] No city data in serviceability - loading pincodes.json for enrichment...');
+            try {
+              const response = await fetch('/pincodes.json', { cache: 'force-cache' });
+              if (response.ok) {
+                const pincodeData = await response.json();
+                pincodeEnrichmentMap = new Map();
+                pincodeData.forEach((row: any) => {
+                  if (row.pincode && row.city) {
+                    pincodeEnrichmentMap!.set(String(row.pincode).trim(), {
+                      city: row.city,
+                      state: row.state || ''
+                    });
+                  }
+                });
+                console.log('[AutoFill] Loaded', pincodeEnrichmentMap.size, 'pincodes for enrichment');
+              }
+            } catch (err) {
+              console.warn('[AutoFill] Failed to load pincodes.json for enrichment:', err);
+            }
+          }
 
           vendor.serviceability.forEach((entry: any) => {
             if (!entry.zone) return;
@@ -390,8 +419,21 @@ export function useVendorAutofill(params: {
             }
 
             const zoneData = zoneMap.get(entry.zone)!;
-            if (entry.city) zoneData.cities.add(entry.city);
-            if (entry.state) zoneData.states.add(entry.state);
+
+            // Get city/state from entry, or enrich from pincodes.json if missing
+            let city = entry.city || '';
+            let state = entry.state || '';
+
+            if ((!city || !state) && pincodeEnrichmentMap && entry.pincode) {
+              const enriched = pincodeEnrichmentMap.get(String(entry.pincode).trim());
+              if (enriched) {
+                if (!city) city = enriched.city;
+                if (!state) state = enriched.state;
+              }
+            }
+
+            if (city) zoneData.cities.add(city);
+            if (state) zoneData.states.add(state);
             if (entry.pincode) zoneData.pincodes.add(entry.pincode);
           });
 
@@ -399,16 +441,27 @@ export function useVendorAutofill(params: {
             zoneCode,
             zoneName: zoneCode,
             region: zoneCode.startsWith('N') ? 'North' :
-                   zoneCode.startsWith('S') ? 'South' :
-                   zoneCode.startsWith('E') ? 'East' :
-                   zoneCode.startsWith('W') ? 'West' :
-                   zoneCode.startsWith('C') ? 'Central' : 'Other',
+              zoneCode.startsWith('S') ? 'South' :
+                zoneCode.startsWith('E') ? 'East' :
+                  zoneCode.startsWith('W') ? 'West' :
+                    zoneCode.startsWith('C') ? 'Central' : 'Other',
             selectedStates: Array.from(data.states),
             selectedCities: Array.from(data.cities),
             isComplete: data.cities.size > 0,
           }));
 
-          console.log('[AutoFill] Built zones from serviceability:', wizardZones);
+          // 🔥 FIX: Also update zoneCodes from enriched serviceability
+          if (wizardZones.length > 0) {
+            zoneCodes = wizardZones.map(z => z.zoneCode);
+            console.log('[AutoFill] Updated zoneCodes from serviceability:', zoneCodes);
+          }
+
+          console.log('[AutoFill] Built zones from serviceability:', wizardZones.map(z => ({
+            code: z.zoneCode,
+            cities: z.selectedCities.length,
+            states: z.selectedStates.length,
+            isComplete: z.isComplete
+          })));
         }
         // PRIORITY 2: Use zoneConfigs with pincode conversion
         else if (hasZoneConfigs) {
@@ -432,10 +485,10 @@ export function useVendorAutofill(params: {
                 zoneCode: z.zoneCode,
                 zoneName: z.zoneName || z.zoneCode,
                 region: z.region || (z.zoneCode.startsWith('N') ? 'North' :
-                       z.zoneCode.startsWith('S') ? 'South' :
-                       z.zoneCode.startsWith('E') ? 'East' :
-                       z.zoneCode.startsWith('W') ? 'West' :
-                       z.zoneCode.startsWith('C') ? 'Central' : 'Other'),
+                  z.zoneCode.startsWith('S') ? 'South' :
+                    z.zoneCode.startsWith('E') ? 'East' :
+                      z.zoneCode.startsWith('W') ? 'West' :
+                        z.zoneCode.startsWith('C') ? 'Central' : 'Other'),
                 selectedStates: states,
                 selectedCities: cities,
                 isComplete: cities.length > 0,
@@ -453,10 +506,10 @@ export function useVendorAutofill(params: {
             zoneCode: z,
             zoneName: `${z} Zone`,
             region: z.startsWith('N') ? 'North' :
-                   z.startsWith('S') ? 'South' :
-                   z.startsWith('E') ? 'East' :
-                   z.startsWith('W') ? 'West' :
-                   z.startsWith('C') ? 'Central' : 'Other',
+              z.startsWith('S') ? 'South' :
+                z.startsWith('E') ? 'East' :
+                  z.startsWith('W') ? 'West' :
+                    z.startsWith('C') ? 'Central' : 'Other',
             selectedStates: [],
             selectedCities: [],
             isComplete: false,  // No cities - user must fill manually
@@ -539,9 +592,57 @@ export function useVendorAutofill(params: {
           source: vendor.serviceabilitySource,
         });
 
+        // 🔥 FIX: Check if we need to enrich with city/state from pincodes.json
+        const hasCityDataForSummary = vendor.serviceability.some((s: any) => s.city && s.city.trim());
+        let enrichmentMap: Map<string, { city: string; state: string }> | null = null;
+
+        if (!hasCityDataForSummary) {
+          console.log('[AutoFill] Enriching serviceability summary from pincodes.json...');
+          try {
+            const response = await fetch('/pincodes.json', { cache: 'force-cache' });
+            if (response.ok) {
+              const pincodeData = await response.json();
+              enrichmentMap = new Map();
+              pincodeData.forEach((row: any) => {
+                if (row.pincode && row.city) {
+                  enrichmentMap!.set(String(row.pincode).trim(), {
+                    city: row.city,
+                    state: row.state || ''
+                  });
+                }
+              });
+            }
+          } catch (err) {
+            console.warn('[AutoFill] Failed to load pincodes.json for serviceability summary:', err);
+          }
+        }
+
         // Build zone summary from serviceability for compatibility
         const zoneSummaryMap = new Map<string, any>();
+
+        // Also build enriched serviceability array for submission
+        const enrichedServiceability: any[] = [];
+
         vendor.serviceability.forEach((entry: any) => {
+          // Enrich the entry if needed
+          let city = entry.city || '';
+          let state = entry.state || '';
+
+          if ((!city || !state) && enrichmentMap && entry.pincode) {
+            const enriched = enrichmentMap.get(String(entry.pincode).trim());
+            if (enriched) {
+              if (!city) city = enriched.city;
+              if (!state) state = enriched.state;
+            }
+          }
+
+          // Add enriched entry to the array
+          enrichedServiceability.push({
+            ...entry,
+            city,
+            state,
+          });
+
           if (!zoneSummaryMap.has(entry.zone)) {
             zoneSummaryMap.set(entry.zone, {
               zoneCode: entry.zone,
@@ -558,8 +659,8 @@ export function useVendorAutofill(params: {
           }
           const summary = zoneSummaryMap.get(entry.zone)!;
           summary.pincodeCount++;
-          if (entry.state) summary.states.add(entry.state);
-          if (entry.city) summary.cities.add(entry.city);
+          if (state) summary.states.add(state);
+          if (city) summary.cities.add(city);
           if (entry.isODA) summary.odaCount++;
         });
 
@@ -569,9 +670,15 @@ export function useVendorAutofill(params: {
           cities: Array.from(z.cities),
         }));
 
+        console.log('[AutoFill] Enriched serviceability:', {
+          totalEntries: enrichedServiceability.length,
+          entriesWithCities: enrichedServiceability.filter(e => e.city).length,
+          zones: zoneSummary.map(z => ({ code: z.zoneCode, cities: z.cities.length }))
+        });
+
         if (typeof setServiceabilityData === 'function') {
           setServiceabilityData({
-            serviceability: vendor.serviceability,
+            serviceability: enrichedServiceability,  // 🔥 FIX: Use enriched data
             zoneSummary: zoneSummary,
             checksum: vendor.serviceabilityChecksum || '',
             source: 'cloned' as const,
