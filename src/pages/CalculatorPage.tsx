@@ -1184,10 +1184,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 className="absolute top-0 left-0 w-full h-80 bg-gradient-to-br from-indigo-50 to-purple-50"
                 style={{ clipPath: "polygon(0 0, 100% 0, 100% 65%, 0% 100%)" }}
             />
-            <div className="relative max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-8">
-                <div className="flex gap-8 items-start">
+            <div className="relative max-w-[1800px] mx-auto px-8 sm:px-12 lg:px-16 py-8">
+                <div className="flex gap-16 items-start">
                     {/* LEFT: News Rail - Hidden on smaller screens */}
-                    <div className="hidden xl:block w-72 flex-shrink-0 sticky top-8">
+                    <div className="hidden xl:block w-80 flex-shrink-0 sticky top-8">
                         <NewsRail />
                     </div>
 
@@ -2150,7 +2150,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     </div>
 
                     {/* RIGHT: Help Rail - Hidden on smaller screens */}
-                    <div className="hidden xl:block w-72 flex-shrink-0 sticky top-8">
+                    <div className="hidden xl:block w-80 flex-shrink-0 sticky top-8">
                         <CalculatorHelpRail />
                     </div>
                 </div>
