@@ -355,9 +355,10 @@ export const AddVendor: React.FC = () => {
   const searchTransporters = useMemo(
     () =>
       debounce(async (query: string) => {
+        // Early exit for short queries - DON'T reset loading here
+        // Let the finally block handle it to ensure spinner shows until debounce completes
         if (!query || query.length < 2) {
           setSuggestions([]);
-          setIsSearching(false);
           return;
         }
 
@@ -372,7 +373,6 @@ export const AddVendor: React.FC = () => {
           const customerID = getCustomerIDFromToken();
           if (!customerID) {
             setSuggestions([]);
-            setIsSearching(false);
             return;
           }
 
@@ -409,6 +409,7 @@ export const AddVendor: React.FC = () => {
             setSuggestions([]);
           }
         } finally {
+          // Always reset loading state here - ensures consistent behavior
           setIsSearching(false);
         }
       }, 300),
@@ -1800,9 +1801,16 @@ export const AddVendor: React.FC = () => {
                         type="text"
                         value={legalCompanyNameInput}
                         onChange={(e) => {
-                          setLegalCompanyNameInput(e.target.value);
+                          const value = e.target.value;
+                          setLegalCompanyNameInput(value);
                           setIsAutoFilled(false);
-                          searchTransporters(e.target.value);
+
+                          // Show loading immediately if query is long enough
+                          if (value.length >= 2) {
+                            setIsSearching(true);
+                          }
+
+                          searchTransporters(value);
                         }}
                         onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
                         onKeyDown={(e) => {
