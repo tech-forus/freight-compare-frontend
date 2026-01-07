@@ -2030,6 +2030,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 if (seenVendors.has(key)) return false;
                                                 seenVendors.add(key);
                                                 return true;
+                                            }).sort((a, b) => {
+                                                // Always put Wheelseye FTL first
+                                                const isWheelseyeA = a.companyName === "Wheelseye FTL";
+                                                const isWheelseyeB = b.companyName === "Wheelseye FTL";
+                                                if (isWheelseyeA && !isWheelseyeB) return -1;
+                                                if (!isWheelseyeA && isWheelseyeB) return 1;
+                                                return 0; // Keep original order for others
                                             });
 
                                             const allProcessedQuotes = [...tiedUpVendors, ...otherVendors];
@@ -2785,11 +2792,22 @@ const VendorResultCard = ({
         );
     }
 
+    // Check if this is Wheelseye FTL for the partner ribbon
+    const isWheelseyePartner = quote.companyName === "Wheelseye FTL";
+
     // Normal (visible) card - ALL vendors get yellow styling
     return (
         <div
-            className={`p-5 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 shadow-lg ${isSpecialVendor ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-slate-200'}`}
+            className={`relative p-5 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 shadow-lg ${isSpecialVendor ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-slate-200'}`}
         >
+            {/* Our Partner Ribbon for Wheelseye FTL */}
+            {isWheelseyePartner && (
+                <div className="absolute -top-0 -right-0 overflow-hidden w-32 h-32 pointer-events-none">
+                    <div className="absolute top-4 -right-8 w-40 text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-1.5 transform rotate-45 shadow-lg">
+                        Our Partner
+                    </div>
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
                 {/* Vendor + badges */}
                 <div className="md:col-span-6">
