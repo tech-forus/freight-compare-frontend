@@ -91,46 +91,46 @@ export default function NewsRail() {
                             className="bg-white border border-slate-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 relative"
                         >
                             {/* Header with controls */}
-                            <div className="flex items-center justify-between mb-5">
-                                <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
                                     <motion.div
                                         animate={{ rotate: isRefreshing ? 360 : 0 }}
                                         transition={{ duration: 0.5 }}
-                                        className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm"
+                                        className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm"
                                     >
-                                        <Newspaper className="text-white" size={16} />
+                                        <Newspaper className="text-white" size={20} />
                                     </motion.div>
                                     <div>
-                                        <h3 className="font-bold text-slate-800 text-sm">
+                                        <h3 className="font-bold text-slate-800 text-base">
                                             Business News
                                         </h3>
-                                        <p className="text-xs text-slate-500">
+                                        <p className="text-sm text-slate-500">
                                             Latest updates
                                         </p>
                                     </div>
                                 </div>
 
                                 {/* Control buttons */}
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
                                     <button
                                         onClick={handleRefresh}
                                         disabled={loading || isRefreshing}
-                                        className="p-1.5 rounded-md hover:bg-slate-100 transition-all disabled:opacity-50 group"
+                                        className="p-2 rounded-md hover:bg-slate-100 transition-all disabled:opacity-50 group"
                                         aria-label="Refresh news"
                                         title="Refresh news"
                                     >
                                         <RotateCw
-                                            size={13}
+                                            size={16}
                                             className={`text-slate-500 group-hover:text-indigo-600 transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
                                         />
                                     </button>
                                     <button
                                         onClick={() => setIsVisible(false)}
-                                        className="p-1.5 rounded-md hover:bg-slate-100 transition-all group"
+                                        className="p-2 rounded-md hover:bg-slate-100 transition-all group"
                                         aria-label="Hide news"
                                         title="Hide news panel"
                                     >
-                                        <EyeOff size={13} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
+                                        <EyeOff size={16} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
                                     </button>
                                 </div>
                             </div>
@@ -169,7 +169,7 @@ export default function NewsRail() {
                             {!loading && articles.length > 0 && (
                                 <>
                                     {/* Main content area */}
-                                    <div className="relative h-56 mb-5 overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-5">
+                                    <div className="relative h-64 mb-6 overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-6">
                                         <AnimatePresence mode="wait" initial={false}>
                                             <motion.a
                                                 key={index}
@@ -197,15 +197,15 @@ export default function NewsRail() {
                                                     damping: 30,
                                                     opacity: { duration: 0.2 }
                                                 }}
-                                                className="absolute inset-0 flex items-center justify-center text-sm text-slate-700 hover:text-indigo-600 transition-colors group p-4"
+                                                className="absolute inset-0 flex items-center justify-center text-base text-slate-700 hover:text-indigo-600 transition-colors group p-6"
                                             >
                                                 <div className="relative">
                                                     <span className="line-clamp-6 leading-relaxed">
                                                         {articles[index].title}
                                                     </span>
-                                                    <div className="mt-3 flex items-center gap-1 text-xs text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="mt-3 flex items-center gap-1 text-sm text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <span>Read more</span>
-                                                        <ExternalLink size={12} />
+                                                        <ExternalLink size={14} />
                                                     </div>
                                                 </div>
                                             </motion.a>
@@ -213,25 +213,25 @@ export default function NewsRail() {
                                     </div>
 
                                     {/* Controls */}
-                                    <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center justify-between mb-4">
                                         <button
                                             onClick={prev}
-                                            className="p-2 rounded-full hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all group"
+                                            className="p-2.5 rounded-full hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all group"
                                             aria-label="Previous article"
                                         >
-                                            <ChevronLeft size={16} className="text-slate-600 group-hover:text-indigo-600 transition-colors" />
+                                            <ChevronLeft size={18} className="text-slate-600 group-hover:text-indigo-600 transition-colors" />
                                         </button>
 
                                         {/* Dots */}
-                                        <div className="flex gap-1.5">
+                                        <div className="flex gap-2">
                                             {articles.map((_, i) => (
                                                 <button
                                                     key={i}
                                                     onClick={() => goToIndex(i)}
                                                     aria-label={`Go to article ${i + 1}`}
                                                     className={`rounded-full transition-all ${i === index
-                                                        ? "w-6 h-2 bg-gradient-to-r from-indigo-600 to-purple-600"
-                                                        : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
+                                                        ? "w-7 h-2.5 bg-gradient-to-r from-indigo-600 to-purple-600"
+                                                        : "w-2.5 h-2.5 bg-slate-300 hover:bg-slate-400"
                                                         }`}
                                                 />
                                             ))}
@@ -239,15 +239,15 @@ export default function NewsRail() {
 
                                         <button
                                             onClick={next}
-                                            className="p-2 rounded-full hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all group"
+                                            className="p-2.5 rounded-full hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all group"
                                             aria-label="Next article"
                                         >
-                                            <ChevronRight size={16} className="text-slate-600 group-hover:text-indigo-600 transition-colors" />
+                                            <ChevronRight size={18} className="text-slate-600 group-hover:text-indigo-600 transition-colors" />
                                         </button>
                                     </div>
 
                                     {/* Progress Bar */}
-                                    <div className="h-1 bg-slate-200 rounded-full overflow-hidden mb-3">
+                                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-4">
                                         <motion.div
                                             key={`progress-${index}`}
                                             initial={{ width: "0%" }}
@@ -262,7 +262,7 @@ export default function NewsRail() {
 
                                     {/* Counter */}
                                     <div className="text-center">
-                                        <span className="text-xs text-slate-400 font-medium">
+                                        <span className="text-sm text-slate-400 font-medium">
                                             {index + 1} / {total}
                                         </span>
                                     </div>
