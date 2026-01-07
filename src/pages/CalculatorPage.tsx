@@ -2800,11 +2800,27 @@ const VendorResultCard = ({
         <div
             className={`relative p-5 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 shadow-lg ${isSpecialVendor ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-slate-200'}`}
         >
-            {/* Our Partner Ribbon for Wheelseye FTL */}
+            {/* Our Partner Ribbon for Wheelseye FTL - Curved Style */}
             {isWheelseyePartner && (
-                <div className="absolute -top-0 -right-0 overflow-hidden w-32 h-32 pointer-events-none">
-                    <div className="absolute top-4 -right-8 w-40 text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold py-1.5 transform rotate-45 shadow-lg">
-                        Our Partner
+                <div className="absolute top-0 right-0 pointer-events-none z-10">
+                    <div className="relative">
+                        <svg width="100" height="100" viewBox="0 0 100 100" className="absolute top-0 right-0 drop-shadow-lg">
+                            <defs>
+                                <linearGradient id="ribbonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style={{ stopColor: '#4f46e5', stopOpacity: 1 }} />
+                                    <stop offset="100%" style={{ stopColor: '#7c3aed', stopOpacity: 1 }} />
+                                </linearGradient>
+                            </defs>
+                            <path
+                                d="M 100 0 L 100 100 Q 80 80 50 100 L 100 100 Z"
+                                fill="url(#ribbonGradient)"
+                            />
+                        </svg>
+                        <div className="absolute top-2 right-2 w-16 text-center transform rotate-45 origin-center">
+                            <span className="text-white text-[9px] font-bold leading-tight block whitespace-nowrap">
+                                Our Partner
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}
