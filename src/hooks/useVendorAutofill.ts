@@ -368,21 +368,22 @@ export function useVendorAutofill(params: {
         });
 
         // 🔥 COMPLETE FALLBACK CHAIN: Convert pincodes → cities with multiple data sources
-        // Priority: Use vendor.zones as authoritative source, enrich with serviceability data
+        // Priority: serviceability > zoneConfigs > zones > fallback
         let wizardZones: any[] = [];
 
-        // 🔥 FIX: Build zone enrichment map from serviceability (if available)
-        // This is used to add city/state data to zones, but NOT to determine which zones exist
-        const zoneEnrichmentMap = new Map<string, { cities: Set<string>; states: Set<string>; pincodes: Set<string> }>();
-
+        // PRIORITY 1: Use serviceability data (most complete - has pincode→city mapping)
         if (vendor.serviceability && Array.isArray(vendor.serviceability) && vendor.serviceability.length > 0) {
-          console.log('[AutoFill] Building enrichment map from serviceability:', vendor.serviceability.length, 'entries');
+          console.log('[AutoFill] Using serviceability data (Priority 1):', vendor.serviceability.length, 'entries');
 
-          // Check if serviceability has city data or needs pincodes.json enrichment
+          // 🔥 FIX: Check if serviceability has empty city/state (public transporters issue)
+          // If so, we need to enrich from pincodes.json
           const hasCityData = vendor.serviceability.some((s: any) => s.city && s.city.trim());
           console.log('[AutoFill] Serviceability has city data:', hasCityData);
 
-          // Load pincodes.json for enrichment if needed
+          // Group by zone to build zone configs
+          const zoneMap = new Map<string, { cities: Set<string>; states: Set<string>; pincodes: Set<string> }>();
+
+          // 🔥 FIX: If no city data, fetch pincodes.json to enrich
           let pincodeEnrichmentMap: Map<string, { city: string; state: string }> | null = null;
           if (!hasCityData) {
             console.log('[AutoFill] No city data in serviceability - loading pincodes.json for enrichment...');
@@ -406,19 +407,18 @@ export function useVendorAutofill(params: {
             }
           }
 
-          // Build enrichment map grouped by zone
           vendor.serviceability.forEach((entry: any) => {
             if (!entry.zone) return;
 
-            if (!zoneEnrichmentMap.has(entry.zone)) {
-              zoneEnrichmentMap.set(entry.zone, {
+            if (!zoneMap.has(entry.zone)) {
+              zoneMap.set(entry.zone, {
                 cities: new Set(),
                 states: new Set(),
                 pincodes: new Set()
               });
             }
 
-            const zoneData = zoneEnrichmentMap.get(entry.zone)!;
+            const zoneData = zoneMap.get(entry.zone)!;
 
             // Get city/state from entry, or enrich from pincodes.json if missing
             let city = entry.city || '';
@@ -437,16 +437,35 @@ export function useVendorAutofill(params: {
             if (entry.pincode) zoneData.pincodes.add(entry.pincode);
           });
 
-          console.log('[AutoFill] Built enrichment map for zones:', Array.from(zoneEnrichmentMap.keys()));
+          wizardZones = Array.from(zoneMap.entries()).map(([zoneCode, data]) => ({
+            zoneCode,
+            zoneName: zoneCode,
+            region: zoneCode.startsWith('N') ? 'North' :
+              zoneCode.startsWith('S') ? 'South' :
+                zoneCode.startsWith('E') ? 'East' :
+                  zoneCode.startsWith('W') ? 'West' :
+                    zoneCode.startsWith('C') ? 'Central' : 'Other',
+            selectedStates: Array.from(data.states),
+            selectedCities: Array.from(data.cities),
+            isComplete: data.cities.size > 0,
+          }));
+
+          // 🔥 FIX: Also update zoneCodes from enriched serviceability
+          if (wizardZones.length > 0) {
+            zoneCodes = wizardZones.map(z => z.zoneCode);
+            console.log('[AutoFill] Updated zoneCodes from serviceability:', zoneCodes);
+          }
+
+          console.log('[AutoFill] Built zones from serviceability:', wizardZones.map(z => ({
+            code: z.zoneCode,
+            cities: z.selectedCities.length,
+            states: z.selectedStates.length,
+            isComplete: z.isComplete
+          })));
         }
-
-        // 🔥 KEY FIX: Use zoneCodes (from vendor.zones) as the authoritative source
-        // DO NOT override zoneCodes from serviceability - that was the bug!
-        // Now we build wizardZones from ALL zoneCodes, enriching with serviceability where available
-
-        if (hasZoneConfigs && vendor.zoneConfigs!.some(z => z.selectedCities?.length > 0)) {
-          // PRIORITY 1: Use zoneConfigs if they have city data
-          console.log('[AutoFill] Using zoneConfigs with city data (Priority 1)');
+        // PRIORITY 2: Use zoneConfigs with pincode conversion
+        else if (hasZoneConfigs) {
+          console.log('[AutoFill] Using zoneConfigs (Priority 2) - converting pincodes to cities');
 
           wizardZones = await Promise.all(
             vendor.zoneConfigs!.map(async (z) => {
@@ -459,53 +478,55 @@ export function useVendorAutofill(params: {
                 const converted = await convertPincodesToCities(cities);
                 cities = converted.cities;
                 states = converted.states;
+                console.log(`[AutoFill] Zone ${z.zoneCode}: Converted to ${cities.length} cities, ${states.length} states`);
               }
 
               return {
                 zoneCode: z.zoneCode,
                 zoneName: z.zoneName || z.zoneCode,
-                region: z.region || (z.zoneCode.startsWith('NE') ? 'Northeast' :
-                  z.zoneCode.startsWith('N') ? 'North' :
-                    z.zoneCode.startsWith('S') ? 'South' :
-                      z.zoneCode.startsWith('E') ? 'East' :
-                        z.zoneCode.startsWith('W') ? 'West' :
-                          z.zoneCode.startsWith('X') ? 'Special' :
-                            z.zoneCode.startsWith('C') ? 'Central' : 'Other'),
+                region: z.region || (z.zoneCode.startsWith('N') ? 'North' :
+                  z.zoneCode.startsWith('S') ? 'South' :
+                    z.zoneCode.startsWith('E') ? 'East' :
+                      z.zoneCode.startsWith('W') ? 'West' :
+                        z.zoneCode.startsWith('C') ? 'Central' : 'Other'),
                 selectedStates: states,
                 selectedCities: cities,
                 isComplete: cities.length > 0,
               };
             })
           );
-        } else {
-          // PRIORITY 2: Build from zoneCodes (vendor.zones), enrich with serviceability
-          console.log('[AutoFill] Building zones from zoneCodes, enriching with serviceability');
-          console.log('[AutoFill] Zone codes to use:', zoneCodes);
 
-          wizardZones = zoneCodes.map((z) => {
-            const enrichment = zoneEnrichmentMap.get(z);
-            return {
-              zoneCode: z,
-              zoneName: z,
-              region: z.startsWith('NE') ? 'Northeast' :
-                z.startsWith('N') ? 'North' :
-                  z.startsWith('S') ? 'South' :
-                    z.startsWith('E') ? 'East' :
-                      z.startsWith('W') ? 'West' :
-                        z.startsWith('X') ? 'Special' :
-                          z.startsWith('C') ? 'Central' : 'Other',
-              selectedStates: enrichment ? Array.from(enrichment.states) : [],
-              selectedCities: enrichment ? Array.from(enrichment.cities) : [],
-              isComplete: enrichment ? enrichment.cities.size > 0 : false,
-            };
-          });
+          console.log('[AutoFill] Built zones from zoneConfigs after conversion:', wizardZones);
+        }
+        // PRIORITY 3 & 4: Use zones array OR zone code fallback
+        else {
+          console.log('[AutoFill] Using zone codes only (Priority 3/4) - creating zone structure with regional fallback');
+
+          wizardZones = zoneCodes.map((z) => ({
+            zoneCode: z,
+            zoneName: `${z} Zone`,
+            region: z.startsWith('N') ? 'North' :
+              z.startsWith('S') ? 'South' :
+                z.startsWith('E') ? 'East' :
+                  z.startsWith('W') ? 'West' :
+                    z.startsWith('C') ? 'Central' : 'Other',
+            selectedStates: [],
+            selectedCities: [],
+            isComplete: false,  // No cities - user must fill manually
+          }));
+
+          console.log('[AutoFill] Built zones from zone codes (fallback):', wizardZones);
         }
 
-        console.log('[AutoFill] Final wizard zones built:', {
+        console.log('[AutoFill] Final wizard zones:', {
           totalZones: wizardZones.length,
-          zonesWithCities: wizardZones.filter((z: any) => z.selectedCities?.length > 0).length,
-          zonesEmpty: wizardZones.filter((z: any) => !z.selectedCities?.length).length,
-          zoneCodes: wizardZones.map((z: any) => z.zoneCode),
+          zonesWithCities: wizardZones.filter(z => z.selectedCities.length > 0).length,
+          zonesEmpty: wizardZones.filter(z => z.selectedCities.length === 0).length,
+          zones: wizardZones.map(z => ({
+            code: z.zoneCode,
+            cities: z.selectedCities.length,
+            states: z.selectedStates.length
+          }))
         });
 
         // For legacy selectedZones format

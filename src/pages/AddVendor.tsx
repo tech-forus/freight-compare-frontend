@@ -396,7 +396,12 @@ export const AddVendor: React.FC = () => {
             setSuggestions(data.data);
             setShowDropdown(true);
           } else {
+            // No results found - show popup notification
             setSuggestions([]);
+            toast.error(`No transporters found for "${query}"`, {
+              duration: 3000,
+              icon: '🔍',
+            });
           }
         } catch (error: any) {
           if (error.name !== 'AbortError') {
@@ -429,6 +434,9 @@ export const AddVendor: React.FC = () => {
           setShowDropdown(false);
           setSuggestions([]);
           setHighlightedIndex(-1);
+
+          // Auto-select Wizard tab when results are found
+          setZoneConfigMode('wizard');
 
           toast.success(
             `Auto-filled from "${vendor.displayName || vendor.companyName}". ${vendor.zones?.length || 0
@@ -2085,7 +2093,11 @@ export const AddVendor: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate('/zone-price-matrix')}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                            isAutoFilled && wizardStatus?.hasPriceMatrix
+                              ? 'bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 shadow-lg animate-pulse ring-2 ring-green-400 ring-offset-2'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
                         >
                           {wizardStatus?.hasPriceMatrix ? 'Edit Wizard' : 'Open Wizard'}
                         </button>
