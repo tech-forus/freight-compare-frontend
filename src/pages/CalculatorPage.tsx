@@ -1132,12 +1132,18 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
             // 📰 Only auto-scroll if news popup is NOT open (user will click button to scroll)
             if (!showNewsPopup) {
+                // Wait for render + animation to complete before scrolling
                 setTimeout(() => {
-                    document.getElementById("results")?.scrollIntoView({
+                    // Try to scroll to first-results (tied-up vendors), fallback to results container
+                    const firstResults = document.getElementById("first-results");
+                    const resultsContainer = document.getElementById("results");
+                    const scrollTarget = firstResults || resultsContainer;
+
+                    scrollTarget?.scrollIntoView({
                         behavior: "smooth",
                         block: "start",
                     });
-                }, 100);
+                }, 300);
             }
         }
     };
@@ -2064,7 +2070,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                             return (
                                                 <>
                                                     {tiedUpVendors.length > 0 && (
-                                                        <section>
+                                                        <section id="first-results">
                                                             <h2 className="text-2xl font-bold text-slate-800 mb-5 border-l-4 border-indigo-500 pl-4">
                                                                 Your Tied-Up Vendors
                                                             </h2>
