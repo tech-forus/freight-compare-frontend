@@ -2800,25 +2800,6 @@ const VendorResultCard = ({
         <div
             className={`relative p-5 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 shadow-lg overflow-hidden ${isSpecialVendor ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-slate-200'}`}
         >
-            {/* Our Partner Ribbon - Single Curved Line across top-right */}
-            {isWheelseyePartner && (
-                <div className="absolute top-2 right-20 pointer-events-none z-10">
-                    <div className="relative">
-                        {/* Single curved line ribbon */}
-                        <div
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-1.5 shadow-lg"
-                            style={{
-                                borderRadius: '0 0 12px 12px',
-                                transform: 'skewX(-10deg)'
-                            }}
-                        >
-                            <span className="text-white text-xs font-bold tracking-wide" style={{ transform: 'skewX(10deg)', display: 'inline-block' }}>
-                                Our Partner
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            )}
             <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
                 {/* Vendor + badges */}
                 <div className="md:col-span-6">
@@ -2917,13 +2898,35 @@ const VendorResultCard = ({
                         </button>
                     </div>
 
-                    {/* CTA (dynamic) */}
-                    <button
-                        onClick={handleCtaClick}
-                        className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                    >
-                        {ctaLabel}
-                    </button>
+                    {/* CTA (dynamic) - with Our Partner ribbon for Wheelseye */}
+                    {isWheelseyePartner ? (
+                        <div className="flex flex-col gap-2">
+                            {/* Our Partner Ribbon - stacked above Contact Now */}
+                            <div
+                                className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg text-center whitespace-nowrap cursor-default"
+                                style={{
+                                    borderBottomLeftRadius: '8px',
+                                    borderBottomRightRadius: '8px'
+                                }}
+                            >
+                                Our Partner
+                            </div>
+                            {/* Contact Now Button */}
+                            <button
+                                onClick={handleCtaClick}
+                                className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                            >
+                                {ctaLabel}
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleCtaClick}
+                            className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                        >
+                            {ctaLabel}
+                        </button>
+                    )}
                 </div>
             </div>
 
