@@ -2800,22 +2800,22 @@ const VendorResultCard = ({
         <div
             className={`relative p-5 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 shadow-lg overflow-hidden ${isSpecialVendor ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-slate-200'}`}
         >
-            {/* Our Partner Ribbon for Wheelseye FTL - Semi-Circular Curved Design */}
+            {/* Our Partner Ribbon - Single Curved Line across top-right */}
             {isWheelseyePartner && (
-                <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none">
-                    {/* Curved ribbon background using clip-path */}
-                    <div
-                        className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-600 shadow-xl"
-                        style={{
-                            clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
-                            borderBottomLeftRadius: '12px'
-                        }}
-                    />
-                    {/* Text on ribbon */}
-                    <div className="absolute top-5 right-1 transform rotate-45 origin-top-right">
-                        <span className="text-white text-[10px] font-extrabold tracking-tight whitespace-nowrap drop-shadow-md">
-                            Our Partner
-                        </span>
+                <div className="absolute top-2 right-20 pointer-events-none z-10">
+                    <div className="relative">
+                        {/* Single curved line ribbon */}
+                        <div
+                            className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-1.5 shadow-lg"
+                            style={{
+                                borderRadius: '0 0 12px 12px',
+                                transform: 'skewX(-10deg)'
+                            }}
+                        >
+                            <span className="text-white text-xs font-bold tracking-wide" style={{ transform: 'skewX(10deg)', display: 'inline-block' }}>
+                                Our Partner
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}
