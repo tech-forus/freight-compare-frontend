@@ -971,12 +971,15 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             const all: QuoteAny[] = [
                 ...(resp.data.tiedUpResult || []).map((q: QuoteAny) => ({
                     ...q,
-                    isTiedUp: true,
+                    // FIXED: Use backend's isTiedUp flag to distinguish user's own vendors from others
+                    // Backend sets isTiedUp based on: vendor.customerID === loggedInUser.customerID
+                    isTiedUp: typeof q.isTiedUp === 'boolean' ? q.isTiedUp : true,
                     // Extract verification status from transporter data if available
                     approvalStatus: q.transporterData?.approvalStatus || q.approvalStatus,
                 })),
                 ...(resp.data.companyResult || []).map((q: QuoteAny) => ({
                     ...q,
+                    // Public transporters are always "available" (not tied to specific users)
                     isTiedUp: false,
                     // Extract verification status from transporter data if available
                     approvalStatus: q.transporterData?.approvalStatus || q.approvalStatus,
@@ -990,6 +993,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     quote.distance = `${Math.round(distanceKmOverride)} km`;
                 });
             }
+
+            // DEBUG: Log vendor categorization (helps verify isTiedUp flag is working)
+            console.log('[VENDOR DEBUG] Total vendors:', all.length);
+            console.log('[VENDOR DEBUG] Tied-up vendors:', all.filter(q => q.isTiedUp).map(q => q.companyName));
+            console.log('[VENDOR DEBUG] Available vendors:', all.filter(q => !q.isTiedUp).map(q => q.companyName));
 
             // Move all 'DP World' quotes out of tied-up into other vendors
             const dpWorldQuotes = all.filter(
