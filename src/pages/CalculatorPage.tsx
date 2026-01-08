@@ -2800,6 +2800,46 @@ const VendorResultCard = ({
         <div
             className={`relative p-5 rounded-2xl border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 shadow-lg overflow-hidden ${isSpecialVendor ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-slate-200'}`}
         >
+            {/* Curvy Diagonal Ribbon for Wheelseye FTL Partner */}
+            {isWheelseyePartner && (
+                <div
+                    className="absolute -right-12 top-5 z-10 pointer-events-none"
+                    style={{
+                        transform: 'rotate(45deg)',
+                    }}
+                >
+                    {/* Curvy ribbon with wave effect */}
+                    <div className="relative">
+                        {/* Main ribbon body */}
+                        <div
+                            className="px-10 py-1.5 text-white text-xs font-bold tracking-wide shadow-lg"
+                            style={{
+                                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
+                                clipPath: 'polygon(0% 20%, 5% 0%, 95% 0%, 100% 20%, 100% 80%, 95% 100%, 5% 100%, 0% 80%)',
+                            }}
+                        >
+                            OUR PARTNER
+                        </div>
+                        {/* Left fold shadow */}
+                        <div
+                            className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-4"
+                            style={{
+                                background: 'linear-gradient(to right, transparent, rgba(99, 102, 241, 0.4))',
+                                transform: 'translateY(-50%) skewY(-15deg)',
+                            }}
+                        />
+                        {/* Right fold shadow */}
+                        <div
+                            className="absolute -right-2 top-1/2 -translate-y-1/2 w-2 h-4"
+                            style={{
+                                background: 'linear-gradient(to left, transparent, rgba(168, 85, 247, 0.4))',
+                                transform: 'translateY(-50%) skewY(15deg)',
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
                 {/* Vendor + badges */}
                 <div className="md:col-span-6">
@@ -2898,35 +2938,13 @@ const VendorResultCard = ({
                         </button>
                     </div>
 
-                    {/* CTA (dynamic) - with Our Partner ribbon for Wheelseye */}
-                    {isWheelseyePartner ? (
-                        <div className="flex flex-col gap-2">
-                            {/* Our Partner Ribbon - stacked above Contact Now */}
-                            <div
-                                className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg text-center whitespace-nowrap cursor-default"
-                                style={{
-                                    borderBottomLeftRadius: '8px',
-                                    borderBottomRightRadius: '8px'
-                                }}
-                            >
-                                Our Partner
-                            </div>
-                            {/* Contact Now Button */}
-                            <button
-                                onClick={handleCtaClick}
-                                className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                            >
-                                {ctaLabel}
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={handleCtaClick}
-                            className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                        >
-                            {ctaLabel}
-                        </button>
-                    )}
+                    {/* CTA Button - same for all vendors */}
+                    <button
+                        onClick={handleCtaClick}
+                        className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                    >
+                        {ctaLabel}
+                    </button>
                 </div>
             </div>
 
