@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Users, CheckSquare, LayoutDashboard, Settings } from 'lucide-react';
+import { Users, CheckSquare, LayoutDashboard, Settings, Truck, UserCircle, FileText, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SuperAdminDashboard: React.FC = () => {
@@ -20,30 +20,57 @@ const SuperAdminDashboard: React.FC = () => {
     return null;
   }
 
-  const dashboardOptions = [
+  const dashboardSections = [
     {
-      title: 'Vendor Approval',
+      title: 'Vendor Management',
       description: 'Manage vendor applications and approvals',
       icon: CheckSquare,
-      color: 'bg-green-500',
-      hoverColor: 'hover:bg-green-600',
-      path: '/super-admin/vendor-approval',
+      links: [
+        {
+          title: 'Vendor Approval Queue',
+          description: 'Review and approve pending vendor applications',
+          icon: CheckSquare,
+          path: '/super-admin/vendor-approval',
+        },
+        {
+          title: 'All Transporters & Vendors',
+          description: 'View and manage all transporter accounts',
+          icon: Truck,
+          path: '/super-admin/user-management/transporters',
+        },
+      ],
     },
     {
       title: 'User Management',
       description: 'Manage users and their permissions',
       icon: Users,
-      color: 'bg-blue-500',
-      hoverColor: 'hover:bg-blue-600',
-      path: '/super-admin/user-management',
+      links: [
+        {
+          title: 'Customer Management',
+          description: 'Manage customer accounts and subscriptions',
+          icon: UserCircle,
+          path: '/super-admin/user-management/customers',
+        },
+        {
+          title: 'Transporter Management',
+          description: 'Manage transporter accounts and vendors',
+          icon: Truck,
+          path: '/super-admin/user-management/transporters',
+        },
+      ],
     },
     {
-      title: 'Form Builder',
-      description: 'Customize Add Vendor form fields',
+      title: 'Form Builder & Settings',
+      description: 'Customize forms and platform configuration',
       icon: Settings,
-      color: 'bg-purple-500',
-      hoverColor: 'hover:bg-purple-600',
-      path: '/super-admin/form-builder',
+      links: [
+        {
+          title: 'Vendor Registration Form Builder',
+          description: 'Customize Add Vendor form fields',
+          icon: FileText,
+          path: '/super-admin/form-builder',
+        },
+      ],
     },
   ];
 
@@ -60,25 +87,49 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {dashboardOptions.map((option) => {
-            const Icon = option.icon;
+        <div className="space-y-6">
+          {dashboardSections.map((section, idx) => {
+            const SectionIcon = section.icon;
             return (
-              <button
-                key={option.path}
-                onClick={() => navigate(option.path)}
-                className={`${option.color} ${option.hoverColor} text-white rounded-xl shadow-lg p-8 transition-all transform hover:scale-105 hover:shadow-xl text-left`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="bg-white bg-opacity-20 p-4 rounded-lg">
-                    <Icon className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold mb-2">{option.title}</h2>
-                    <p className="text-white text-opacity-90">{option.description}</p>
+              <div key={idx} className="bg-white rounded-lg shadow-sm border border-slate-200">
+                {/* Card Header */}
+                <div className="px-6 py-4 border-b border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <SectionIcon className="w-6 h-6 text-blue-600" />
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">{section.title}</h2>
+                      <p className="text-sm text-slate-600 mt-1">{section.description}</p>
+                    </div>
                   </div>
                 </div>
-              </button>
+
+                {/* Card Links */}
+                <div className="p-4">
+                  <div className="space-y-2">
+                    {section.links.map((link, linkIdx) => {
+                      const LinkIcon = link.icon;
+                      return (
+                        <button
+                          key={linkIdx}
+                          onClick={() => navigate(link.path)}
+                          className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                        >
+                          <div className="flex items-start gap-3 flex-1 text-left">
+                            <LinkIcon className="w-5 h-5 text-blue-600 mt-0.5" />
+                            <div>
+                              <h3 className="text-base font-semibold text-blue-600 group-hover:text-blue-700">
+                                {link.title}
+                              </h3>
+                              <p className="text-sm text-slate-600 mt-0.5">{link.description}</p>
+                            </div>
+                          </div>
+                          <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
