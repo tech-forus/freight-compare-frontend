@@ -289,10 +289,6 @@ export const AddVendor: React.FC = () => {
   const [invoiceUseMax, setInvoiceUseMax] = useState<boolean>(false);
   const [invoiceManualOverride, setInvoiceManualOverride] = useState<boolean>(false);
   const [showInvoiceSection, setShowInvoiceSection] = useState<boolean>(false);
-  // Token viewer (debug)
-  const [tokenPanelOpen, setTokenPanelOpen] = useState(false);
-  const [tokenValue, setTokenValue] = useState<string>('');
-  const [tokenPayload, setTokenPayload] = useState<any>(null);
 
   // Zone Price Matrix (from wizard/localStorage)
   const [zpm, setZpm] = useState<ZonePriceMatrixLS | null>(null);
@@ -1085,31 +1081,6 @@ export const AddVendor: React.FC = () => {
     return true;
   };
 
-  // ===== Token debug panel =====
-  const handleShowToken = () => {
-    const tok = getAuthToken();
-    if (!tok) {
-      toast.error('No token found (login again?)');
-      setTokenPanelOpen(true);
-      setTokenValue('');
-      setTokenPayload(null);
-      return;
-    }
-    const payload =
-      tok.split('.').length >= 2 ? base64UrlToJson(tok.split('.')[1]) : null;
-    setTokenValue(tok);
-    setTokenPayload(payload);
-    setTokenPanelOpen(true);
-  };
-
-  const copyText = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Copied');
-    } catch {
-      toast.error('Copy failed');
-    }
-  };
 
 
 
@@ -1707,79 +1678,9 @@ export const AddVendor: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleShowToken}
-              className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            >
-              Token
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-4 py-2 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300"
-            >
-              Reset
-            </button>
-            <button
-              type="submit"
-              form="add-vendor-form"
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
-            >
-              {isSubmitting ? 'Saving…' : 'Save Vendor'}
-            </button>
           </div>
         </div>
       </div>
-
-      {/* Token panel (debug) */}
-      {tokenPanelOpen && (
-        <div className="w-full px-8 mt-4">
-          <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-semibold text-slate-800">Current Auth Token</h2>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => copyText(tokenValue)}
-                  className="px-2 py-1 text-xs rounded-md border border-slate-300 hover:bg-slate-50"
-                >
-                  Copy token
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    copyText(JSON.stringify(tokenPayload, null, 2) || '')
-                  }
-                  className="px-2 py-1 text-xs rounded-md border border-slate-300 hover:bg-slate-50"
-                >
-                  Copy payload
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTokenPanelOpen(false)}
-                  className="px-2 py-1 text-xs rounded-md border border-slate-300 hover:bg-slate-50"
-                >
-                  Hide
-                </button>
-              </div>
-            </div>
-            <div className="text-xs text-slate-700 break-all">
-              <div className="mb-2">
-                <span className="font-mono font-semibold mr-2">Token:</span>
-                <span className="font-mono">{tokenValue || '(empty)'}</span>
-              </div>
-              <div className="mt-3">
-                <div className="font-mono font-semibold mb-1">Decoded Payload:</div>
-                <pre className="whitespace-pre-wrap font-mono bg-slate-900 text-slate-100 p-3 rounded-md overflow-x-auto">
-                  {JSON.stringify(tokenPayload, null, 2)}
-                </pre>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Content */}
       <div className="w-full px-8 py-6">
@@ -1789,10 +1690,29 @@ export const AddVendor: React.FC = () => {
               <div className="p-6 md:p-8">
                 {/* VENDOR AUTOCOMPLETE SECTION */}
                 <div className="p-6 md:p-8 bg-gradient-to-r from-blue-50 to-slate-50">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Search className="w-5 h-5 text-blue-600" />
-                    <h3 className="text-lg font-semibold text-slate-900">Quick Lookup</h3>
-                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">NEW</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Search className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-slate-900">Quick Lookup</h3>
+                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">NEW</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        className="px-4 py-2 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        type="submit"
+                        form="add-vendor-form"
+                        disabled={isSubmitting}
+                        className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
+                      >
+                        {isSubmitting ? 'Saving…' : 'Save Vendor'}
+                      </button>
+                    </div>
                   </div>
 
                   <div ref={dropdownRef} className="relative max-w-2xl">
