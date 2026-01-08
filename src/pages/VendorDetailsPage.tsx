@@ -168,10 +168,16 @@ const VendorDetailsPage = () => {
   };
 
   // If we don't have full vendor details but have fallback quote data, display that
+  // This handles "Our Available Vendors" (public transporters) with contact info
   if (!vendor && fallbackQuoteData && !loading) {
     const quote = fallbackQuoteData;
     const companyName = quote.companyName || quote.transporterName || 'Vendor';
     const isSpecialVendor = companyName === 'LOCAL FTL' || companyName === 'Wheelseye FTL';
+
+    // Get contact info - try multiple field names for compatibility
+    const phone = quote.phone || quote.vendorPhone || quote.vendorPhoneNumber || null;
+    const email = quote.email || quote.vendorEmail || quote.vendorEmailAddress || null;
+    const hasContactInfo = phone || email;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
@@ -200,99 +206,107 @@ const VendorDetailsPage = () => {
               </div>
             </div>
 
-            {/* Limited Information Notice */}
-            <div className="p-8">
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="text-yellow-600 mt-0.5 flex-shrink-0" size={20} />
-                  <div>
-                    <h3 className="text-sm font-semibold text-yellow-800 mb-1">
-                      Limited Vendor Information
-                    </h3>
-                    <p className="text-sm text-yellow-700">
-                      {isSpecialVendor
-                        ? 'This is a special vendor service. Full contact details may not be available in our system.'
-                        : 'Full vendor details are not available for this transporter. Showing available information from the quote.'}
-                    </p>
+            {/* Content Section */}
+            <div className="p-8 space-y-6">
+              {/* Contact Information Section - matches tied-up vendor design */}
+              <section>
+                <h2 className="text-xl font-bold text-slate-800 mb-4 border-b-2 border-indigo-500 pb-2">
+                  Contact Information
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Company Name */}
+                  <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
+                    <Building2 className="text-indigo-600 mt-1 flex-shrink-0" size={20} />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-600">Company Name</p>
+                      <p className="text-base text-slate-900 font-medium">{companyName}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Available Quote Information */}
-              <div className="space-y-6">
-                <section>
-                  <h2 className="text-xl font-bold text-slate-800 mb-4 border-b-2 border-indigo-500 pb-2">
-                    Available Information
-                  </h2>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Phone Number with WhatsApp */}
+                  {phone && (
                     <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
-                      <Building2 className="text-indigo-600 mt-1 flex-shrink-0" size={20} />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-600">Company Name</p>
-                        <p className="text-base text-slate-900 font-medium">{companyName}</p>
+                      <Phone className="text-indigo-600 mt-1 flex-shrink-0" size={20} />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-600 mb-1">Phone Number</p>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`tel:+91${phone}`}
+                            className="text-base text-indigo-600 font-medium hover:text-indigo-800 hover:underline"
+                          >
+                            +91 {phone}
+                          </a>
+                          <a
+                            href={`https://wa.me/91${phone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white text-xs font-semibold rounded-full hover:bg-green-600 transition-colors"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageCircle size={14} />
+                            WhatsApp
+                          </a>
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                    {quote.estimatedTime && (
-                      <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
-                        <Truck className="text-indigo-600 mt-1 flex-shrink-0" size={20} />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-600">Estimated Delivery</p>
-                          <p className="text-base text-slate-900 font-medium">
-                            {Math.ceil(quote.estimatedTime)} {Math.ceil(quote.estimatedTime) === 1 ? 'Day' : 'Days'}
-                          </p>
-                        </div>
+                  {/* Email Address */}
+                  {email && (
+                    <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
+                      <Mail className="text-indigo-600 mt-1 flex-shrink-0" size={20} />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-600">Email Address</p>
+                        <a
+                          href={`mailto:${email}`}
+                          className="text-base text-indigo-600 font-medium hover:text-indigo-800 hover:underline break-all"
+                        >
+                          {email}
+                        </a>
                       </div>
-                    )}
+                    </div>
+                  )}
+                </div>
 
-                    {(quote.totalCharges || quote.totalPrice || quote.price) && (
-                      <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
-                        <FileText className="text-indigo-600 mt-1 flex-shrink-0" size={20} />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-600">Quote Price</p>
-                          <p className="text-base text-slate-900 font-medium">
-                            ₹ {(quote.totalCharges || quote.totalPrice || quote.price).toLocaleString('en-IN')}
-                          </p>
-                        </div>
+                {/* No contact info available message */}
+                {!hasContactInfo && !isSpecialVendor && (
+                  <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="text-yellow-600 mt-0.5 flex-shrink-0" size={20} />
+                      <div>
+                        <h3 className="text-sm font-semibold text-yellow-800 mb-1">
+                          Contact Information Not Available
+                        </h3>
+                        <p className="text-sm text-yellow-700">
+                          Contact details for this vendor are not available at the moment. Please reach out to our support team for assistance.
+                        </p>
                       </div>
-                    )}
-
-                    {quote.transportMode && (
-                      <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
-                        <Truck className="text-indigo-600 mt-1 flex-shrink-0" size={20} />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-600">Transport Mode</p>
-                          <p className="text-base text-slate-900 font-medium">
-                            {transportModeDisplay[quote.transportMode] || quote.transportMode}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </section>
+                )}
 
-                {/* Contact Instructions */}
-                <section>
-                  <h2 className="text-xl font-bold text-slate-800 mb-4 border-b-2 border-indigo-500 pb-2">
-                    How to Contact
-                  </h2>
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-slate-700">
-                      {isSpecialVendor
-                        ? 'For special vendor services, please contact our support team for assistance with booking and inquiries.'
-                        : 'For more details about this transporter, please reach out to our support team or check if additional contact information becomes available.'}
-                    </p>
+                {/* Special vendor message */}
+                {isSpecialVendor && (
+                  <div className="mt-4 bg-blue-50 border-l-4 border-blue-400 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
+                      <div>
+                        <p className="text-sm text-blue-700">
+                          This is a special vendor service. For booking and inquiries, please contact our support team.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </section>
-              </div>
+                )}
+              </section>
             </div>
 
             {/* Footer */}
             <div className="bg-slate-50 px-8 py-6 border-t">
               <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
                 <p className="text-sm text-slate-600">
-                  Need assistance? Contact our support team.
+                  Need to reach out? Use the contact information above.
                 </p>
                 <button
                   onClick={handleBack}

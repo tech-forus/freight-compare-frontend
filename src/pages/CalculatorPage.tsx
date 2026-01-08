@@ -2555,6 +2555,15 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
                                                         ₹{(quote.totalCharges || quote.price || 0).toLocaleString()}
                                                     </td>
                                                 </tr>
+                                                {quote.companyName === "LOCAL FTL" && (
+                                                    <tr>
+                                                        <td colSpan={6} className="py-1 px-2 text-right">
+                                                            <span className="text-xs text-slate-500 italic">
+                                                                * Local Charges: 20%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                )}
                                             </tfoot>
                                         </table>
                                     </div>
