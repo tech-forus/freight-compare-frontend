@@ -270,29 +270,43 @@ export const getTemporaryTransporterById = async (
   id: string
 ): Promise<(TemporaryTransporter & { _id: string }) | null> => {
   try {
+    console.log('[API] getTemporaryTransporterById START - id:', id);
     emitDebug('API_GET_TEMP_TRANSPORTER_BY_ID_START', { id });
 
     const headers = buildHeaders();
     const url = `${API_BASE}/api/transporter/temporary/${id}`;
+    console.log('[API] Fetching from:', url);
     const response = await fetch(url, { method: 'GET', headers });
+    console.log('[API] Response status:', response.status);
 
     if (!response.ok) {
       if (response.status === 404) {
+        console.log('[API] Temporary transporter not found (404)');
         emitDebugError('API_GET_TEMP_TRANSPORTER_BY_ID_NOT_FOUND', { id });
         return null;
       }
       if (response.status === 401) {
+        console.log('[API] Unauthorized (401)');
         emitDebugError('API_GET_TEMP_TRANSPORTER_BY_ID_UNAUTHORIZED');
         return null;
       }
+      console.log('[API] Error:', response.status, response.statusText);
       emitDebugError('API_GET_TEMP_TRANSPORTER_BY_ID_ERROR', { status: response.status });
       return null;
     }
 
-    const data = await safeJson<TemporaryTransporter & { _id: string }>(response);
-    emitDebug('API_GET_TEMP_TRANSPORTER_BY_ID_SUCCESS', { id });
-    return data;
+    // Backend returns { success: true, data: {...} }
+    const json = await safeJson<{ success: boolean; data: TemporaryTransporter & { _id: string } }>(response);
+    console.log('[API] Response JSON:', json?.success, json?.data?.companyName);
+
+    if (json?.success && json.data) {
+      emitDebug('API_GET_TEMP_TRANSPORTER_BY_ID_SUCCESS', { id, companyName: json.data.companyName });
+      return json.data;
+    }
+
+    return null;
   } catch (error) {
+    console.error('[API] Exception:', error);
     emitDebugError('API_GET_TEMP_TRANSPORTER_BY_ID_EXCEPTION', {
       id,
       error: error instanceof Error ? error.message : String(error),
@@ -300,6 +314,7 @@ export const getTemporaryTransporterById = async (
     return null;
   }
 };
+
 
 /**
  * Get regular transporter by ID (from transporters collection)
@@ -311,7 +326,7 @@ export const getTransporterById = async (
   try {
     emitDebug('API_GET_TRANSPORTER_START', { id });
 
-    const url = `https://${API_BASE}/api/transporter/gettransporterdetails/${id}`;
+    const url = `${API_BASE}/api/transporter/gettransporterdetails/${id}`;
 
     const res = await fetch(url, {
       method: 'GET',
