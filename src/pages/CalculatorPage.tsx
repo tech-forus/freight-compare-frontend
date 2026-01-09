@@ -1181,7 +1181,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             <div className="relative max-w-[1800px] mx-auto px-8 sm:px-12 lg:px-16 py-8">
                 <div className="flex gap-16 items-start">
                     {/* LEFT: News Rail - Hidden on smaller screens */}
-                    <div className="hidden xl:block w-80 flex-shrink-0 sticky top-8">
+                    <div className="hidden 3xl:block w-80 flex-shrink-0 sticky top-8">
                         <NewsRail />
                     </div>
 
@@ -2151,7 +2151,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     </div>
 
                     {/* RIGHT: Help Rail - Hidden on smaller screens */}
-                    <div className="hidden xl:block w-80 flex-shrink-0 sticky top-8">
+                    <div className="hidden 3xl:block w-80 flex-shrink-0 sticky top-8">
                         <CalculatorHelpRail />
                     </div>
                 </div>

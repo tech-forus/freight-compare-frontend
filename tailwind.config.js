@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      // Custom breakpoint for 3-column layout
+      screens: {
+        '3xl': '1500px',
+      },
       // --- ADD THIS SECTION ---
       animation: {
         'marquee': 'marquee 40s linear infinite',

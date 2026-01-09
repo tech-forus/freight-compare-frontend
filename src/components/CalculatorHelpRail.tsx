@@ -111,7 +111,7 @@ export default function InfoCarousel() {
 
     return (
         <aside
-            className="hidden xl:flex w-full flex-shrink-0 items-start justify-center"
+            className="hidden 3xl:flex w-full flex-shrink-0 items-start justify-center"
         >
             <div className="sticky top-24 w-full">
                 <AnimatePresence mode="wait">
