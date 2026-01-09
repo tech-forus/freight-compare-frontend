@@ -8,26 +8,23 @@ import {
   Mail,
   FileText,
   Truck,
-  MapPin,
-  Star,
   ArrowLeft,
   Loader2,
   AlertCircle,
   MessageCircle
 } from 'lucide-react';
 import { TemporaryTransporter } from '../utils/validators';
-import { getTemporaryTransporterById, getTemporaryTransporters } from '../services/api';
-import { useAuth } from '../hooks/useAuth';
+import { getTemporaryTransporterById, getTransporterById } from '../services/api';
 
 const VendorDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
   const [vendor, setVendor] = useState<(TemporaryTransporter & { _id: string }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fallbackQuoteData, setFallbackQuoteData] = useState<any>(null);
+  const [vendorSource, setVendorSource] = useState<'temporary' | 'public' | 'fallback' | null>(null);
 
   useEffect(() => {
     const fetchVendorDetails = async () => {
@@ -45,70 +42,77 @@ const VendorDetailsPage = () => {
       const stateData = (location.state as any)?.quoteData;
       if (stateData) {
         console.log("Found fallback quote data:", stateData);
-        console.log("transporterData in quote:", stateData.transporterData);
         setFallbackQuoteData(stateData);
       }
 
       setLoading(true);
 
-      // PRIORITY 1: Try fetching all vendors for the customer and match by company name
-      const ownerId = (user as any)?.customer?._id || (user as any)?._id;
-      console.log("Customer ID:", ownerId);
+      // ========================================================
+      // STRATEGY: Use unique _id with dual-collection fallback
+      // 1. Try temporaryTransporters (customer's tied-up vendors)
+      // 2. Try transporters (public vendors)
+      // 3. Use navigation state data as display fallback
+      // ========================================================
 
-      if (ownerId && stateData) {
-        console.log("Fetching all vendors for customer:", ownerId);
-        const allVendors = await getTemporaryTransporters(ownerId);
-        console.log("All vendors from DB:", allVendors);
+      // PRIORITY 1: Try fetching from temporaryTransporters by ID
+      console.log("[VendorDetails] Trying temporaryTransporters collection...");
+      const tempData = await getTemporaryTransporterById(id);
 
-        if (allVendors && allVendors.length > 0) {
-          const companyName = stateData.companyName || stateData.transporterName;
-          console.log("Looking for vendor with companyName:", companyName);
-
-          // Find vendor by company name (case-insensitive match)
-          const matchedVendor = allVendors.find(v =>
-            v.companyName && companyName &&
-            v.companyName.toLowerCase().trim() === companyName.toLowerCase().trim()
-          );
-
-          if (matchedVendor) {
-            console.log("Found matching vendor by company name:", matchedVendor);
-            setVendor(matchedVendor as any);
-            setError(null);
-            setLoading(false);
-            return;
-          } else {
-            console.log("No vendor found matching company name:", companyName);
-          }
-        }
+      if (tempData) {
+        console.log("[VendorDetails] ✓ Found in temporaryTransporters:", tempData.companyName);
+        setVendor(tempData);
+        setVendorSource('temporary');
+        setError(null);
+        setLoading(false);
+        return;
       }
 
-      // Fallback: Try fetching by ID
-      console.log("Fetching vendor details for ID:", id);
-      const data = await getTemporaryTransporterById(id);
-      console.log("API Response data:", data);
+      // PRIORITY 2: Try fetching from public transporters collection
+      console.log("[VendorDetails] Not in temporaryTransporters, trying public transporters...");
+      const publicData = await getTransporterById(id);
 
-      if (data) {
-        console.log("Successfully fetched vendor data by ID:", data);
-        setVendor(data);
+      if (publicData) {
+        console.log("[VendorDetails] ✓ Found in transporters (public):", publicData.companyName);
+        // Map public transporter fields to match our expected structure
+        const mappedVendor = {
+          _id: publicData._id,
+          companyName: publicData.companyName,
+          transportMode: publicData.transportMode || 'road',
+          // Public transporters use different field names - map them
+          vendorPhoneNumber: publicData.vendorPhoneNumber || publicData.vendorPhone || publicData.phone,
+          vendorEmailAddress: publicData.vendorEmailAddress || publicData.vendorEmail || publicData.email,
+          contactPersonName: publicData.contactPersonName || publicData.contactPerson || '',
+          address: publicData.address || '',
+          state: publicData.state || '',
+          city: publicData.city || '',
+          pincode: publicData.pincode || '',
+          rating: publicData.rating || 3,
+          approvalStatus: 'approved', // Public transporters are always approved
+        };
+        setVendor(mappedVendor as any);
+        setVendorSource('public');
         setError(null);
+        setLoading(false);
+        return;
+      }
+
+      // PRIORITY 3: Use navigation state data as display fallback
+      console.log("[VendorDetails] Not found in any collection, checking navigation state...");
+      if (stateData) {
+        console.log("[VendorDetails] Using fallback quote data for display");
+        setVendorSource('fallback');
+        setError(null);
+        setVendor(null); // Keep vendor null to trigger fallback display using stateData
       } else {
-        console.log("API returned null, checking for fallback data");
-        // If API fails but we have fallback data, use it
-        if (stateData) {
-          console.log("Using fallback data instead");
-          setError(null);
-          setVendor(null); // Keep vendor null to trigger fallback display
-        } else {
-          console.error("No vendor data available from API or fallback");
-          setError('Vendor not found or unable to fetch details');
-        }
+        console.error("[VendorDetails] ✗ No vendor data available from any source");
+        setError('Vendor not found or unable to fetch details');
       }
 
       setLoading(false);
     };
 
     fetchVendorDetails();
-  }, [id, location.state, user]);
+  }, [id, location.state]);
 
   const handleBack = () => {
     navigate(-1);
