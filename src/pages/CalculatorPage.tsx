@@ -1181,7 +1181,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             <div className="relative max-w-[1800px] mx-auto px-8 sm:px-12 lg:px-16 py-8">
                 <div className="flex items-start" style={{ gap: 'clamp(2rem, 3vw, 4rem)' }}>
                     {/* LEFT: News Rail - Hidden on smaller screens */}
-                    <div className="hidden 3xl:block flex-shrink-0 sticky top-8" style={{ width: 'clamp(260px, 18vw, 320px)' }}>
+                    <div className="hidden 3xl:block flex-shrink-0 sticky top-24" style={{ width: 'clamp(260px, 18vw, 320px)' }}>
                         <NewsRail />
                     </div>
 
@@ -1926,8 +1926,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
                                                         if (
                                                             q.companyName === "LOCAL FTL" &&
-                                                            (!isActualWeightSufficient ||
-                                                                !isVolumetricWeightSufficient)
+                                                            !(isActualWeightSufficient ||
+                                                                isVolumetricWeightSufficient)
                                                         ) {
                                                             return false;
                                                         }
@@ -2151,7 +2151,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     </div>
 
                     {/* RIGHT: Help Rail - Hidden on smaller screens */}
-                    <div className="hidden 3xl:block flex-shrink-0 sticky top-8" style={{ width: 'clamp(260px, 18vw, 320px)' }}>
+                    <div className="hidden 3xl:block flex-shrink-0 sticky top-24" style={{ width: 'clamp(260px, 18vw, 320px)' }}>
                         <CalculatorHelpRail />
                     </div>
                 </div>
