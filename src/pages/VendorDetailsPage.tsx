@@ -26,6 +26,12 @@ const VendorDetailsPage = () => {
   const [fallbackQuoteData, setFallbackQuoteData] = useState<any>(null);
   const [vendorSource, setVendorSource] = useState<'temporary' | 'public' | 'fallback' | null>(null);
 
+  // Scroll to top when page loads - fixes issue where page opens scrolled down
+  // when navigating from calculator page where user was scrolled to bottom
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
   useEffect(() => {
     const fetchVendorDetails = async () => {
       console.log("=== VENDOR DETAILS PAGE DEBUG ===");
