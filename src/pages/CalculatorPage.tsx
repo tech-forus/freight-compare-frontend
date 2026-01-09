@@ -1179,9 +1179,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 style={{ clipPath: "polygon(0 0, 100% 0, 100% 65%, 0% 100%)" }}
             />
             <div className="relative max-w-[1800px] mx-auto px-8 sm:px-12 lg:px-16 py-8">
-                <div className="flex gap-16 items-start">
+                <div className="flex items-start" style={{ gap: 'clamp(2rem, 3vw, 4rem)' }}>
                     {/* LEFT: News Rail - Hidden on smaller screens */}
-                    <div className="hidden 3xl:block w-80 flex-shrink-0 sticky top-8">
+                    <div className="hidden 3xl:block flex-shrink-0 sticky top-8" style={{ width: 'clamp(260px, 18vw, 320px)' }}>
                         <NewsRail />
                     </div>
 
@@ -2151,7 +2151,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     </div>
 
                     {/* RIGHT: Help Rail - Hidden on smaller screens */}
-                    <div className="hidden 3xl:block w-80 flex-shrink-0 sticky top-8">
+                    <div className="hidden 3xl:block flex-shrink-0 sticky top-8" style={{ width: 'clamp(260px, 18vw, 320px)' }}>
                         <CalculatorHelpRail />
                     </div>
                 </div>
@@ -2838,14 +2838,17 @@ const VendorResultCard = ({
                     </div>
 
                     {/* Price and CTA - now in same flex container, right-aligned */}
-                    <div className="md:col-span-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 min-w-0">
+                    <div className="md:col-span-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-end min-w-0" style={{ gap: 'clamp(0.5rem, 1vw, 0.75rem)' }}>
                         {/* RIGHT: price visible */}
                         <div className="text-right min-w-0 flex-shrink-0">
                             <div className="flex items-center justify-end gap-1 font-bold text-slate-900 min-w-0">
-                                <IndianRupee size={20} className="text-slate-600 flex-shrink-0" />
+                                <IndianRupee size={18} className="text-slate-600 flex-shrink-0" />
                                 <span
-                                    className="truncate max-w-[140px] sm:max-w-[160px] lg:max-w-[200px]"
-                                    style={{ fontSize: formatINR0(cardPrice).length > 7 ? '1.5rem' : '1.875rem' }}
+                                    className="truncate"
+                                    style={{
+                                        maxWidth: 'clamp(120px, 12vw, 200px)',
+                                        fontSize: formatINR0(cardPrice).length > 7 ? 'clamp(1.25rem, 2vw, 1.5rem)' : 'clamp(1.5rem, 2.5vw, 1.875rem)'
+                                    }}
                                     title={`₹${formatINR0(cardPrice)}`}
                                 >
                                     {formatINR0(cardPrice)}
@@ -2856,7 +2859,11 @@ const VendorResultCard = ({
                         {/* CTA visible with "Subscribe to Get Details" */}
                         <Link
                             to={BUY_ROUTE}
-                            className="inline-flex items-center justify-center px-4 sm:px-5 py-2.5 bg-indigo-600 text-white font-semibold text-sm sm:text-base rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
+                            className="inline-flex items-center justify-center bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
+                            style={{
+                                padding: 'clamp(0.5rem, 1vw, 0.625rem) clamp(0.875rem, 2vw, 1.25rem)',
+                                fontSize: 'clamp(0.8rem, 1.3vw, 1rem)'
+                            }}
                             aria-label="Subscribe to Get Details"
                         >
                             Subscribe to Get Details
@@ -2992,14 +2999,17 @@ const VendorResultCard = ({
                 </div>
 
                 {/* Price and CTA - now in same flex container, right-aligned */}
-                <div className="md:col-span-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 min-w-0">
+                <div className="md:col-span-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-end min-w-0" style={{ gap: 'clamp(0.5rem, 1vw, 0.75rem)' }}>
                     {/* Price (always visible) */}
                     <div className="text-right min-w-0 flex-shrink-0">
                         <div className="flex items-center justify-end gap-1 font-bold text-slate-900 min-w-0">
-                            <IndianRupee size={20} className="text-slate-600 flex-shrink-0" />
+                            <IndianRupee size={18} className="text-slate-600 flex-shrink-0" />
                             <span
-                                className="truncate max-w-[140px] sm:max-w-[160px] lg:max-w-[200px]"
-                                style={{ fontSize: formatINR0(cardPrice).length > 7 ? '1.5rem' : '1.875rem' }}
+                                className="truncate"
+                                style={{
+                                    maxWidth: 'clamp(120px, 12vw, 200px)',
+                                    fontSize: formatINR0(cardPrice).length > 7 ? 'clamp(1.25rem, 2vw, 1.5rem)' : 'clamp(1.5rem, 2.5vw, 1.875rem)'
+                                }}
                                 title={`₹${formatINR0(cardPrice)}`}
                             >
                                 {formatINR0(cardPrice)}
@@ -3008,12 +3018,13 @@ const VendorResultCard = ({
 
                         <button
                             onClick={() => setIsExpanded((v) => !v)}
-                            className="mt-1 inline-flex items-center gap-1 text-indigo-600 font-semibold text-xs sm:text-sm hover:text-indigo-800 transition-colors whitespace-nowrap"
+                            className="mt-1 inline-flex items-center gap-0.5 text-indigo-600 font-semibold hover:text-indigo-800 transition-colors whitespace-nowrap"
+                            style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.875rem)' }}
                         >
-                            <span className="hidden sm:inline">{isExpanded ? "Hide Price Breakup" : "Price Breakup"}</span>
-                            <span className="sm:hidden">{isExpanded ? "Hide" : "Breakup"}</span>
+                            <span className="hidden md:inline">{isExpanded ? "Hide" : "Breakup"}</span>
+                            <span className="md:hidden">{isExpanded ? "Hide" : "Price"}</span>
                             <ChevronRight
-                                size={14}
+                                size={12}
                                 className={`transition-transform duration-300 ${isExpanded ? "rotate-90" : "rotate-0"
                                     }`}
                             />
@@ -3023,7 +3034,11 @@ const VendorResultCard = ({
                     {/* CTA Button - same for all vendors */}
                     <button
                         onClick={handleCtaClick}
-                        className="px-4 sm:px-5 py-2.5 bg-indigo-600 text-white font-semibold text-sm sm:text-base rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
+                        className="bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
+                        style={{
+                            padding: 'clamp(0.5rem, 1vw, 0.625rem) clamp(0.875rem, 2vw, 1.25rem)',
+                            fontSize: 'clamp(0.8rem, 1.3vw, 1rem)'
+                        }}
                     >
                         {ctaLabel}
                     </button>

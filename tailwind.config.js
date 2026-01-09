@@ -6,9 +6,10 @@ export default {
   ],
   theme: {
     extend: {
-      // Custom breakpoint for 3-column layout
+      // Custom breakpoints for responsive 3-column layout
       screens: {
-        '3xl': '1500px',
+        '2xl': '1536px', // Explicitly define 2xl (Tailwind default, but making it clear)
+        '3xl': '1650px', // Raised from 1500px to handle 125% zoom better
       },
       // --- ADD THIS SECTION ---
       animation: {
