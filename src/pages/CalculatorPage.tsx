@@ -2727,22 +2727,28 @@ const VendorResultCard = ({
             console.log("=== QUOTE DATA DEBUG ===");
             console.log("Full quote object:", quote);
             console.log("companyName:", quote.companyName);
-            console.log("transporterData:", quote.transporterData);
-            console.log("transporterData._id:", quote.transporterData?._id);
-            console.log("transporterID:", quote.transporterID);
-            console.log("_id:", quote._id);
+            console.log("companyId:", quote.companyId);  // Backend uses companyId
+            console.log("isTemporaryTransporter:", quote.isTemporaryTransporter);
             console.log("isTiedUp:", quote.isTiedUp);
 
             const companyName = quote.companyName || quote.transporterName;
-            const transporterId = quote.transporterData?._id || quote.transporterID || quote._id || 'temp';
+            // Backend sends companyId, not transporterData._id or transporterID
+            const transporterId = quote.companyId || quote.transporterData?._id || quote.transporterID || quote._id;
 
             // Determine if this is a temporary transporter (customer's tied-up vendor)
-            // or a regular transporter (available transporter from transporters collection)
-            const isTemporaryVendor = quote.isTiedUp === true || quote.transporterData?._id;
+            // Backend sets isTemporaryTransporter=true for both tied-up and public vendors
+            // isTiedUp=true means it's the current customer's own vendor
+            const isTemporaryVendor = quote.isTiedUp === true;
+
+            if (!transporterId) {
+                console.error("No transporter ID found in quote:", quote);
+                alert("Sorry, the transporter details could not be retrieved.");
+                return;
+            }
 
             if (companyName) {
                 console.log("Navigating with companyName:", companyName, "and ID:", transporterId);
-                console.log("Vendor Type:", isTemporaryVendor ? "Temporary (Tied-up)" : "Regular (Available)");
+                console.log("Vendor Type:", isTemporaryVendor ? "Temporary (Tied-up)" : "Public (Available)");
 
                 // Route to correct page based on vendor type
                 if (isTemporaryVendor) {
