@@ -38,11 +38,40 @@ const VendorDetailsPage = () => {
         return;
       }
 
+      // ============================================================
+      // SPECIAL VENDORS: Wheelseye FTL and LOCAL FTL
+      // These are client-side injected vendors with pre-filled contact info
+      // ============================================================
+      const stateData = location.state as any;
+      if (id === 'special' && stateData?.isSpecialVendor && stateData?.vendorInfo) {
+        console.log("[VendorDetails] ✓ Special vendor detected:", stateData.vendorInfo.companyName);
+        const specialVendor = {
+          _id: 'special',
+          companyName: stateData.vendorInfo.companyName,
+          transportMode: 'road',
+          vendorPhoneNumber: stateData.vendorInfo.vendorPhoneNumber,
+          vendorEmailAddress: stateData.vendorInfo.vendorEmail,
+          contactPersonName: stateData.vendorInfo.contactPerson || '',
+          address: '',
+          state: '',
+          city: '',
+          pincode: '',
+          rating: stateData.vendorInfo.rating || 4.6,
+          approvalStatus: stateData.vendorInfo.approvalStatus || 'approved',
+          description: stateData.vendorInfo.description,
+        };
+        setVendor(specialVendor as any);
+        setVendorSource('fallback'); // Mark as fallback since it's client-side data
+        setFallbackQuoteData(stateData.quoteData);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
       // Check if we have fallback quote data from navigation state
-      const stateData = (location.state as any)?.quoteData;
-      if (stateData) {
-        console.log("Found fallback quote data:", stateData);
-        setFallbackQuoteData(stateData);
+      if (stateData?.quoteData) {
+        console.log("Found fallback quote data:", stateData.quoteData);
+        setFallbackQuoteData(stateData.quoteData);
       }
 
       setLoading(true);

@@ -2732,6 +2732,40 @@ const VendorResultCard = ({
             console.log("isTiedUp:", quote.isTiedUp);
 
             const companyName = quote.companyName || quote.transporterName;
+
+            // ============================================================
+            // SPECIAL VENDORS: Wheelseye FTL and LOCAL FTL are client-side
+            // injected vendors with hardcoded contact info - no DB lookup
+            // ============================================================
+            if (companyName === "Wheelseye FTL" || companyName === "LOCAL FTL") {
+                console.log("Special vendor detected:", companyName);
+                // Navigate to vendor details with special vendor flag and pre-filled contact
+                navigate(`/vendor/special`, {
+                    state: {
+                        quoteData: quote,
+                        isSpecialVendor: true,
+                        vendorInfo: {
+                            companyName: companyName,
+                            vendorPhoneNumber: companyName === "Wheelseye FTL"
+                                ? "+91 9876543210" // Wheelseye contact
+                                : "+91 8800123456", // Forus/LOCAL FTL contact
+                            vendorEmail: companyName === "Wheelseye FTL"
+                                ? "support@wheelseye.com"
+                                : "ftl@freightcompare.ai",
+                            contactPerson: companyName === "Wheelseye FTL"
+                                ? "Wheelseye Support"
+                                : "FreightCompare FTL Team",
+                            description: companyName === "Wheelseye FTL"
+                                ? "Our trusted FTL partner for pan-India full truck load services"
+                                : "Local FTL services with competitive pricing",
+                            rating: 4.6,
+                            approvalStatus: "approved",
+                        }
+                    }
+                });
+                return;
+            }
+
             // Backend sends companyId, not transporterData._id or transporterID
             const transporterId = quote.companyId || quote.transporterData?._id || quote.transporterID || quote._id;
 
@@ -2788,9 +2822,9 @@ const VendorResultCard = ({
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 lg:gap-4">
                     {/* LEFT: blurred / anonymized vendor info */}
-                    <div className="md:col-span-6 select-none">
+                    <div className="md:col-span-5 select-none">
                         <div className="h-6 w-52 rounded bg-slate-200/70 blur-[2px]" />
                         <p className="mt-2 text-sm text-slate-400 line-clamp-1 select-none">
                             ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░
@@ -2798,25 +2832,31 @@ const VendorResultCard = ({
                     </div>
 
                     {/* ETA placeholder stays blurred */}
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-2 min-w-0">
                         <div className="h-5 w-24 rounded bg-slate-200/70 blur-[2px]" />
-                        <div className="text-xs text-slate-400 mt-1 select-none">▓ ▒ ░</div>
+                        <div className="text-xs text-slate-400 mt-1 select-none truncate">▓ ▒ ░</div>
                     </div>
 
                     {/* Price and CTA - now in same flex container, right-aligned */}
-                    <div className="md:col-span-4 flex items-center justify-end gap-4">
+                    <div className="md:col-span-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 min-w-0">
                         {/* RIGHT: price visible */}
-                        <div className="text-right">
-                            <div className="flex items-center justify-end gap-1 font-bold text-3xl text-slate-900">
-                                <IndianRupee size={22} className="text-slate-600" />
-                                <span>{formatINR0(cardPrice)}</span>
+                        <div className="text-right min-w-0 flex-shrink-0">
+                            <div className="flex items-center justify-end gap-1 font-bold text-slate-900 min-w-0">
+                                <IndianRupee size={20} className="text-slate-600 flex-shrink-0" />
+                                <span
+                                    className="truncate max-w-[140px] sm:max-w-[160px] lg:max-w-[200px]"
+                                    style={{ fontSize: formatINR0(cardPrice).length > 7 ? '1.5rem' : '1.875rem' }}
+                                    title={`₹${formatINR0(cardPrice)}`}
+                                >
+                                    {formatINR0(cardPrice)}
+                                </span>
                             </div>
                         </div>
 
                         {/* CTA visible with "Subscribe to Get Details" */}
                         <Link
                             to={BUY_ROUTE}
-                            className="inline-flex items-center justify-center px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                            className="inline-flex items-center justify-center px-4 sm:px-5 py-2.5 bg-indigo-600 text-white font-semibold text-sm sm:text-base rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
                             aria-label="Subscribe to Get Details"
                         >
                             Subscribe to Get Details
@@ -2875,11 +2915,11 @@ const VendorResultCard = ({
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 lg:gap-4">
                 {/* Vendor + badges */}
-                <div className="md:col-span-6">
+                <div className="md:col-span-5">
                     <div className="flex items-center flex-wrap gap-2">
-                        <h3 className="font-bold text-lg text-slate-800 truncate">
+                        <h3 className="font-bold text-lg text-slate-800 truncate max-w-[200px]">
                             {quote.companyName}
                         </h3>
 
@@ -2940,33 +2980,40 @@ const VendorResultCard = ({
                 </div>
 
                 {/* ETA */}
-                <div className="md:col-span-2 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 font-semibold text-slate-700 text-lg">
-                        <Clock size={16} className="text-slate-500" />
-                        <span>
+                <div className="md:col-span-2 text-center md:text-left min-w-0">
+                    <div className="flex items-center justify-center md:justify-start gap-2 font-semibold text-slate-700 text-base lg:text-lg">
+                        <Clock size={16} className="text-slate-500 flex-shrink-0" />
+                        <span className="whitespace-nowrap">
                             {Math.ceil(quote.estimatedTime ?? 1)}{" "}
                             {Math.ceil(quote.estimatedTime ?? 1) === 1 ? "Day" : "Days"}
                         </span>
                     </div>
-                    <div className="text-xs text-slate-500 -mt-1">Estimated Delivery</div>
+                    <div className="text-xs text-slate-500 -mt-1 truncate">Estimated Delivery</div>
                 </div>
 
                 {/* Price and CTA - now in same flex container, right-aligned */}
-                <div className="md:col-span-4 flex items-center justify-end gap-4">
+                <div className="md:col-span-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 min-w-0">
                     {/* Price (always visible) */}
-                    <div className="text-right">
-                        <div className="flex items-center justify-end gap-1 font-bold text-3xl text-slate-900">
-                            <IndianRupee size={22} className="text-slate-600" />
-                            <span>{formatINR0(cardPrice)}</span>
+                    <div className="text-right min-w-0 flex-shrink-0">
+                        <div className="flex items-center justify-end gap-1 font-bold text-slate-900 min-w-0">
+                            <IndianRupee size={20} className="text-slate-600 flex-shrink-0" />
+                            <span
+                                className="truncate max-w-[140px] sm:max-w-[160px] lg:max-w-[200px]"
+                                style={{ fontSize: formatINR0(cardPrice).length > 7 ? '1.5rem' : '1.875rem' }}
+                                title={`₹${formatINR0(cardPrice)}`}
+                            >
+                                {formatINR0(cardPrice)}
+                            </span>
                         </div>
 
                         <button
                             onClick={() => setIsExpanded((v) => !v)}
-                            className="mt-2 inline-flex items-center gap-1.5 text-indigo-600 font-semibold text-sm hover:text-indigo-800 transition-colors"
+                            className="mt-1 inline-flex items-center gap-1 text-indigo-600 font-semibold text-xs sm:text-sm hover:text-indigo-800 transition-colors whitespace-nowrap"
                         >
-                            {isExpanded ? "Hide Price Breakup" : "Price Breakup"}
+                            <span className="hidden sm:inline">{isExpanded ? "Hide Price Breakup" : "Price Breakup"}</span>
+                            <span className="sm:hidden">{isExpanded ? "Hide" : "Breakup"}</span>
                             <ChevronRight
-                                size={16}
+                                size={14}
                                 className={`transition-transform duration-300 ${isExpanded ? "rotate-90" : "rotate-0"
                                     }`}
                             />
@@ -2976,7 +3023,7 @@ const VendorResultCard = ({
                     {/* CTA Button - same for all vendors */}
                     <button
                         onClick={handleCtaClick}
-                        className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                        className="px-4 sm:px-5 py-2.5 bg-indigo-600 text-white font-semibold text-sm sm:text-base rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
                     >
                         {ctaLabel}
                     </button>
