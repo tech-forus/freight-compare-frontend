@@ -35,6 +35,7 @@ import DashboardPage from './pages/DashboardPage';
 // ⬇️ NEW: buy page (supports /buy-subscription-plan and /buy-subscription-plan/:vendorSlug)
 import BuySubscriptionPage from './pages/BuySubscriptionPage';
 import VendorDetailsPage from './pages/VendorDetailsPage';
+import TransporterDetailsPage from './pages/TransporterDetailsPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import VendorApprovalPage from './pages/VendorApprovalPage';
 import UserManagementPage from './pages/UserManagementPage';
@@ -351,6 +352,31 @@ function App() {
               }
             />
 
+            {/* Vendor Details - For Temporary Transporters (customer's tied-up vendors) */}
+            <Route
+              path="/vendor/:id"
+              element={
+                <MainLayout>
+                  <PrivateRoute>
+                    <VendorDetailsPage />
+                  </PrivateRoute>
+                </MainLayout>
+              }
+            />
+
+            {/* Transporter Details - For Regular Transporters (available transporters) */}
+            <Route
+              path="/transporter/:id"
+              element={
+                <MainLayout>
+                  <PrivateRoute>
+                    <TransporterDetailsPage />
+                  </PrivateRoute>
+                </MainLayout>
+              }
+            />
+
+            {/* Legacy route - redirect to vendor for backward compatibility */}
             <Route
               path="/transporterdetails/:id"
               element={

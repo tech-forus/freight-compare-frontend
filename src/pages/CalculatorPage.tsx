@@ -2733,17 +2733,29 @@ const VendorResultCard = ({
             console.log("_id:", quote._id);
             console.log("isTiedUp:", quote.isTiedUp);
 
-            // Use company name as identifier (will be used to fetch from DB)
-            // Use a dummy ID but pass the quote data which contains the company name
             const companyName = quote.companyName || quote.transporterName;
             const transporterId = quote.transporterData?._id || quote.transporterID || quote._id || 'temp';
 
+            // Determine if this is a temporary transporter (customer's tied-up vendor)
+            // or a regular transporter (available transporter from transporters collection)
+            const isTemporaryVendor = quote.isTiedUp === true || quote.transporterData?._id;
+
             if (companyName) {
                 console.log("Navigating with companyName:", companyName, "and ID:", transporterId);
-                // Pass the entire quote data as state - VendorDetailsPage will use companyName to find vendor
-                navigate(`/transporterdetails/${transporterId}`, {
-                    state: { quoteData: quote }
-                });
+                console.log("Vendor Type:", isTemporaryVendor ? "Temporary (Tied-up)" : "Regular (Available)");
+
+                // Route to correct page based on vendor type
+                if (isTemporaryVendor) {
+                    // Temporary transporter - customer's tied-up vendor
+                    navigate(`/vendor/${transporterId}`, {
+                        state: { quoteData: quote }
+                    });
+                } else {
+                    // Regular transporter - from transporters collection
+                    navigate(`/transporter/${transporterId}`, {
+                        state: { quoteData: quote }
+                    });
+                }
             } else {
                 console.error("Company name missing. Quote data:", quote);
                 alert("Sorry, the transporter details could not be retrieved.");

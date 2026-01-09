@@ -302,6 +302,47 @@ export const getTemporaryTransporterById = async (
 };
 
 /**
+ * Get regular transporter by ID (from transporters collection)
+ * GET /api/transporter/gettransporterdetails/:id
+ */
+export const getTransporterById = async (
+  id: string
+): Promise<any | null> => {
+  try {
+    emitDebug('API_GET_TRANSPORTER_START', { id });
+
+    const url = `https://${API_BASE}/api/transporter/gettransporterdetails/${id}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: buildHeaders(false),
+    });
+
+    if (!res.ok) {
+      emitDebugError('API_GET_TRANSPORTER_FAILED', {
+        status: res.status,
+        statusText: res.statusText,
+      });
+      return null;
+    }
+
+    const json = await safeJson<{ success: boolean; data: any }>(res);
+
+    if (json?.success && json.data) {
+      emitDebug('API_GET_TRANSPORTER_SUCCESS', {
+        companyName: json.data.companyName,
+      });
+      return json.data;
+    }
+
+    return null;
+  } catch (err) {
+    emitDebugError('API_GET_TRANSPORTER_ERROR', err);
+    return null;
+  }
+};
+
+/**
  * Delete temporary transporter
  * NEW:    DELETE /api/transporter/temporary/:id
  * LEGACY: DELETE /api/transporter/deletetemporary/:id   (if you have it)
