@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, ChevronRight, MapPin, Sparkles, AlertTriangle, Lock, Globe, Ban } from "lucide-react";
+import { ArrowLeft, CheckCircle, ChevronRight, MapPin, Sparkles, AlertTriangle, Lock, Globe, Ban, FileSpreadsheet, X } from "lucide-react";
 import { useWizardStorage } from "../hooks/useWizardStorage";
 import type { ZoneConfig, RegionGroup, PincodeEntry } from "../types/wizard.types";
 import DecimalInput from "../components/DecimalInput";
@@ -91,6 +91,8 @@ const ZonePriceMatrix: React.FC = () => {
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [warningModal, setWarningModal] = useState<WarningModalState>({ isOpen: false, type: 'exhaustion', message: '', affectedZones: [], region: null, stats: null });
   const warningResolverRef = useRef<((result: 'continue' | 'delete' | 'cancel' | 'back') => void) | null>(null);
+  const [bulkPasteModal, setBulkPasteModal] = useState(false);
+  const [bulkPasteText, setBulkPasteText] = useState("");
 
   /* -------------------- Load Data -------------------- */
   useEffect(() => {
@@ -689,6 +691,55 @@ const ZonePriceMatrix: React.FC = () => {
     navigate("/addvendor", { replace: true });
   }, [navigate, activeZones, wizardData.priceMatrix, updatePriceMatrix]);
 
+  /* -------------------- Bulk Paste Handler -------------------- */
+  const handleBulkPaste = useCallback(() => {
+    try {
+      // Parse tab/newline separated values from Excel paste
+      const lines = bulkPasteText.trim().split('\n');
+      const parsedData: number[][] = [];
+
+      for (const line of lines) {
+        // Split by tab (Excel default) or comma (CSV)
+        const values = line.split(/[\t,]/).map(v => {
+          const num = parseFloat(v.trim());
+          return isNaN(num) ? 0 : num;
+        });
+        parsedData.push(values);
+      }
+
+      // Validate dimensions
+      if (parsedData.length !== zonesForMatrix.length) {
+        alert(`Error: Expected ${zonesForMatrix.length} rows, got ${parsedData.length}`);
+        return;
+      }
+
+      const expectedCols = zonesForMatrix.length;
+      for (let i = 0; i < parsedData.length; i++) {
+        if (parsedData[i].length !== expectedCols) {
+          alert(`Error: Row ${i + 1} has ${parsedData[i].length} columns, expected ${expectedCols}`);
+          return;
+        }
+      }
+
+      // Apply to price matrix
+      const newMatrix = { ...wizardData.priceMatrix };
+      zonesForMatrix.forEach((fromZone, fromIdx) => {
+        if (!newMatrix[fromZone.zoneCode]) newMatrix[fromZone.zoneCode] = {};
+        zonesForMatrix.forEach((toZone, toIdx) => {
+          newMatrix[fromZone.zoneCode][toZone.zoneCode] = parsedData[fromIdx][toIdx];
+        });
+      });
+
+      updatePriceMatrix(newMatrix);
+      setBulkPasteModal(false);
+      setBulkPasteText("");
+      alert(`Success! ${zonesForMatrix.length}x${zonesForMatrix.length} prices updated.`);
+    } catch (error) {
+      console.error('Bulk paste error:', error);
+      alert('Error parsing pasted data. Please ensure you copied the correct format from Excel.');
+    }
+  }, [bulkPasteText, zonesForMatrix, wizardData.priceMatrix, updatePriceMatrix]);
+
   /* -------------------- Warning Modal -------------------- */
   const WarningModal = () => {
     if (!warningModal.isOpen) return null;
@@ -718,6 +769,71 @@ const ZonePriceMatrix: React.FC = () => {
             <button onClick={() => closeWarningModal('continue')} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">Continue</button>
           </div>
           <p className="text-xs text-slate-500 mt-4 text-center">Empty zones will be excluded from pricing entirely.</p>
+        </div>
+      </div>
+    );
+  };
+
+  /* -------------------- Bulk Paste Modal -------------------- */
+  const BulkPasteModal = () => {
+    if (!bulkPasteModal) return null;
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <FileSpreadsheet className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Bulk Paste from Excel</h3>
+                <p className="text-sm text-slate-600">Paste your price matrix data here</p>
+              </div>
+            </div>
+            <button onClick={() => { setBulkPasteModal(false); setBulkPasteText(""); }} className="p-2 hover:bg-slate-100 rounded-lg">
+              <X className="h-5 w-5 text-slate-500" />
+            </button>
+          </div>
+
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <p className="text-sm text-blue-900 font-semibold mb-2">Instructions:</p>
+            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+              <li>Open your Excel file with the price matrix</li>
+              <li>Select all price values (WITHOUT the From/To headers)</li>
+              <li>Copy (Ctrl+C or Cmd+C)</li>
+              <li>Paste in the box below</li>
+              <li>Click "Apply Prices"</li>
+            </ol>
+            <p className="text-xs text-blue-700 mt-2">Expected format: {zonesForMatrix.length} rows × {zonesForMatrix.length} columns (tab-separated values)</p>
+          </div>
+
+          <textarea
+            value={bulkPasteText}
+            onChange={(e) => setBulkPasteText(e.target.value)}
+            placeholder={`Paste your ${zonesForMatrix.length}x${zonesForMatrix.length} price matrix here...\n\nExample:\n5.4\t6.5\t8.1\t9.5\n6.0\t5.85\t8.1\t9.5\n...`}
+            className="w-full h-64 p-4 border border-slate-300 rounded-xl font-mono text-sm resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            autoFocus
+          />
+
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={() => { setBulkPasteModal(false); setBulkPasteText(""); }}
+              className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBulkPaste}
+              disabled={!bulkPasteText.trim()}
+              className={`flex-1 px-6 py-3 rounded-xl font-semibold ${
+                bulkPasteText.trim()
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-slate-300 text-slate-500 cursor-not-allowed"
+              }`}
+            >
+              Apply Prices
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -970,7 +1086,16 @@ const ZonePriceMatrix: React.FC = () => {
                 </div>
                 <p className="mt-1 text-slate-600 text-sm">Only zones WITH cities appear below. Empty zones excluded.</p>
               </div>
-              <button onClick={savePriceMatrixAndReturn} className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600">Save & Continue</button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setBulkPasteModal(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 flex items-center gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Bulk Paste
+                </button>
+                <button onClick={savePriceMatrixAndReturn} className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600">Save & Continue</button>
+              </div>
             </div>
 
             {/* 🔥 Show excluded zones as badges */}
@@ -1086,6 +1211,7 @@ const ZonePriceMatrix: React.FC = () => {
           </div>
         </div>
         <WarningModal />
+        <BulkPasteModal />
       </div>
     );
   }
