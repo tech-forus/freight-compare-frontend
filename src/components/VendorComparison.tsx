@@ -1,5 +1,6 @@
 import React from 'react';
 import { CalendarClock, Weight, DollarSign, Download, ArrowRight } from 'lucide-react';
+import VerificationBadge, { VerificationStatus } from './VerificationBadge';
 
 // This component now expects a 'quotes' prop containing the real data from the backend.
 // The hardcoded data has been removed.
@@ -43,9 +44,30 @@ const VendorComparison = ({ quotes = [] }) => {
                <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center font-bold text-blue-600">
                  {quote.companyName.charAt(0)}
                </div>
-               <div>
-                 <h3 className="font-bold text-lg">{quote.companyName}</h3>
-                 {/* ... Tag logic remains the same ... */}
+               <div className="flex-1">
+                 <div className="flex items-center gap-2 mb-1">
+                   <h3 className="font-bold text-lg">{quote.companyName}</h3>
+                   <VerificationBadge
+                     status={
+                       quote.isVerified
+                         ? 'verified' as VerificationStatus
+                         : quote.approvalStatus === 'approved'
+                         ? 'unverified' as VerificationStatus
+                         : 'unknown' as VerificationStatus
+                     }
+                   />
+                 </div>
+                 {/* Best value badge */}
+                 {quote.companyId === cheapestQuote.companyId && (
+                   <span className="inline-block text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+                     Best Value
+                   </span>
+                 )}
+                 {quote.companyId === fastestQuote.companyId && quote.companyId !== cheapestQuote.companyId && (
+                   <span className="inline-block text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                     Fastest
+                   </span>
+                 )}
                </div>
             </div>
 
@@ -107,6 +129,7 @@ const VendorComparison = ({ quotes = [] }) => {
           <thead>
             <tr className="bg-gray-50">
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery</th>
               {/* --- UPDATED TABLE HEADERS --- */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Wt.</th>
@@ -122,6 +145,17 @@ const VendorComparison = ({ quotes = [] }) => {
                 className={quote.companyId === cheapestQuote.companyId ? 'bg-green-50' : ''}
               >
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{quote.companyName}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  <VerificationBadge
+                    status={
+                      quote.isVerified
+                        ? 'verified' as VerificationStatus
+                        : quote.approvalStatus === 'approved'
+                        ? 'unverified' as VerificationStatus
+                        : 'unknown' as VerificationStatus
+                    }
+                  />
+                </td>
                 <td className="px-6 py-4 text-sm text-gray-500">{quote.estimatedTime} days</td>
                 {/* --- UPDATED TABLE DATA CELLS --- */}
                 <td className="px-6 py-4 text-sm text-gray-500">{formatWeight(quote.actualWeight)}</td>

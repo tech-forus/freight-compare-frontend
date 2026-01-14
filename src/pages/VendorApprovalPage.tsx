@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getTemporaryTransporters } from '../services/api';
 import { TemporaryTransporter } from '../utils/validators';
-import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, Eye, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, Eye, ArrowLeft, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import http from '../lib/http';
 
@@ -12,6 +12,7 @@ type VendorStatus = 'pending' | 'approved' | 'rejected';
 interface VendorWithId extends TemporaryTransporter {
   _id: string;
   approvalStatus?: VendorStatus;
+  isVerified?: boolean;
   customerID?: string;
   vendorCode?: string;
   vendorPhone?: string;
@@ -178,6 +179,35 @@ const VendorApprovalPage: React.FC = () => {
     } catch (error: any) {
       console.error(`Failed to ${action} vendor:`, error);
       toast.error(error.response?.data?.message || `Failed to ${action} vendor`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle vendor verification toggle
+  const handleVerificationToggle = async (vendorId: string, currentStatus: boolean) => {
+    setActionLoading(vendorId);
+    try {
+      const response = await http.put(`/api/transporter/temporary/${vendorId}/verification`, {
+        isVerified: !currentStatus,
+      });
+
+      if (response.data.success) {
+        toast.success(`Vendor marked as ${!currentStatus ? 'verified' : 'unverified'} successfully`);
+        // Update local state
+        setVendors((prev) =>
+          prev.map((v) =>
+            v._id === vendorId
+              ? { ...v, isVerified: !currentStatus }
+              : v
+          )
+        );
+      } else {
+        toast.error(response.data.message || 'Failed to update verification status');
+      }
+    } catch (error: any) {
+      console.error('Failed to update verification:', error);
+      toast.error(error.response?.data?.message || 'Failed to update verification status');
     } finally {
       setActionLoading(null);
     }
@@ -380,6 +410,25 @@ const VendorApprovalPage: React.FC = () => {
 
                           {activeTab === 'approved' && (
                             <div className="flex gap-3">
+                              <button
+                                onClick={() => handleVerificationToggle(vendor._id, vendor.isVerified || false)}
+                                disabled={actionLoading === vendor._id}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                                  vendor.isVerified
+                                    ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100'
+                                    : 'bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100'
+                                }`}
+                                title={vendor.isVerified ? 'Mark as Unverified' : 'Mark as Verified'}
+                              >
+                                {actionLoading === vendor._id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : vendor.isVerified ? (
+                                  <CheckCircle className="w-4 h-4" />
+                                ) : (
+                                  <AlertCircle className="w-4 h-4" />
+                                )}
+                                {vendor.isVerified ? 'Show Unverified' : 'Mark Verified'}
+                              </button>
                               <button
                                 onClick={() => handleVendorAction(vendor._id, 'reject')}
                                 disabled={actionLoading === vendor._id}
