@@ -137,8 +137,8 @@ const VendorApprovalPage: React.FC = () => {
     const matchesTab = status === activeTab;
     const matchesSearch = searchQuery
       ? (vendor.companyName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (vendor.vendorEmailAddress?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (vendor.contactPersonName?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+      (vendor.vendorEmailAddress?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (vendor.contactPersonName?.toLowerCase() || '').includes(searchQuery.toLowerCase())
       : true;
     return matchesTab && matchesSearch;
   }) : [];
@@ -184,21 +184,23 @@ const VendorApprovalPage: React.FC = () => {
     }
   };
 
-  // Handle marking vendor as unverified
-  const handleMarkUnverified = async (vendorId: string) => {
+  // Handle toggling vendor verification status (verified <-> unverified)
+  const handleToggleVerification = async (vendorId: string, currentIsVerified: boolean) => {
     setActionLoading(vendorId);
+    const newVerifiedStatus = !currentIsVerified;
+
     try {
       const response = await http.put(`/api/transporter/temporary/${vendorId}/verification`, {
-        isVerified: false,
+        isVerified: newVerifiedStatus,
       });
 
       if (response.data.success) {
-        toast.success('Vendor marked as unverified successfully');
+        toast.success(`Vendor marked as ${newVerifiedStatus ? 'verified' : 'unverified'} successfully`);
         // Update local state
         setVendors((prev) =>
           prev.map((v) =>
             v._id === vendorId
-              ? { ...v, isVerified: false }
+              ? { ...v, isVerified: newVerifiedStatus }
               : v
           )
         );
@@ -286,20 +288,18 @@ const VendorApprovalPage: React.FC = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                        isActive
-                          ? 'bg-red-50 text-red-700 border border-red-200'
-                          : 'text-slate-600 hover:bg-slate-50'
-                      }`}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : 'text-slate-600 hover:bg-slate-50'
+                        }`}
                     >
                       <Icon className={`w-5 h-5 ${isActive ? tab.color : 'text-slate-400'}`} />
                       <span>{tab.label}</span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          isActive
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isActive
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-slate-100 text-slate-600'
+                          }`}
                       >
                         {count}
                       </span>
@@ -338,9 +338,24 @@ const VendorApprovalPage: React.FC = () => {
                           <div className="flex-1">
                             <div className="flex items-start justify-between mb-2">
                               <div>
-                                <h3 className="text-lg font-semibold text-slate-900">
-                                  {vendor.companyName || 'N/A'}
-                                </h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-lg font-semibold text-slate-900">
+                                    {vendor.companyName || 'N/A'}
+                                  </h3>
+                                  {/* Show verification badge in approved tab */}
+                                  {activeTab === 'approved' && (
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${vendor.isVerified === false
+                                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                        : 'bg-green-100 text-green-800 border border-green-200'
+                                      }`}>
+                                      {vendor.isVerified === false ? (
+                                        <><AlertCircle className="w-3 h-3" /> Unverified</>
+                                      ) : (
+                                        <><CheckCircle className="w-3 h-3" /> Verified</>
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm text-slate-600">{vendor.contactPersonName || 'N/A'}</p>
                               </div>
                             </div>
@@ -411,17 +426,22 @@ const VendorApprovalPage: React.FC = () => {
                           {activeTab === 'approved' && (
                             <div className="flex gap-3">
                               <button
-                                onClick={() => handleMarkUnverified(vendor._id)}
+                                onClick={() => handleToggleVerification(vendor._id, vendor.isVerified !== false)}
                                 disabled={actionLoading === vendor._id}
-                                className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                title="Mark as Unverified"
+                                className={`flex items-center gap-2 px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${vendor.isVerified === false
+                                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                  : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'
+                                  }`}
+                                title={vendor.isVerified === false ? 'Mark as Verified' : 'Mark as Unverified'}
                               >
                                 {actionLoading === vendor._id ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : vendor.isVerified === false ? (
+                                  <CheckCircle className="w-4 h-4" />
                                 ) : (
                                   <AlertCircle className="w-4 h-4" />
                                 )}
-                                Show Unverified
+                                {vendor.isVerified === false ? 'Mark Verified' : 'Mark Unverified'}
                               </button>
                               <button
                                 onClick={() => handleVendorAction(vendor._id, 'reject')}
