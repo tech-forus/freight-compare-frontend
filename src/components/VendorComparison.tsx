@@ -49,7 +49,7 @@ const VendorComparison = ({ quotes = [] }) => {
                    <h3 className="font-bold text-lg">{quote.companyName}</h3>
                    <VerificationBadge
                      status={
-                       quote.isVerified
+                       quote.isVerified === true
                          ? 'verified' as VerificationStatus
                          : quote.approvalStatus === 'approved'
                          ? 'unverified' as VerificationStatus
@@ -148,7 +148,7 @@ const VendorComparison = ({ quotes = [] }) => {
                 <td className="px-6 py-4 text-sm text-gray-500">
                   <VerificationBadge
                     status={
-                      quote.isVerified
+                      quote.isVerified === true
                         ? 'verified' as VerificationStatus
                         : quote.approvalStatus === 'approved'
                         ? 'unverified' as VerificationStatus
