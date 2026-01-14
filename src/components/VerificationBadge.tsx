@@ -32,9 +32,9 @@ const VerificationBadge: React.FC<VerificationBadgeProps> = ({
         unverified: {
             label: 'Unverified',
             icon: AlertCircle,
-            bgColor: 'bg-orange-100',
-            textColor: 'text-orange-800',
-            borderColor: 'border-orange-200',
+            bgColor: 'bg-yellow-100',
+            textColor: 'text-yellow-800',
+            borderColor: 'border-yellow-200',
         },
         unknown: {
             label: 'Status Unknown',

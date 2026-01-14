@@ -184,21 +184,21 @@ const VendorApprovalPage: React.FC = () => {
     }
   };
 
-  // Handle vendor verification toggle
-  const handleVerificationToggle = async (vendorId: string, currentStatus: boolean) => {
+  // Handle marking vendor as unverified
+  const handleMarkUnverified = async (vendorId: string) => {
     setActionLoading(vendorId);
     try {
       const response = await http.put(`/api/transporter/temporary/${vendorId}/verification`, {
-        isVerified: !currentStatus,
+        isVerified: false,
       });
 
       if (response.data.success) {
-        toast.success(`Vendor marked as ${!currentStatus ? 'verified' : 'unverified'} successfully`);
+        toast.success('Vendor marked as unverified successfully');
         // Update local state
         setVendors((prev) =>
           prev.map((v) =>
             v._id === vendorId
-              ? { ...v, isVerified: !currentStatus }
+              ? { ...v, isVerified: false }
               : v
           )
         );
@@ -411,23 +411,17 @@ const VendorApprovalPage: React.FC = () => {
                           {activeTab === 'approved' && (
                             <div className="flex gap-3">
                               <button
-                                onClick={() => handleVerificationToggle(vendor._id, vendor.isVerified || false)}
+                                onClick={() => handleMarkUnverified(vendor._id)}
                                 disabled={actionLoading === vendor._id}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-                                  vendor.isVerified
-                                    ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100'
-                                    : 'bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100'
-                                }`}
-                                title={vendor.isVerified ? 'Mark as Unverified' : 'Mark as Verified'}
+                                className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                title="Mark as Unverified"
                               >
                                 {actionLoading === vendor._id ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : vendor.isVerified ? (
-                                  <CheckCircle className="w-4 h-4" />
                                 ) : (
                                   <AlertCircle className="w-4 h-4" />
                                 )}
-                                {vendor.isVerified ? 'Show Unverified' : 'Mark Verified'}
+                                Show Unverified
                               </button>
                               <button
                                 onClick={() => handleVendorAction(vendor._id, 'reject')}
