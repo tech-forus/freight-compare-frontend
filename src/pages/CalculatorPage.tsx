@@ -2676,6 +2676,12 @@ const getVerificationStatus = (
         return 'verified';
     }
 
+    // ✅ NEW: Check isVerified field first (set by "Show Unverified" toggle)
+    // If explicitly set to false, vendor is unverified regardless of approvalStatus
+    if (quote.isVerified === false) {
+        return 'unverified';
+    }
+
     // ✨ Real-time sync: Check status map first (updated every 30s via polling)
     const realtimeStatus = statusMap[companyName];
     if (realtimeStatus === 'approved') return 'verified';
