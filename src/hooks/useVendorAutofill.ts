@@ -3,6 +3,53 @@ import { useCallback } from 'react';
 
 const ZPM_KEY = 'zonePriceMatrixData';
 
+// =============================================================================
+// INITIAL STATE CONSTANTS - Single source of truth for all form defaults
+// =============================================================================
+
+/**
+ * Initial state for vendor basics (from useVendorBasics hook)
+ * These are the default values that should be restored when Quick Lookup is used
+ */
+const INITIAL_VENDOR_BASICS = {
+  companyName: '',
+  legalCompanyName: '',
+  contactPersonName: '',
+  vendorPhoneNumber: '',
+  vendorEmailAddress: '',
+  gstin: '',
+  transportMode: null,  // Will be set to 'road' by vendor or remain null
+  displayName: '',
+  subVendor: '',
+  vendorCode: '',
+  primaryContactName: '',
+  primaryContactPhone: '',
+  primaryContactEmail: '',
+  address: '',
+  serviceMode: null,  // Will be set to 'FTL'/'LTL' by vendor or remain null
+  companyRating: 4,   // Default rating (preserve this default)
+};
+
+/**
+ * Initial state for geo/pincode lookup (from usePincodeLookup hook)
+ */
+const INITIAL_GEO = {
+  pincode: '',
+  state: '',
+  city: '',
+  district: '',
+  zone: '',
+};
+
+/**
+ * Initial state for volumetric settings (from useVolumetric hook)
+ */
+const INITIAL_VOLUMETRIC = {
+  unit: 'cm' as const,
+  volumetricDivisor: 2800,
+  cftFactor: null,
+};
+
 /**
  * Helper function to convert pincode array to city and state names
  * @param pincodes - Array of pincodes (strings like "110001")
@@ -188,6 +235,22 @@ export function useVendorAutofill(params: {
 
   const applyVendorAutofill = useCallback(
     async (vendor: VendorSuggestion, opts?: AutofillOptions) => {
+      // =======================================================================
+      // 🔥 FIX: Quick Lookup Clear Previous Data Issue
+      // =======================================================================
+      // Problem: When selecting vendor A, then vendor B, fields from vendor A
+      //          remained if vendor B didn't have those fields (e.g., email, gstin)
+      //
+      // Solution: Reset all form sections to INITIAL state before applying
+      //           vendor data. This ensures:
+      //           1. Vendor data overwrites existing values
+      //           2. Missing vendor data results in BLANK fields (not previous vendor's data)
+      //           3. Default values (like companyRating: 4) are preserved
+      //
+      // Implementation: Each section now uses INITIAL_* constants instead of
+      //                 prev fallbacks, ensuring clean state on every Quick Lookup
+      // =======================================================================
+
       const o: AutofillOptions = {
         overwriteBasics: true,
         overwriteGeo: true,
@@ -209,71 +272,82 @@ export function useVendorAutofill(params: {
         hasPriceChart: !!vendor.priceChart,
       });
 
-      // 1) Basics - map ALL fields from API response
+      // 🔥 FIX: Reset to initial state, then apply ONLY vendor data (single state update)
+      // Strategy: Start with INITIAL_VENDOR_BASICS, then overwrite with vendor data
+      // No fallback to prev - prevents leftover data from previous Quick Lookup
       if (o.overwriteBasics && vendorBasics?.setBasics) {
-        console.log('[AutoFill] Applying basics:', {
+        console.log('[AutoFill] Applying basics (with initial state reset):', {
           companyName: vendor.companyName,
           contactPersonName: vendor.contactPersonName,
           transportMode: vendor.transportMode,
           vendorCode: vendor.vendorCode,
         });
 
-        vendorBasics.setBasics((prev: any) => ({
-          ...prev,
-          // Company info
-          legalCompanyName: vendor.legalCompanyName || vendor.companyName || prev.legalCompanyName || '',
-          companyName: vendor.companyName || vendor.legalCompanyName || prev.companyName || '',
+        vendorBasics.setBasics({
+          ...INITIAL_VENDOR_BASICS,
+          // Company info - use vendor data or empty string (no prev fallback)
+          legalCompanyName: vendor.legalCompanyName || vendor.companyName || '',
+          companyName: vendor.companyName || vendor.legalCompanyName || '',
           // Contact person
-          contactPersonName: vendor.contactPersonName || prev.contactPersonName || '',
+          contactPersonName: vendor.contactPersonName || '',
           // Vendor contact
-          vendorPhoneNumber: String(vendor.vendorPhone ?? prev.vendorPhoneNumber ?? ''),
-          vendorEmailAddress: vendor.vendorEmail ?? prev.vendorEmailAddress ?? '',
-          vendorCode: vendor.vendorCode ?? prev.vendorCode ?? '',
+          vendorPhoneNumber: String(vendor.vendorPhone ?? ''),
+          vendorEmailAddress: vendor.vendorEmail ?? '',
+          vendorCode: vendor.vendorCode ?? '',
           // GST and sub-vendor
-          gstin: vendor.gstNo ?? prev.gstin ?? '',
-          subVendor: vendor.subVendor ?? prev.subVendor ?? '',
+          gstin: vendor.gstNo ?? '',
+          subVendor: vendor.subVendor ?? '',
           // Address
-          address: vendor.address ?? prev.address ?? '',
+          address: vendor.address ?? '',
           // Transport mode (Road/Air/Rail) - from DB 'mode' field
-          transportMode: vendor.mode || prev.transportMode || 'road',
+          transportMode: vendor.mode || 'road',
           // Service mode (FTL/LTL/PTL) - from prices.priceRate.serviceMode or default to FTL
           serviceMode: vendor.charges?.serviceMode?.toUpperCase() ||
             (vendor.mode?.toUpperCase() === 'ROAD' || vendor.mode?.toUpperCase() === 'AIR' || vendor.mode?.toUpperCase() === 'RAIL'
               ? 'FTL'  // If mode contains transport type, default to FTL
-              : prev.serviceMode || 'FTL'),
-          // Rating
-          companyRating: vendor.rating ?? prev.companyRating ?? 3,
-        }));
+              : 'FTL'),
+          // Rating - use vendor rating or keep initial default (4)
+          companyRating: vendor.rating ?? INITIAL_VENDOR_BASICS.companyRating,
+        });
       }
 
-      // 2) Geo
+      // 2) Geo - Reset to initial, then apply vendor geo data
       if (o.overwriteGeo && pincodeLookup) {
+        // Reset geo to initial state first
+        if (typeof pincodeLookup.reset === 'function') {
+          pincodeLookup.reset();
+        }
+
+        // Then apply vendor geo data if available
         const pincodeStr = vendor.pincode ? String(vendor.pincode) : '';
-        if (pincodeStr && typeof pincodeLookup.setPincode === 'function') pincodeLookup.setPincode(pincodeStr);
-        if (vendor.state && typeof pincodeLookup.setState === 'function') pincodeLookup.setState(vendor.state);
-        if (vendor.city && typeof pincodeLookup.setCity === 'function') pincodeLookup.setCity(vendor.city);
+        if (pincodeStr && typeof pincodeLookup.setPincode === 'function') {
+          pincodeLookup.setPincode(pincodeStr);
+        }
+        // Note: setPincode will auto-lookup city/state, so we don't need to set them manually
+        // unless the vendor has different data than what pincode lookup returns
       }
 
-      // 3) Volumetric - map from API response to useVolumetric state
+      // 3) Volumetric - Reset to initial, then apply vendor volumetric data
       if (o.overwriteVolumetric && volumetric?.setState) {
         // Normalize unit value: 'cm', 'in', 'inches', 'Inches' all map correctly
         const rawUnit = vendor.volumetricUnit || 'cm';
         const normalizedUnit = rawUnit.toLowerCase().startsWith('in') ? 'in' : 'cm';
 
-        console.log('[AutoFill] Applying volumetric:', {
+        console.log('[AutoFill] Applying volumetric (with initial reset):', {
           rawUnit,
           normalizedUnit,
-          divisor: vendor.charges?.divisor,  // Now in prices.priceRate.divisor
+          divisor: vendor.charges?.divisor,
           cftFactor: vendor.cftFactor,
         });
 
-        volumetric.setState((prev: any) => ({
-          ...prev,
+        // Start with initial state, then apply vendor data
+        volumetric.setState({
+          ...INITIAL_VOLUMETRIC,
           unit: normalizedUnit,
-          // FIX: Read divisor from charges (prices.priceRate.divisor) - single source of truth
-          volumetricDivisor: normalizedUnit === 'cm' ? (vendor.charges?.divisor ?? prev.volumetricDivisor ?? 5000) : null,
-          cftFactor: normalizedUnit === 'in' ? (vendor.cftFactor ?? prev.cftFactor ?? 6) : null,
-        }));
+          // FIX: Read divisor from charges (prices.priceRate.divisor) - no prev fallback
+          volumetricDivisor: normalizedUnit === 'cm' ? (vendor.charges?.divisor ?? INITIAL_VOLUMETRIC.volumetricDivisor) : null,
+          cftFactor: normalizedUnit === 'in' ? (vendor.cftFactor ?? 6) : null,
+        });
       }
 
       // 4) Charges - map DB charge fields to useCharges hook format

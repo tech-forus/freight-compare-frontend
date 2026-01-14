@@ -2039,12 +2039,19 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 seenVendors.add(key);
                                                 return true;
                                             }).sort((a, b) => {
-                                                // Always put Wheelseye FTL first
-                                                const isWheelseyeA = a.companyName === "Wheelseye FTL";
-                                                const isWheelseyeB = b.companyName === "Wheelseye FTL";
-                                                if (isWheelseyeA && !isWheelseyeB) return -1;
-                                                if (!isWheelseyeA && isWheelseyeB) return 1;
-                                                return 0; // Keep original order for others
+                                                // First sort by price (ascending)
+                                                const priceA = getQuotePrice(a);
+                                                const priceB = getQuotePrice(b);
+
+                                                // If prices are different, sort by price
+                                                if (priceA !== priceB) {
+                                                    return priceA - priceB;
+                                                }
+
+                                                // If prices are the same, maintain alphabetical order
+                                                const nameA = (a.companyName || a.transporterName || "").toLowerCase();
+                                                const nameB = (b.companyName || b.transporterName || "").toLowerCase();
+                                                return nameA.localeCompare(nameB);
                                             });
 
                                             const allProcessedQuotes = [...tiedUpVendors, ...otherVendors];
