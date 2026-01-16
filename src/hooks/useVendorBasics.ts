@@ -12,7 +12,7 @@ import {
   validatePrimaryContactPhone,
   validatePrimaryContactEmail,
 } from '../utils/validators';
-import { VendorBasics, persistDraft } from '../store/draftStore';
+import { VendorBasics, VendorRatings, persistDraft } from '../store/draftStore';
 import { emitDebug } from '../utils/debug';
 import { useFormConfig } from './useFormConfig';
 
@@ -76,6 +76,8 @@ export interface VendorBasicsErrors {
   transportMode?: string;
   serviceMode?: string;
   companyRating?: string;
+  // Individual rating errors
+  vendorRatings?: string;
 }
 
 export interface UseVendorBasicsReturn {
@@ -92,11 +94,22 @@ export interface UseVendorBasicsReturn {
   setBasics: (
     updater: VendorBasics | ((prev: VendorBasics) => VendorBasics)
   ) => void;
+
+  // Individual rating setter
+  setVendorRating: (field: keyof VendorRatings, value: number) => void;
 }
 
 // =============================================================================
 // DEFAULT STATE
 // =============================================================================
+
+const defaultVendorRatings: VendorRatings = {
+  priceSupport: 0,
+  deliveryTime: 0,
+  tracking: 0,
+  salesSupport: 0,
+  damageLoss: 0,
+};
 
 const defaultBasics: VendorBasics = {
   companyName: '',
@@ -115,7 +128,9 @@ const defaultBasics: VendorBasics = {
   address: '',
   // NEW keys: explicitly set to null (one-time defaults)
   serviceMode: null as any,   // possible values: 'FTL' | 'LTL' | null
-  companyRating: 4, // number 1-5 or null
+  companyRating: null, // Will be calculated from vendorRatings
+  // Individual rating parameters
+  vendorRatings: defaultVendorRatings,
 };
 
 // =============================================================================
@@ -528,6 +543,48 @@ export const useVendorBasics = (
     emitDebug('BASICS_LOADED_FROM_DRAFT', draft);
   }, []);
 
+  /**
+   * Set individual vendor rating and auto-calculate overall rating
+   */
+  const setVendorRating = useCallback(
+    (field: keyof VendorRatings, value: number) => {
+      setBasics((prev) => {
+        const updatedRatings = {
+          ...prev.vendorRatings,
+          [field]: value,
+        };
+
+        // Calculate overall rating (simple average)
+        const values = Object.values(updatedRatings);
+        const validValues = values.filter((v) => v > 0);
+        let overallRating: number | null = null;
+
+        if (validValues.length === 5) {
+          // All ratings provided - calculate average
+          const sum = validValues.reduce((acc, val) => acc + val, 0);
+          overallRating = Math.round((sum / 5) * 10) / 10; // Round to 1 decimal
+        }
+
+        emitDebug('VENDOR_RATING_CHANGED', { field, value, overallRating });
+
+        return {
+          ...prev,
+          vendorRatings: updatedRatings,
+          companyRating: overallRating,
+        };
+      });
+
+      // Clear rating error
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated.vendorRatings;
+        delete updated.companyRating;
+        return updated;
+      });
+    },
+    []
+  );
+
   return {
     basics,
     errors,
@@ -537,5 +594,6 @@ export const useVendorBasics = (
     reset,
     loadFromDraft,
     setBasics: setBasicsBulk, // 👈 NEW bulk setter exposed to AddVendor
+    setVendorRating, // 👈 NEW individual rating setter
   };
 };

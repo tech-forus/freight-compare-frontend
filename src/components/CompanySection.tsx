@@ -513,59 +513,6 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
         </div>
 
 
-        {/* Company Rating (Slider) */}
-        <div>
-          <label
-            htmlFor="companyRating"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
-          >
-            {getLabel('companyRating', 'Company Rating')}
-            {isRequired('companyRating') && <span className="text-red-500"> *</span>}
-          </label>
-
-          <div className="mt-2">
-            <input
-              id="companyRating"
-              name="companyRating"
-              type="range"
-              min={getConstraint('companyRating', 'min', 1) as number}
-              max={getConstraint('companyRating', 'max', 5) as number}
-              step={getConstraint('companyRating', 'step', 0.1) as number}
-              value={Number(basics.companyRating) || 4}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                setField('companyRating', val);
-              }}
-              onBlur={() => {
-                if (
-                  basics.companyRating === null ||
-                  basics.companyRating === undefined
-                ) {
-                  setField('companyRating', 4);
-                }
-                validateField('companyRating');
-              }}
-              className="w-full accent-blue-600"
-            />
-
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-slate-500">{getConstraint('companyRating', 'min', 1)}</span>
-              <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-md">
-                {typeof basics.companyRating === 'number'
-                  ? basics.companyRating.toFixed(1)
-                  : '4.0'} / {getConstraint('companyRating', 'max', 5)}
-              </span>
-              <span className="text-xs text-slate-500">{getConstraint('companyRating', 'max', 5)}</span>
-            </div>
-          </div>
-
-          {errors.companyRating && (
-            <p className="mt-1 text-xs text-red-600">
-              {errors.companyRating}
-            </p>
-          )}
-        </div>
-
       </div>
     </div>
   );

@@ -13,6 +13,17 @@ import { emitDebug, emitDebugError } from '../utils/debug';
 /**
  * Vendor basics (company and contact info)
  */
+/**
+ * Individual vendor rating parameters (1-5 scale)
+ */
+export interface VendorRatings {
+  priceSupport: number;
+  deliveryTime: number;
+  tracking: number;
+  salesSupport: number;
+  damageLoss: number;
+}
+
 export interface VendorBasics {
   companyName: string;
   contactPersonName: string;
@@ -27,8 +38,10 @@ export interface VendorBasics {
   primaryContactPhone: string;
   primaryContactEmail: string;
   address: string;
-   serviceMode: 'FTL' | 'LTL' | null;
+  serviceMode: 'FTL' | 'LTL' | null;
   companyRating: number | null;
+  // Individual rating parameters
+  vendorRatings: VendorRatings;
 }
 
 /**

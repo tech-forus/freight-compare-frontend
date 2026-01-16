@@ -22,6 +22,7 @@ import { ChargesSection } from '../components/ChargesSection';
 import { PriceChartUpload } from '../components/PriceChartUpload';
 import { SavedVendorsTable } from '../components/SavedVendorsTable';
 import ZoneMappingUpload from '../components/ZoneMappingUpload';
+import { VendorRating, calculateOverallRating } from '../components/VendorRating';
 import ZoneSelectionWizard from '../components/ZoneSelectionWizard';
 import ServiceabilityUpload from '../components/ServiceabilityUpload';
 import type { ServiceabilityEntry, ZoneSummary } from '../components/ServiceabilityUpload';
@@ -983,13 +984,15 @@ export const AddVendor: React.FC = () => {
       errs.push('Please select a service mode.');
     }
 
-    const rating = (b as any).companyRating;
-    if (rating === null || rating === undefined || rating === '') {
-      errs.push('Please select a company rating.');
+    // Validate individual vendor ratings (all 5 must be provided)
+    const vendorRatings = (b as any).vendorRatings;
+    if (!vendorRatings) {
+      errs.push('Please provide vendor ratings.');
     } else {
-      const n = Number(rating);
-      if (!Number.isFinite(n) || n < 1 || n > 5) {
-        errs.push('Company rating must be between 1 and 5.');
+      const ratingFields = ['priceSupport', 'deliveryTime', 'tracking', 'salesSupport', 'damageLoss'];
+      const missingRatings = ratingFields.filter(field => !vendorRatings[field] || vendorRatings[field] < 1);
+      if (missingRatings.length > 0) {
+        errs.push(`Please rate all 5 vendor parameters (missing: ${missingRatings.join(', ')}).`);
       }
     }
 
@@ -1146,8 +1149,11 @@ export const AddVendor: React.FC = () => {
     // ✅ FIX 2: Extract city from geo
     const city = String(geo.city ?? '').trim().slice(0, 50);
 
-    // ✅ FIX 3: Extract rating from basics
-    const rating = Number(safeGetField(basics, 'rating', 'companyRating')) || 4;
+    // ✅ FIX 3: Extract rating from basics (calculated from vendorRatings)
+    // Use companyRating which is auto-calculated from the 5 individual ratings
+    const rating = Number(basics.companyRating) || calculateOverallRating(basics.vendorRatings || {
+      priceSupport: 0, deliveryTime: 0, tracking: 0, salesSupport: 0, damageLoss: 0
+    }) || 4;
 
     // ✅ FIX 4: Extract service mode (FTL/LTL)
     const serviceMode = safeGetField(basics, 'serviceMode', 'service_mode') || 'FTL';
@@ -1393,7 +1399,14 @@ export const AddVendor: React.FC = () => {
       state: String(geo.state ?? '').toUpperCase(),
       pincode: pincodeNum,
       city: city,                         // ✅ NEW - at root level
-      rating: rating,                     // ✅ NEW - at root level
+      rating: rating,                     // ✅ Overall rating (calculated from individual ratings)
+      vendorRatings: basics.vendorRatings || {
+        priceSupport: 0,
+        deliveryTime: 0,
+        tracking: 0,
+        salesSupport: 0,
+        damageLoss: 0,
+      }, // ✅ NEW - Individual rating parameters
       subVendor: subVendor,               // ✅ NEW - at root level (not nested)
       selectedZones: selectedZones,       // ✅ NEW - at root level
       zoneConfigurations: zoneConfigurations,  // ✅ ADD THIS LINE
@@ -1506,7 +1519,8 @@ export const AddVendor: React.FC = () => {
       fd.append('state', payloadForApi.state);
       fd.append('pincode', String(payloadForApi.pincode));
       fd.append('city', payloadForApi.city);                                // ✅ NEW
-      fd.append('rating', String(payloadForApi.rating));                    // ✅ FIXED - use actual rating
+      fd.append('rating', String(payloadForApi.rating));                    // ✅ Overall rating (calculated)
+      fd.append('vendorRatings', JSON.stringify(payloadForApi.vendorRatings)); // ✅ NEW - Individual ratings
       fd.append('subVendor', payloadForApi.subVendor || '');                // ✅ NEW
 
       // ✅ FIX: Add volumetric fields at root level (backend expects these)
@@ -1801,7 +1815,22 @@ export const AddVendor: React.FC = () => {
                 />
               </div>
 
+              {/* Vendor Rating Section */}
               <div className="p-6 md:p-8 bg-slate-50/60">
+                <VendorRating
+                  ratings={vendorBasics.basics.vendorRatings || {
+                    priceSupport: 0,
+                    deliveryTime: 0,
+                    tracking: 0,
+                    salesSupport: 0,
+                    damageLoss: 0,
+                  }}
+                  onChange={(field, value) => vendorBasics.setVendorRating(field, value)}
+                  errors={{}}
+                />
+              </div>
+
+              <div className="p-6 md:p-8">
                 <TransportSection
                   volumetric={volumetric}
                   transportMode={transportMode}
