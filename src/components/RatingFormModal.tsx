@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Star, Loader2 } from 'lucide-react';
 import { StarIcon } from '@heroicons/react/24/solid';
 import { StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
@@ -143,6 +144,18 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showValidation, setShowValidation] = useState(false);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   // Check if all ratings are filled
   const allRated = Object.values(ratings).every((v) => v > 0);
   const overallRating = allRated ? calculateOverallRating(ratings) : 0;
@@ -224,18 +237,27 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
     }
   };
 
+  // Don't render anything if not open
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  // Modal content
+  const modalContent = (
+    <div
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ zIndex: 99999 }}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
+        style={{ zIndex: 99999 }}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-hidden animate-in zoom-in-95 fade-in-0 duration-200">
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-hidden"
+        style={{ zIndex: 100000 }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200">
           <div className="flex items-center gap-2">
@@ -367,6 +389,10 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
       </div>
     </div>
   );
+
+  // Use React Portal to render modal at document body level
+  // This prevents z-index and overflow issues from parent containers
+  return createPortal(modalContent, document.body);
 };
 
 export default RatingFormModal;
