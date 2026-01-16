@@ -359,6 +359,39 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const [maxTime, setMaxTime] = useState(300);
     const [minRating, setMinRating] = useState(0);
 
+    // Rating modal state (lifted to page level to prevent multiple instances)
+    const [ratingModalState, setRatingModalState] = useState<{
+        isOpen: boolean;
+        vendorId: string;
+        vendorName: string;
+        isTemporaryVendor: boolean;
+        onRatingSubmitted?: (newRating: number) => void;
+    }>({
+        isOpen: false,
+        vendorId: '',
+        vendorName: '',
+        isTemporaryVendor: false,
+    });
+
+    const openRatingModal = (config: {
+        vendorId: string;
+        vendorName: string;
+        isTemporaryVendor: boolean;
+        onRatingSubmitted?: (newRating: number) => void;
+    }) => {
+        setRatingModalState({
+            isOpen: true,
+            ...config,
+        });
+    };
+
+    const closeRatingModal = () => {
+        setRatingModalState(prev => ({
+            ...prev,
+            isOpen: false,
+        }));
+    };
+
     // 📰 News Popup State (smart engagement during long calculations)
     const [showNewsPopup, setShowNewsPopup] = useState(false);
     const [resultsReady, setResultsReady] = useState(false);
@@ -2094,6 +2127,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                         isBestValue={processedBestValueQuotes.includes(item)}
                                                                         isFastest={item === fastestQuote}
                                                                         vendorStatusMap={vendorStatusMap}
+                                                                        onOpenRatingModal={openRatingModal}
                                                                     />
                                                                 ))}
                                                             </div>
@@ -2117,6 +2151,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                             isBestValue={processedBestValueQuotes.includes(item)}
                                                                             isFastest={item === fastestQuote}
                                                                             vendorStatusMap={vendorStatusMap}
+                                                                            onOpenRatingModal={openRatingModal}
                                                                         />
                                                                     ))}
                                                                 </div>
@@ -2167,6 +2202,20 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     </div>
                 </div>
             </div>
+
+            {/* Single Rating Modal at Page Level - prevents multiple instances and z-index/overflow issues */}
+            <RatingFormModal
+                isOpen={ratingModalState.isOpen}
+                onClose={closeRatingModal}
+                vendorId={ratingModalState.vendorId}
+                vendorName={ratingModalState.vendorName}
+                isTemporaryVendor={ratingModalState.isTemporaryVendor}
+                onRatingSubmitted={(newRating) => {
+                    if (ratingModalState.onRatingSubmitted) {
+                        ratingModalState.onRatingSubmitted(newRating);
+                    }
+                }}
+            />
         </div>
     );
 };
@@ -2713,14 +2762,20 @@ const VendorResultCard = ({
     isBestValue,
     isFastest,
     vendorStatusMap,
+    onOpenRatingModal,
 }: {
     quote: any;
     isBestValue?: boolean;
     isFastest?: boolean;
     vendorStatusMap: Record<string, 'pending' | 'approved' | 'rejected'>;
+    onOpenRatingModal: (config: {
+        vendorId: string;
+        vendorName: string;
+        isTemporaryVendor: boolean;
+        onRatingSubmitted?: (newRating: number) => void;
+    }) => void;
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
     const [currentRating, setCurrentRating] = useState<number>(
         quote.rating ?? quote.transporterData?.rating ?? 4
     );
@@ -3016,7 +3071,12 @@ const VendorResultCard = ({
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setIsRatingModalOpen(true);
+                                    onOpenRatingModal({
+                                        vendorId: quote.companyId || quote.transporterData?._id || quote._id,
+                                        vendorName: quote.companyName,
+                                        isTemporaryVendor: quote.isTiedUp === true || quote.isTemporaryTransporter === true,
+                                        onRatingSubmitted: (newRating) => setCurrentRating(newRating),
+                                    });
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-full transition-colors border border-indigo-200 hover:border-indigo-300"
                                 title="Rate this vendor"
@@ -3088,23 +3148,10 @@ const VendorResultCard = ({
             </div>
 
 
+
             <AnimatePresence>
                 {isExpanded && <BifurcationDetails quote={quote} />}
             </AnimatePresence>
-
-            {/* Rating Form Modal */}
-            <RatingFormModal
-                isOpen={isRatingModalOpen}
-                onClose={() => setIsRatingModalOpen(false)}
-                vendorId={quote.companyId || quote.transporterData?._id || quote._id}
-                vendorName={quote.companyName}
-                isTemporaryVendor={quote.isTiedUp === true || quote.isTemporaryTransporter === true}
-                onRatingSubmitted={(newRating) => {
-                    setCurrentRating(newRating);
-                    // TODO: In future, disable multiple ratings per vendor
-                    // For now, allow multiple ratings during development phase
-                }}
-            />
         </div>
     );
 };
