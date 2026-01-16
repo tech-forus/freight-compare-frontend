@@ -62,7 +62,7 @@ const VendorDetailsPage = () => {
           state: '',
           city: '',
           pincode: '',
-          rating: stateData.vendorInfo.rating || 4.6,
+          rating: stateData.vendorInfo.rating ?? 4.6,
           approvalStatus: stateData.vendorInfo.approvalStatus || 'approved',
           description: stateData.vendorInfo.description,
         };
@@ -121,7 +121,7 @@ const VendorDetailsPage = () => {
           state: publicData.state || '',
           city: publicData.city || '',
           pincode: publicData.pincode || '',
-          rating: publicData.rating || 3,
+          rating: publicData.rating ?? 3,
           approvalStatus: 'approved', // Public transporters are always approved
         };
         setVendor(mappedVendor as any);
