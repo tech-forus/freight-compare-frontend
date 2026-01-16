@@ -999,12 +999,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             console.log('[VENDOR DEBUG] Tied-up vendors:', all.filter(q => q.isTiedUp).map(q => q.companyName));
             console.log('[VENDOR DEBUG] Available vendors:', all.filter(q => !q.isTiedUp).map(q => q.companyName));
 
-            // DEBUG: Log rating for each vendor from backend
-            console.log('[RATING DEBUG FRONTEND] Vendor ratings from backend:');
-            all.forEach(q => {
-                console.log(`  - ${q.companyName}: rating = ${q.rating}, transporterData.rating = ${q.transporterData?.rating}`);
-            });
-
             // Move all 'DP World' quotes out of tied-up into other vendors
             const dpWorldQuotes = all.filter(
                 (q) => (q.companyName || "").trim().toLowerCase() === "dp world"
