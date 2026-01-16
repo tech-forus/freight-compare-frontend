@@ -1761,11 +1761,24 @@ const EditVendorModal: React.FC<EditVendorModalProps> = ({ vendor, onClose, onSa
                     />
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-slate-500">1.0</span>
-                      <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-md">
-                        {typeof formData.basics.companyRating === 'number'
-                          ? formData.basics.companyRating.toFixed(1)
-                          : '4.0'} / 5.0
-                      </span>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-md">
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.basics.companyRating}
+                          onChange={(e) => {
+                            let val = parseFloat(e.target.value);
+                            if (isNaN(val)) val = 0;
+                            if (val > 5) val = 5;
+                            // Don't clamp min to 1 here to allow typing
+                            setBasicField('companyRating', val);
+                          }}
+                          className="w-16 bg-transparent border-b border-blue-300 focus:border-blue-600 focus:outline-none text-center"
+                        />
+                        <span>/ 5.0</span>
+                      </div>
                       <span className="text-xs text-slate-500">5.0</span>
                     </div>
                   </div>
@@ -2168,7 +2181,7 @@ const EditVendorModal: React.FC<EditVendorModalProps> = ({ vendor, onClose, onSa
               )}
             </button>
           </div>
-      </form>
+        </form>
       </div>
     </div>
   );

@@ -49,6 +49,10 @@ import PincodeAutocomplete from "../components/PincodeAutocomplete";
 // 🔽 Verification badge for vendor status display
 import VerificationBadge, { VerificationStatus } from "../components/VerificationBadge";
 
+// 🔽 Rating components for vendor ratings display and submission
+import RatingBreakdownTooltip from "../components/RatingBreakdownTooltip";
+import RatingFormModal from "../components/RatingFormModal";
+
 // 🔽 FTL + Wheelseye quotes from service (no inline vendor code)
 import { buildFtlAndWheelseyeQuotes, getGoogleMapsDistance } from "../services/wheelseye";
 
@@ -2716,6 +2720,10 @@ const VendorResultCard = ({
     vendorStatusMap: Record<string, 'pending' | 'approved' | 'rejected'>;
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+    const [currentRating, setCurrentRating] = useState<number>(
+        quote.rating ?? quote.transporterData?.rating ?? 4
+    );
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -2991,10 +2999,31 @@ const VendorResultCard = ({
                             <span className="inline-flex items-center gap-1 text-sm text-slate-600">
                                 <span>Rating:</span>
                                 <strong className="text-slate-800">
-                                    {(quote.rating ?? quote.transporterData?.rating ?? 4).toFixed(1)}
+                                    {currentRating.toFixed(1)}
                                 </strong>
                                 <span className="text-yellow-500">★</span>
+                                {/* Rating Info Icon with Tooltip */}
+                                <RatingBreakdownTooltip
+                                    vendorRatings={quote.vendorRatings || quote.transporterData?.vendorRatings}
+                                    totalRatings={quote.totalRatings || 0}
+                                    overallRating={currentRating}
+                                />
                             </span>
+                        )}
+
+                        {/* Rate Button - show for all vendors except special vendors */}
+                        {!isSpecialVendor && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsRatingModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-full transition-colors border border-indigo-200 hover:border-indigo-300"
+                                title="Rate this vendor"
+                            >
+                                <Star size={12} />
+                                <span>Rate</span>
+                            </button>
                         )}
                     </div>
                 </div>
@@ -3062,6 +3091,20 @@ const VendorResultCard = ({
             <AnimatePresence>
                 {isExpanded && <BifurcationDetails quote={quote} />}
             </AnimatePresence>
+
+            {/* Rating Form Modal */}
+            <RatingFormModal
+                isOpen={isRatingModalOpen}
+                onClose={() => setIsRatingModalOpen(false)}
+                vendorId={quote.companyId || quote.transporterData?._id || quote._id}
+                vendorName={quote.companyName}
+                isTemporaryVendor={quote.isTiedUp === true || quote.isTemporaryTransporter === true}
+                onRatingSubmitted={(newRating) => {
+                    setCurrentRating(newRating);
+                    // TODO: In future, disable multiple ratings per vendor
+                    // For now, allow multiple ratings during development phase
+                }}
+            />
         </div>
     );
 };
