@@ -23,7 +23,7 @@ export interface RatingFormModalProps {
   vendorId: string;
   vendorName: string;
   isTemporaryVendor: boolean;
-  onRatingSubmitted?: (newRating: number) => void;
+  onRatingSubmitted?: (newRating: number, vendorRatings: VendorRatingsInput) => void;
 }
 
 // =============================================================================
@@ -36,37 +36,37 @@ const RATING_PARAMS: {
   description: string;
   icon: string;
 }[] = [
-  {
-    key: 'priceSupport',
-    label: 'Price Support',
-    description: 'How fair and transparent was the pricing?',
-    icon: '💰',
-  },
-  {
-    key: 'deliveryTime',
-    label: 'Delivery Time',
-    description: 'Was the delivery on time as promised?',
-    icon: '🚚',
-  },
-  {
-    key: 'tracking',
-    label: 'Tracking',
-    description: 'How accurate and helpful was shipment tracking?',
-    icon: '📍',
-  },
-  {
-    key: 'salesSupport',
-    label: 'Sales Support',
-    description: 'How responsive and helpful was the support team?',
-    icon: '🎧',
-  },
-  {
-    key: 'damageLoss',
-    label: 'Damage/Loss',
-    description: 'Was your package delivered safely without damage?',
-    icon: '📦',
-  },
-];
+    {
+      key: 'priceSupport',
+      label: 'Price Support',
+      description: 'How fair and transparent was the pricing?',
+      icon: '💰',
+    },
+    {
+      key: 'deliveryTime',
+      label: 'Delivery Time',
+      description: 'Was the delivery on time as promised?',
+      icon: '🚚',
+    },
+    {
+      key: 'tracking',
+      label: 'Tracking',
+      description: 'How accurate and helpful was shipment tracking?',
+      icon: '📍',
+    },
+    {
+      key: 'salesSupport',
+      label: 'Sales Support',
+      description: 'How responsive and helpful was the support team?',
+      icon: '🎧',
+    },
+    {
+      key: 'damageLoss',
+      label: 'Damage/Loss',
+      description: 'Was your package delivered safely without damage?',
+      icon: '📦',
+    },
+  ];
 
 // =============================================================================
 // STAR INPUT COMPONENT
@@ -91,9 +91,8 @@ const StarInput: React.FC<StarInputProps> = ({ value, onChange, error }) => {
           onClick={() => onChange(star)}
           onMouseEnter={() => setHoverValue(star)}
           onMouseLeave={() => setHoverValue(0)}
-          className={`p-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 rounded transition-transform hover:scale-110 ${
-            error && value === 0 ? 'ring-1 ring-red-300' : ''
-          }`}
+          className={`p-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 rounded transition-transform hover:scale-110 ${error && value === 0 ? 'ring-1 ring-red-300' : ''
+            }`}
           aria-label={`Rate ${star} out of 5`}
         >
           {star <= displayValue ? (
@@ -191,9 +190,9 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
       const response = await axios.post(`${apiBase}/api/ratings/submit`, payload);
 
       if (response.data.success) {
-        // Notify parent of new rating
+        // Notify parent of new rating and ratings breakdown
         if (onRatingSubmitted) {
-          onRatingSubmitted(response.data.newOverallRating || overallRating);
+          onRatingSubmitted(response.data.newOverallRating || overallRating, ratings);
         }
 
         // Reset form and close
@@ -214,7 +213,7 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
       console.error('Rating submission error:', err);
       setError(
         err.response?.data?.message ||
-          'Failed to submit rating. Please try again.'
+        'Failed to submit rating. Please try again.'
       );
     } finally {
       setIsSubmitting(false);
@@ -287,11 +286,10 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
               return (
                 <div
                   key={param.key}
-                  className={`p-3 rounded-lg transition-colors ${
-                    hasError
-                      ? 'bg-red-50 border border-red-200'
-                      : 'bg-slate-50'
-                  }`}
+                  className={`p-3 rounded-lg transition-colors ${hasError
+                    ? 'bg-red-50 border border-red-200'
+                    : 'bg-slate-50'
+                    }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-lg">{param.icon}</span>

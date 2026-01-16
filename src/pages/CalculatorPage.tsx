@@ -365,7 +365,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         vendorId: string;
         vendorName: string;
         isTemporaryVendor: boolean;
-        onRatingSubmitted?: (newRating: number) => void;
+        onRatingSubmitted?: (newRating: number, vendorRatings: {
+            priceSupport: number;
+            deliveryTime: number;
+            tracking: number;
+            salesSupport: number;
+            damageLoss: number;
+        }) => void;
     }>({
         isOpen: false,
         vendorId: '',
@@ -377,7 +383,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         vendorId: string;
         vendorName: string;
         isTemporaryVendor: boolean;
-        onRatingSubmitted?: (newRating: number) => void;
+        onRatingSubmitted?: (newRating: number, vendorRatings: {
+            priceSupport: number;
+            deliveryTime: number;
+            tracking: number;
+            salesSupport: number;
+            damageLoss: number;
+        }) => void;
     }) => {
         setRatingModalState({
             isOpen: true,
@@ -2210,9 +2222,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 vendorId={ratingModalState.vendorId}
                 vendorName={ratingModalState.vendorName}
                 isTemporaryVendor={ratingModalState.isTemporaryVendor}
-                onRatingSubmitted={(newRating) => {
+                onRatingSubmitted={(newRating, vendorRatings) => {
                     if (ratingModalState.onRatingSubmitted) {
-                        ratingModalState.onRatingSubmitted(newRating);
+                        ratingModalState.onRatingSubmitted(newRating, vendorRatings);
                     }
                 }}
             />
@@ -2772,13 +2784,29 @@ const VendorResultCard = ({
         vendorId: string;
         vendorName: string;
         isTemporaryVendor: boolean;
-        onRatingSubmitted?: (newRating: number) => void;
+        onRatingSubmitted?: (newRating: number, vendorRatings: {
+            priceSupport: number;
+            deliveryTime: number;
+            tracking: number;
+            salesSupport: number;
+            damageLoss: number;
+        }) => void;
     }) => void;
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [currentRating, setCurrentRating] = useState<number>(
         quote.rating ?? quote.transporterData?.rating ?? 4
     );
+    // Local state for vendor ratings breakdown (updated after user submits a rating)
+    const [currentVendorRatings, setCurrentVendorRatings] = useState<{
+        priceSupport: number;
+        deliveryTime: number;
+        tracking: number;
+        salesSupport: number;
+        damageLoss: number;
+    } | undefined>(quote.vendorRatings || quote.transporterData?.vendorRatings);
+    const [totalRatings, setTotalRatings] = useState<number>(quote.totalRatings || 0);
+
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -3059,8 +3087,8 @@ const VendorResultCard = ({
                                 <span className="text-yellow-500">★</span>
                                 {/* Rating Info Icon with Tooltip */}
                                 <RatingBreakdownTooltip
-                                    vendorRatings={quote.vendorRatings || quote.transporterData?.vendorRatings}
-                                    totalRatings={quote.totalRatings || 0}
+                                    vendorRatings={currentVendorRatings}
+                                    totalRatings={totalRatings}
                                     overallRating={currentRating}
                                 />
                             </span>
@@ -3075,7 +3103,11 @@ const VendorResultCard = ({
                                         vendorId: quote.companyId || quote.transporterData?._id || quote._id,
                                         vendorName: quote.companyName,
                                         isTemporaryVendor: quote.isTiedUp === true || quote.isTemporaryTransporter === true,
-                                        onRatingSubmitted: (newRating) => setCurrentRating(newRating),
+                                        onRatingSubmitted: (newRating, vendorRatings) => {
+                                            setCurrentRating(newRating);
+                                            setCurrentVendorRatings(vendorRatings);
+                                            setTotalRatings(prev => prev + 1);
+                                        },
                                     });
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-full transition-colors border border-indigo-200 hover:border-indigo-300"
