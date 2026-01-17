@@ -2830,6 +2830,9 @@ const VendorResultCard = ({
         setTotalRatings(quote.totalRatings || 0);
     }, [quote.rating, quote.transporterData?.rating, quote.vendorRatings, quote.transporterData?.vendorRatings, quote.totalRatings]);
 
+    // DEBUG: Log rating data to diagnose reset issue
+    console.log(`[Rating Debug] ${quote.companyName}: quote.rating=${quote.rating}, transporterData.rating=${quote.transporterData?.rating}, currentRating=${currentRating}, totalRatings=${quote.totalRatings}`);
+
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -3147,8 +3150,8 @@ const VendorResultCard = ({
                                 });
                             }}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full transition-colors border ${isSpecialVendor
-                                    ? "text-amber-700 hover:text-amber-900 hover:bg-amber-100 border-amber-300 hover:border-amber-400"
-                                    : "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300"
+                                ? "text-amber-700 hover:text-amber-900 hover:bg-amber-100 border-amber-300 hover:border-amber-400"
+                                : "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300"
                                 }`}
                             title="Rate this vendor"
                         >
