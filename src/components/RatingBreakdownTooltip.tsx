@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Info, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { VendorType, isSpecialVendorId } from '../constants/specialVendors';
 
 // =============================================================================
 // TYPES
@@ -27,6 +28,7 @@ export interface RatingBreakdownTooltipProps {
   overallRating?: number;
   vendorId?: string;
   isTemporaryVendor?: boolean;
+  vendorType?: VendorType;
 }
 
 // =============================================================================
@@ -55,6 +57,7 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
   overallRating = 0,
   vendorId,
   isTemporaryVendor = false,
+  vendorType,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
@@ -67,14 +70,34 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
   // Check if vendor has any ratings
   const hasRatings = vendorRatings && Object.values(vendorRatings).some((v) => v > 0);
 
+  // Determine if this is a special vendor
+  const isSpecialVendor = vendorType === 'special' || (vendorId ? isSpecialVendorId(vendorId) : false);
+
+  // Determine the resolved vendor type for API calls
+  const resolvedVendorType = vendorType || (isSpecialVendor ? 'special' : (isTemporaryVendor ? 'temporary' : 'regular'));
+
   // Fetch reviews when expanded
   const fetchReviews = useCallback(async () => {
     if (!vendorId || reviews.length > 0) return;
 
     setLoadingReviews(true);
     try {
+      // Get API base URL from environment or use default
+      const apiBase = (import.meta.env.VITE_API_BASE_URL as string) || '';
+
+      // Use vendorType query param for special vendors, fallback to isTemporary for backward compatibility
+      const queryParams = new URLSearchParams({
+        limit: '5',
+      });
+
+      if (resolvedVendorType === 'special') {
+        queryParams.set('vendorType', 'special');
+      } else {
+        queryParams.set('isTemporary', String(isTemporaryVendor));
+      }
+
       const response = await fetch(
-        `/api/ratings/vendor/${vendorId}?isTemporary=${isTemporaryVendor}&limit=5`
+        `${apiBase}/api/ratings/vendor/${vendorId}?${queryParams.toString()}`
       );
       const data = await response.json();
       if (data.success && data.ratings) {
@@ -85,7 +108,7 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
     } finally {
       setLoadingReviews(false);
     }
-  }, [vendorId, isTemporaryVendor, reviews.length]);
+  }, [vendorId, isTemporaryVendor, resolvedVendorType, reviews.length]);
 
   // Handle toggle reviews
   const handleToggleReviews = (e: React.MouseEvent) => {
@@ -160,7 +183,9 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
   const tooltipContent = isVisible ? (
     <div
       ref={tooltipRef}
-      className="fixed w-64 bg-white rounded-lg shadow-xl border border-slate-200 p-4 animate-in fade-in-0 zoom-in-95 duration-200"
+      className={`fixed w-64 bg-white rounded-lg shadow-xl border p-4 animate-in fade-in-0 zoom-in-95 duration-200 ${
+        isSpecialVendor ? 'border-amber-200' : 'border-slate-200'
+      }`}
       style={{
         top: tooltipPosition.top,
         left: tooltipPosition.left,
@@ -171,12 +196,19 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
     >
       {/* Arrow */}
       <div
-        className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-slate-200 rotate-45"
+        className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t rotate-45 ${
+          isSpecialVendor ? 'border-amber-200' : 'border-slate-200'
+        }`}
         style={{ zIndex: -1 }}
       />
 
-      <h4 className="text-sm font-semibold text-slate-800 mb-3">
+      <h4 className="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
         Rating Breakdown
+        {isSpecialVendor && (
+          <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">
+            Partner
+          </span>
+        )}
       </h4>
 
       {hasRatings ? (
@@ -222,7 +254,11 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
             <div className="mt-2">
               <button
                 onClick={handleToggleReviews}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                className={`w-full flex items-center justify-center gap-1.5 py-1.5 text-xs rounded transition-colors ${
+                  isSpecialVendor
+                    ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'
+                    : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                }`}
               >
                 <MessageSquare size={12} />
                 <span>{showReviews ? 'Hide Reviews' : 'View Reviews'}</span>
@@ -234,7 +270,9 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
                 <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
                   {loadingReviews ? (
                     <div className="text-center py-2">
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                      <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin mx-auto ${
+                        isSpecialVendor ? 'border-amber-500' : 'border-blue-500'
+                      }`} />
                     </div>
                   ) : reviews.length > 0 ? (
                     reviews.map((review) => (
@@ -280,7 +318,7 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
         <div className="text-center py-2">
           <p className="text-xs text-slate-500">No detailed ratings yet</p>
           <p className="text-xs text-slate-400 mt-1">
-            Be the first to rate this vendor!
+            Be the first to rate this {isSpecialVendor ? 'partner' : 'vendor'}!
           </p>
         </div>
       )}
@@ -293,7 +331,11 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
       <button
         ref={buttonRef}
         type="button"
-        className="p-0.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+        className={`p-0.5 transition-colors focus:outline-none ${
+          isSpecialVendor
+            ? 'text-amber-400 hover:text-amber-600'
+            : 'text-slate-400 hover:text-slate-600'
+        }`}
         onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
         onClick={(e) => {
@@ -312,4 +354,3 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
 };
 
 export default RatingBreakdownTooltip;
-

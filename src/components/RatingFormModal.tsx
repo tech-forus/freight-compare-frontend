@@ -4,6 +4,7 @@ import { X, Star, Loader2 } from 'lucide-react';
 import { StarIcon } from '@heroicons/react/24/solid';
 import { StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { VendorType } from '../constants/specialVendors';
 
 // =============================================================================
 // TYPES
@@ -23,6 +24,7 @@ export interface RatingFormModalProps {
   vendorId: string;
   vendorName: string;
   isTemporaryVendor: boolean;
+  vendorType?: VendorType;
   onRatingSubmitted?: (newRating: number, vendorRatings: VendorRatingsInput) => void;
 }
 
@@ -129,6 +131,7 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
   vendorId,
   vendorName,
   isTemporaryVendor,
+  vendorType,
   onRatingSubmitted,
 }) => {
   const [ratings, setRatings] = useState<VendorRatingsInput>({
@@ -142,6 +145,9 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showValidation, setShowValidation] = useState(false);
+
+  // Determine if this is a special vendor (partner)
+  const isSpecialVendor = vendorType === 'special';
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -180,6 +186,7 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
       const payload = {
         vendorId,
         isTemporaryVendor,
+        vendorType: vendorType || (isTemporaryVendor ? 'temporary' : 'regular'),
         ratings,
         comment: comment.trim() || null,
         overallRating: Math.round(overallRating * 10) / 10,
@@ -257,13 +264,22 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-hidden"
         style={{ zIndex: 100000 }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+        {/* Header - different styling for special vendors (partners) */}
+        <div className={`flex items-center justify-between p-4 border-b ${
+          isSpecialVendor
+            ? 'border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50'
+            : 'border-slate-200'
+        }`}>
           <div className="flex items-center gap-2">
-            <Star className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-semibold text-slate-800">
-              Rate {vendorName}
-            </h2>
+            <Star className={`w-5 h-5 ${isSpecialVendor ? 'text-amber-500' : 'text-amber-400'}`} />
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800">
+                Rate {vendorName}
+              </h2>
+              {isSpecialVendor && (
+                <span className="text-xs text-amber-600 font-medium">Our Partner</span>
+              )}
+            </div>
           </div>
           <button
             onClick={handleClose}
@@ -331,7 +347,11 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
 
           {/* Overall Rating Preview */}
           {allRated && (
-            <div className="mt-4 p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+            <div className={`mt-4 p-3 rounded-lg border ${
+              isSpecialVendor
+                ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300'
+                : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+            }`}>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-700">
                   Overall Rating
@@ -356,7 +376,9 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-slate-200 bg-slate-50">
+        <div className={`flex items-center justify-between p-4 border-t ${
+          isSpecialVendor ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'
+        }`}>
           <p className="text-xs text-slate-500">
             <span className="text-red-500">*</span> All ratings required
           </p>
@@ -371,7 +393,11 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || !allRated}
-              className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className={`px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
+                isSpecialVendor
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-indigo-600 hover:bg-indigo-700'
+              }`}
             >
               {isSubmitting ? (
                 <>

@@ -56,6 +56,16 @@ import RatingFormModal from "../components/RatingFormModal";
 // 🔽 FTL + Wheelseye quotes from service (no inline vendor code)
 import { buildFtlAndWheelseyeQuotes, getGoogleMapsDistance } from "../services/wheelseye";
 
+// 🔽 Special vendor constants for Wheelseye FTL and LOCAL FTL
+import {
+    SPECIAL_VENDOR_IDS,
+    SPECIAL_VENDOR_NAMES,
+    isSpecialVendorId,
+    isSpecialVendorName,
+    getSpecialVendorIdByName,
+    VendorType
+} from "../constants/specialVendors";
+
 // 🔽 Fetch vendor approval statuses from Super Admin system
 import { getTemporaryTransporters } from "../services/api";
 
@@ -365,6 +375,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         vendorId: string;
         vendorName: string;
         isTemporaryVendor: boolean;
+        vendorType?: VendorType;
         onRatingSubmitted?: (newRating: number, vendorRatings: {
             priceSupport: number;
             deliveryTime: number;
@@ -377,12 +388,14 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         vendorId: '',
         vendorName: '',
         isTemporaryVendor: false,
+        vendorType: 'regular',
     });
 
     const openRatingModal = (config: {
         vendorId: string;
         vendorName: string;
         isTemporaryVendor: boolean;
+        vendorType?: VendorType;
         onRatingSubmitted?: (newRating: number, vendorRatings: {
             priceSupport: number;
             deliveryTime: number;
@@ -2222,6 +2235,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 vendorId={ratingModalState.vendorId}
                 vendorName={ratingModalState.vendorName}
                 isTemporaryVendor={ratingModalState.isTemporaryVendor}
+                vendorType={ratingModalState.vendorType}
                 onRatingSubmitted={(newRating, vendorRatings) => {
                     if (ratingModalState.onRatingSubmitted) {
                         ratingModalState.onRatingSubmitted(newRating, vendorRatings);
@@ -2784,6 +2798,7 @@ const VendorResultCard = ({
         vendorId: string;
         vendorName: string;
         isTemporaryVendor: boolean;
+        vendorType?: VendorType;
         onRatingSubmitted?: (newRating: number, vendorRatings: {
             priceSupport: number;
             deliveryTime: number;
@@ -3077,48 +3092,62 @@ const VendorResultCard = ({
                             </a>
                         )}
 
-                        {/* Internal Rating - show for all vendors except LOCAL FTL */}
-                        {quote.companyName !== "LOCAL FTL" && (
-                            <span className="inline-flex items-center gap-1 text-sm text-slate-600">
-                                <span>Rating:</span>
-                                <strong className="text-slate-800">
-                                    {currentRating.toFixed(1)}
-                                </strong>
-                                <span className="text-yellow-500">★</span>
-                                {/* Rating Info Icon with Tooltip */}
-                                <RatingBreakdownTooltip
-                                    vendorRatings={currentVendorRatings}
-                                    totalRatings={totalRatings}
-                                    overallRating={currentRating}
-                                    vendorId={quote.companyId || quote.transporterData?._id || quote._id}
-                                    isTemporaryVendor={quote.isTiedUp === true || quote.isTemporaryTransporter === true}
-                                />
-                            </span>
-                        )}
+                        {/* Internal Rating - show for all vendors including special vendors */}
+                        <span className="inline-flex items-center gap-1 text-sm text-slate-600">
+                            <span>Rating:</span>
+                            <strong className="text-slate-800">
+                                {currentRating.toFixed(1)}
+                            </strong>
+                            <span className="text-yellow-500">★</span>
+                            {/* Rating Info Icon with Tooltip */}
+                            <RatingBreakdownTooltip
+                                vendorRatings={currentVendorRatings}
+                                totalRatings={totalRatings}
+                                overallRating={currentRating}
+                                vendorId={isSpecialVendor
+                                    ? (quote.transporterData?._id || getSpecialVendorIdByName(quote.companyName))
+                                    : (quote.companyId || quote.transporterData?._id || quote._id)}
+                                isTemporaryVendor={quote.isTiedUp === true || quote.isTemporaryTransporter === true}
+                                vendorType={isSpecialVendor ? "special" : (quote.isTiedUp === true || quote.isTemporaryTransporter === true ? "temporary" : "regular")}
+                            />
+                        </span>
 
-                        {/* Rate Button - show for all vendors except special vendors */}
-                        {!isSpecialVendor && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onOpenRatingModal({
-                                        vendorId: quote.companyId || quote.transporterData?._id || quote._id,
-                                        vendorName: quote.companyName,
-                                        isTemporaryVendor: quote.isTiedUp === true || quote.isTemporaryTransporter === true,
-                                        onRatingSubmitted: (newRating, vendorRatings) => {
-                                            setCurrentRating(newRating);
-                                            setCurrentVendorRatings(vendorRatings);
-                                            setTotalRatings(prev => prev + 1);
-                                        },
-                                    });
-                                }}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-full transition-colors border border-indigo-200 hover:border-indigo-300"
-                                title="Rate this vendor"
-                            >
-                                <Star size={12} />
-                                <span>Rate</span>
-                            </button>
-                        )}
+                        {/* Rate Button - show for all vendors including special vendors (partner styling for special vendors) */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // Determine the correct vendorId for rating
+                                const vendorIdForRating = isSpecialVendor
+                                    ? (quote.transporterData?._id || getSpecialVendorIdByName(quote.companyName))
+                                    : (quote.companyId || quote.transporterData?._id || quote._id);
+
+                                // Determine vendorType
+                                const vendorTypeForRating: VendorType = isSpecialVendor
+                                    ? "special"
+                                    : (quote.isTiedUp === true || quote.isTemporaryTransporter === true ? "temporary" : "regular");
+
+                                onOpenRatingModal({
+                                    vendorId: vendorIdForRating,
+                                    vendorName: quote.companyName,
+                                    isTemporaryVendor: quote.isTiedUp === true || quote.isTemporaryTransporter === true || isSpecialVendor,
+                                    vendorType: vendorTypeForRating,
+                                    onRatingSubmitted: (newRating, vendorRatings) => {
+                                        setCurrentRating(newRating);
+                                        setCurrentVendorRatings(vendorRatings);
+                                        setTotalRatings(prev => prev + 1);
+                                    },
+                                });
+                            }}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full transition-colors border ${
+                                isSpecialVendor
+                                    ? "text-amber-700 hover:text-amber-900 hover:bg-amber-100 border-amber-300 hover:border-amber-400"
+                                    : "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300"
+                            }`}
+                            title="Rate this vendor"
+                        >
+                            <Star size={12} />
+                            <span>Rate</span>
+                        </button>
                     </div>
                 </div>
 

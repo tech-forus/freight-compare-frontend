@@ -1,6 +1,7 @@
 // src/services/wheelseye.ts
 import { computeWheelseyePrice } from "./wheelseyeEngine";
 import { parseDistanceToKm } from "../utils/distanceParser";
+import { SPECIAL_VENDOR_IDS, SPECIAL_VENDOR_NAMES, SPECIAL_VENDOR_DEFAULT_RATING } from "../constants/specialVendors";
 
 import axios from "axios";
 
@@ -543,14 +544,14 @@ export async function buildFtlAndWheelseyeQuotes(opts: {
         message: "",
         isHidden: false,
         transporterData: {
-          _id: "local-ftl-transporter",
-          rating: 4.6,
-          name: "LOCAL FTL",
+          _id: SPECIAL_VENDOR_IDS.LOCAL_FTL,
+          rating: SPECIAL_VENDOR_DEFAULT_RATING,
+          name: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
           type: "FTL"
         },
-        companyName: "LOCAL FTL",
-        transporterName: "LOCAL FTL",
-        category: "LOCAL FTL",
+        companyName: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
+        transporterName: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
+        category: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
         totalCharges: ftlPrice,
         price: ftlPrice,
         total: ftlPrice,
@@ -607,14 +608,14 @@ export async function buildFtlAndWheelseyeQuotes(opts: {
         message: "",
         isHidden: false,
         transporterData: {
-          _id: "wheelseye-ftl-transporter",
-          rating: 4.6,
-          name: "Wheelseye FTL",
+          _id: SPECIAL_VENDOR_IDS.WHEELSEYE_FTL,
+          rating: SPECIAL_VENDOR_DEFAULT_RATING,
+          name: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
           type: "FTL",
         },
-        companyName: "Wheelseye FTL",
-        transporterName: "Wheelseye FTL",
-        category: "Wheelseye FTL",
+        companyName: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
+        transporterName: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
+        category: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
 
         totalCharges: wheelseyePrice,
         price: wheelseyePrice,
