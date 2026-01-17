@@ -2830,9 +2830,6 @@ const VendorResultCard = ({
         setTotalRatings(quote.totalRatings || 0);
     }, [quote.rating, quote.transporterData?.rating, quote.vendorRatings, quote.transporterData?.vendorRatings, quote.totalRatings]);
 
-    // DEBUG: Log rating data to diagnose reset issue
-    console.log(`[Rating Debug] ${quote.companyName}: quote.rating=${quote.rating}, transporterData.rating=${quote.transporterData?.rating}, currentRating=${currentRating}, totalRatings=${quote.totalRatings}`);
-
     const { user } = useAuth();
     const navigate = useNavigate();
 
