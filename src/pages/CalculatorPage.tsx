@@ -3090,6 +3090,8 @@ const VendorResultCard = ({
                                     vendorRatings={currentVendorRatings}
                                     totalRatings={totalRatings}
                                     overallRating={currentRating}
+                                    vendorId={quote.companyId || quote.transporterData?._id || quote._id}
+                                    isTemporaryVendor={quote.isTiedUp === true || quote.isTemporaryTransporter === true}
                                 />
                             </span>
                         )}

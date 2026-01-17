@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Info } from 'lucide-react';
+import { Info, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 
 // =============================================================================
 // TYPES
@@ -14,10 +14,19 @@ export interface VendorRatingsData {
   damageLoss: number;
 }
 
+interface ReviewComment {
+  _id: string;
+  comment: string | null;
+  overallRating: number;
+  createdAt: string;
+}
+
 export interface RatingBreakdownTooltipProps {
   vendorRatings?: VendorRatingsData;
   totalRatings?: number;
   overallRating?: number;
+  vendorId?: string;
+  isTemporaryVendor?: boolean;
 }
 
 // =============================================================================
@@ -44,14 +53,59 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
   vendorRatings,
   totalRatings = 0,
   overallRating = 0,
+  vendorId,
+  isTemporaryVendor = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const [showReviews, setShowReviews] = useState(false);
+  const [reviews, setReviews] = useState<ReviewComment[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Check if vendor has any ratings
   const hasRatings = vendorRatings && Object.values(vendorRatings).some((v) => v > 0);
+
+  // Fetch reviews when expanded
+  const fetchReviews = useCallback(async () => {
+    if (!vendorId || reviews.length > 0) return;
+
+    setLoadingReviews(true);
+    try {
+      const response = await fetch(
+        `/api/ratings/vendor/${vendorId}?isTemporary=${isTemporaryVendor}&limit=5`
+      );
+      const data = await response.json();
+      if (data.success && data.ratings) {
+        setReviews(data.ratings);
+      }
+    } catch (error) {
+      console.error('Failed to fetch reviews:', error);
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, [vendorId, isTemporaryVendor, reviews.length]);
+
+  // Handle toggle reviews
+  const handleToggleReviews = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newShowReviews = !showReviews;
+    setShowReviews(newShowReviews);
+    if (newShowReviews) {
+      fetchReviews();
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
 
   // Calculate tooltip position when visible
   const updatePosition = useCallback(() => {
@@ -162,6 +216,65 @@ const RatingBreakdownTooltip: React.FC<RatingBreakdownTooltipProps> = ({
               Overall: {overallRating.toFixed(1)}★
             </span>
           </div>
+
+          {/* View Reviews Section */}
+          {vendorId && totalRatings > 0 && (
+            <div className="mt-2">
+              <button
+                onClick={handleToggleReviews}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+              >
+                <MessageSquare size={12} />
+                <span>{showReviews ? 'Hide Reviews' : 'View Reviews'}</span>
+                {showReviews ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+
+              {/* Reviews List */}
+              {showReviews && (
+                <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                  {loadingReviews ? (
+                    <div className="text-center py-2">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    </div>
+                  ) : reviews.length > 0 ? (
+                    reviews.map((review) => (
+                      <div
+                        key={review._id}
+                        className="p-2 bg-slate-50 rounded-md border border-slate-100"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1 text-amber-500">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className="text-xs">
+                                {i < Math.round(review.overallRating) ? '★' : '☆'}
+                              </span>
+                            ))}
+                            <span className="text-xs text-slate-600 ml-1">
+                              {review.overallRating.toFixed(1)}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400">
+                            {formatDate(review.createdAt)}
+                          </span>
+                        </div>
+                        {review.comment ? (
+                          <p className="text-xs text-slate-600 leading-relaxed">
+                            "{review.comment}"
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">No comment</p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 text-center py-2">
+                      No reviews with comments yet
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </>
       ) : (
         <div className="text-center py-2">
