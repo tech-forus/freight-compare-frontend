@@ -1,7 +1,7 @@
 // src/services/wheelseye.ts
 import { computeWheelseyePrice } from "./wheelseyeEngine";
 import { parseDistanceToKm } from "../utils/distanceParser";
-import { SPECIAL_VENDOR_IDS, SPECIAL_VENDOR_NAMES, SPECIAL_VENDOR_DEFAULT_RATING } from "../constants/specialVendors";
+import { SPECIAL_VENDOR_IDS, SPECIAL_VENDOR_NAMES, fetchSpecialVendorRating } from "../constants/specialVendors";
 
 import axios from "axios";
 
@@ -536,6 +536,14 @@ export async function buildFtlAndWheelseyeQuotes(opts: {
     isTiedUp: false,
   };
 
+  // ============================================================================
+  // 4) Fetch REAL ratings for special vendors from DB (parallel for performance)
+  // ============================================================================
+  const [localFtlRating, wheelseyeFtlRating] = await Promise.all([
+    fetchSpecialVendorRating(SPECIAL_VENDOR_IDS.LOCAL_FTL),
+    fetchSpecialVendorRating(SPECIAL_VENDOR_IDS.WHEELSEYE_FTL),
+  ]);
+
   // Build FTL quote - vehicle selection based on chargeableWeight
   const ftlQuote =
     !tooLight && isWheelseyeServiceArea(fromPincode)
@@ -545,13 +553,17 @@ export async function buildFtlAndWheelseyeQuotes(opts: {
         isHidden: false,
         transporterData: {
           _id: SPECIAL_VENDOR_IDS.LOCAL_FTL,
-          rating: SPECIAL_VENDOR_DEFAULT_RATING,
+          rating: localFtlRating.rating,
           name: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
           type: "FTL"
         },
         companyName: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
         transporterName: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
         category: SPECIAL_VENDOR_NAMES.LOCAL_FTL,
+        // Rating fields at quote level for consistency with other vendors
+        rating: localFtlRating.rating,
+        vendorRatings: localFtlRating.vendorRatings,
+        totalRatings: localFtlRating.totalRatings,
         totalCharges: ftlPrice,
         price: ftlPrice,
         total: ftlPrice,
@@ -609,13 +621,17 @@ export async function buildFtlAndWheelseyeQuotes(opts: {
         isHidden: false,
         transporterData: {
           _id: SPECIAL_VENDOR_IDS.WHEELSEYE_FTL,
-          rating: SPECIAL_VENDOR_DEFAULT_RATING,
+          rating: wheelseyeFtlRating.rating,
           name: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
           type: "FTL",
         },
         companyName: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
         transporterName: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
         category: SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL,
+        // Rating fields at quote level for consistency with other vendors
+        rating: wheelseyeFtlRating.rating,
+        vendorRatings: wheelseyeFtlRating.vendorRatings,
+        totalRatings: wheelseyeFtlRating.totalRatings,
 
         totalCharges: wheelseyePrice,
         price: wheelseyePrice,

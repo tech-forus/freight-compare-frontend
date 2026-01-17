@@ -192,15 +192,6 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
         overallRating: Math.round(overallRating * 10) / 10,
       };
 
-      // DEBUG: Log exactly what's being sent to rating API
-      console.log('[RatingModal DEBUG] Submitting rating with:', {
-        vendorId,
-        vendorName,
-        vendorType: payload.vendorType,
-        isTemporaryVendor,
-        overallRating: payload.overallRating,
-      });
-
       // Get API base URL from environment or use default
       const apiBase = (import.meta.env.VITE_API_BASE_URL as string) || 'https://freight-compare-backend-production.up.railway.app';
       const response = await axios.post(`${apiBase}/api/ratings/submit`, payload);
@@ -275,8 +266,8 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
       >
         {/* Header - different styling for special vendors (partners) */}
         <div className={`flex items-center justify-between p-4 border-b ${isSpecialVendor
-            ? 'border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50'
-            : 'border-slate-200'
+          ? 'border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50'
+          : 'border-slate-200'
           }`}>
           <div className="flex items-center gap-2">
             <Star className={`w-5 h-5 ${isSpecialVendor ? 'text-amber-500' : 'text-amber-400'}`} />
@@ -356,8 +347,8 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
           {/* Overall Rating Preview */}
           {allRated && (
             <div className={`mt-4 p-3 rounded-lg border ${isSpecialVendor
-                ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300'
-                : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+              ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300'
+              : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
               }`}>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-700">
@@ -400,8 +391,8 @@ const RatingFormModal: React.FC<RatingFormModalProps> = ({
               onClick={handleSubmit}
               disabled={isSubmitting || !allRated}
               className={`px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${isSpecialVendor
-                  ? 'bg-amber-600 hover:bg-amber-700'
-                  : 'bg-indigo-600 hover:bg-indigo-700'
+                ? 'bg-amber-600 hover:bg-amber-700'
+                : 'bg-indigo-600 hover:bg-indigo-700'
                 }`}
             >
               {isSubmitting ? (

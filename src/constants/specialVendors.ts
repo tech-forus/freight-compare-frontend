@@ -84,3 +84,60 @@ export const getSpecialVendorNameById = (vendorId: string | undefined | null): s
  * Default rating for special vendors (used when no ratings exist yet)
  */
 export const SPECIAL_VENDOR_DEFAULT_RATING = 4.6;
+
+/**
+ * Fetch the actual rating for a special vendor from the rating summary API
+ * Falls back to default rating if no ratings exist or API fails
+ * @param vendorId - The special vendor ID
+ * @returns The rating summary or default values
+ */
+export async function fetchSpecialVendorRating(vendorId: SpecialVendorId): Promise<{
+  rating: number;
+  totalRatings: number;
+  vendorRatings: {
+    priceSupport: number;
+    deliveryTime: number;
+    tracking: number;
+    salesSupport: number;
+    damageLoss: number;
+  } | null;
+}> {
+  try {
+    const apiBase = (import.meta.env.VITE_API_BASE_URL as string) || 'https://freight-compare-backend-production.up.railway.app';
+    const response = await fetch(`${apiBase}/api/ratings/summary/${vendorId}?vendorType=special`);
+
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success && data.summary && data.summary.totalRatings > 0) {
+      return {
+        rating: data.summary.overallRating || SPECIAL_VENDOR_DEFAULT_RATING,
+        totalRatings: data.summary.totalRatings || 0,
+        vendorRatings: {
+          priceSupport: data.summary.parameters?.priceSupport?.average || 0,
+          deliveryTime: data.summary.parameters?.deliveryTime?.average || 0,
+          tracking: data.summary.parameters?.tracking?.average || 0,
+          salesSupport: data.summary.parameters?.salesSupport?.average || 0,
+          damageLoss: data.summary.parameters?.damageLoss?.average || 0,
+        },
+      };
+    }
+
+    // No ratings exist yet
+    return {
+      rating: SPECIAL_VENDOR_DEFAULT_RATING,
+      totalRatings: 0,
+      vendorRatings: null,
+    };
+  } catch (error) {
+    console.warn(`[SpecialVendor] Failed to fetch rating for ${vendorId}:`, error);
+    return {
+      rating: SPECIAL_VENDOR_DEFAULT_RATING,
+      totalRatings: 0,
+      vendorRatings: null,
+    };
+  }
+}
