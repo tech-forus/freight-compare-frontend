@@ -2822,6 +2822,14 @@ const VendorResultCard = ({
     } | undefined>(quote.vendorRatings || quote.transporterData?.vendorRatings);
     const [totalRatings, setTotalRatings] = useState<number>(quote.totalRatings || 0);
 
+    // Sync rating state with quote prop when new data comes from API (after Calculate button)
+    // Without this, useState only initializes once and ignores updated quote data
+    useEffect(() => {
+        setCurrentRating(quote.rating ?? quote.transporterData?.rating ?? 4);
+        setCurrentVendorRatings(quote.vendorRatings || quote.transporterData?.vendorRatings);
+        setTotalRatings(quote.totalRatings || 0);
+    }, [quote.rating, quote.transporterData?.rating, quote.vendorRatings, quote.transporterData?.vendorRatings, quote.totalRatings]);
+
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -3138,11 +3146,10 @@ const VendorResultCard = ({
                                     },
                                 });
                             }}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full transition-colors border ${
-                                isSpecialVendor
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full transition-colors border ${isSpecialVendor
                                     ? "text-amber-700 hover:text-amber-900 hover:bg-amber-100 border-amber-300 hover:border-amber-400"
                                     : "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300"
-                            }`}
+                                }`}
                             title="Rate this vendor"
                         >
                             <Star size={12} />
