@@ -2758,24 +2758,29 @@ const getVerificationStatus = (
     // This ensures verification changes reflect immediately across pages
     const realtimeStatus = statusMap[companyName];
     if (realtimeStatus) {
-        // Check isVerified from real-time data (reflects "Mark Verified/Unverified" button)
-        if (realtimeStatus.isVerified === false) {
+        // isVerified === true means admin explicitly marked as verified
+        if (realtimeStatus.isVerified === true) {
+            return 'verified';
+        }
+        // If approved but not explicitly verified -> unverified
+        if (realtimeStatus.approvalStatus === 'approved') {
             return 'unverified';
         }
-        // Check approval status from real-time data
-        if (realtimeStatus.approvalStatus === 'approved') return 'verified';
-        if (realtimeStatus.approvalStatus === 'pending' || realtimeStatus.approvalStatus === 'rejected') return 'unverified';
+        // pending/rejected -> unverified
+        if (realtimeStatus.approvalStatus === 'pending' || realtimeStatus.approvalStatus === 'rejected') {
+            return 'unverified';
+        }
     }
 
     // PRIORITY 2: Fallback to quote data (from initial calculation)
-    // Check isVerified field from quote
-    if (quote.isVerified === false) {
-        return 'unverified';
+    // isVerified === true means admin explicitly marked as verified
+    if (quote.isVerified === true) {
+        return 'verified';
     }
 
-    // Check approval status from quote data
+    // If approved but not explicitly verified -> unverified
     if (quote.approvalStatus === 'approved') {
-        return 'verified';
+        return 'unverified';
     }
 
     if (quote.approvalStatus === 'pending' || quote.approvalStatus === 'rejected') {

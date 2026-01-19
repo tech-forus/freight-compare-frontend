@@ -22,6 +22,21 @@ const VendorComparison = ({ quotes = [] }) => {
   const cheapestQuote = quotes.reduce((a, b) => a.totalCharges < b.totalCharges ? a : b);
   const fastestQuote = quotes.reduce((a, b) => a.estimatedTime < b.estimatedTime ? a : b);
 
+  // Helper function to determine verification status
+  // Logic:
+  //   - isVerified === true -> verified (admin explicitly marked as verified)
+  //   - isVerified === false/undefined + approved -> unverified (approved but not yet verified)
+  //   - Otherwise -> unknown
+  const getVerificationStatus = (quote): VerificationStatus => {
+    if (quote.isVerified === true) {
+      return 'verified';
+    }
+    if (quote.approvalStatus === 'approved') {
+      return 'unverified';
+    }
+    return 'unknown';
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">Vendor Comparison</h2>
@@ -47,15 +62,7 @@ const VendorComparison = ({ quotes = [] }) => {
                <div className="flex-1">
                  <div className="flex items-center gap-2 mb-1">
                    <h3 className="font-bold text-lg">{quote.companyName}</h3>
-                   <VerificationBadge
-                     status={
-                       quote.isVerified === true
-                         ? 'verified' as VerificationStatus
-                         : quote.approvalStatus === 'approved'
-                         ? 'unverified' as VerificationStatus
-                         : 'unknown' as VerificationStatus
-                     }
-                   />
+                   <VerificationBadge status={getVerificationStatus(quote)} />
                  </div>
                  {/* Best value badge */}
                  {quote.companyId === cheapestQuote.companyId && (
@@ -146,15 +153,7 @@ const VendorComparison = ({ quotes = [] }) => {
               >
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{quote.companyName}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">
-                  <VerificationBadge
-                    status={
-                      quote.isVerified === true
-                        ? 'verified' as VerificationStatus
-                        : quote.approvalStatus === 'approved'
-                        ? 'unverified' as VerificationStatus
-                        : 'unknown' as VerificationStatus
-                    }
-                  />
+                  <VerificationBadge status={getVerificationStatus(quote)} />
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">{quote.estimatedTime} days</td>
                 {/* --- UPDATED TABLE DATA CELLS --- */}
