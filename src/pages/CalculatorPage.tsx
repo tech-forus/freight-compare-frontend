@@ -307,7 +307,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const [hiddendata, setHiddendata] = useState<QuoteAny[] | null>(null);
 
     // Real-time vendor approval status (synced from Super Admin)
-    const [vendorStatusMap, setVendorStatusMap] = useState<Record<string, 'pending' | 'approved' | 'rejected'>>({});
+    const [vendorStatusMap, setVendorStatusMap] = useState<Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }>>({});
 
     // Form state
     const [modeOfTransport, setModeOfTransport] = useState<
@@ -530,10 +530,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 const statusMap = allVendors.reduce((map, vendor) => {
                     if (vendor.companyName && vendor.approvalStatus) {
                         const normalizedName = vendor.companyName.trim().toLowerCase();
-                        map[normalizedName] = vendor.approvalStatus as 'pending' | 'approved' | 'rejected';
+                        map[normalizedName] = {
+                            approvalStatus: vendor.approvalStatus as 'pending' | 'approved' | 'rejected',
+                            isVerified: vendor.isVerified !== false // Default to true unless explicitly false
+                        };
                     }
                     return map;
-                }, {} as Record<string, 'pending' | 'approved' | 'rejected'>);
+                }, {} as Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }>);
 
                 setVendorStatusMap(statusMap);
                 console.log('[Real-time Sync] Vendor statuses updated:', Object.keys(statusMap).length);
@@ -2738,7 +2741,7 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
  */
 const getVerificationStatus = (
     quote: any,
-    statusMap: Record<string, 'pending' | 'approved' | 'rejected'> = {}
+    statusMap: Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }> = {}
 ): VerificationStatus => {
     // Special vendors (client-side injected) are always verified
     if (quote.isSpecialVendor) {
@@ -2751,18 +2754,26 @@ const getVerificationStatus = (
         return 'verified';
     }
 
-    // ✅ NEW: Check isVerified field first (set by "Show Unverified" toggle)
-    // If explicitly set to false, vendor is unverified regardless of approvalStatus
+    // ✨ PRIORITY 1: Check real-time status map first (updated every 30s via polling)
+    // This ensures verification changes reflect immediately across pages
+    const realtimeStatus = statusMap[companyName];
+    if (realtimeStatus) {
+        // Check isVerified from real-time data (reflects "Mark Verified/Unverified" button)
+        if (realtimeStatus.isVerified === false) {
+            return 'unverified';
+        }
+        // Check approval status from real-time data
+        if (realtimeStatus.approvalStatus === 'approved') return 'verified';
+        if (realtimeStatus.approvalStatus === 'pending' || realtimeStatus.approvalStatus === 'rejected') return 'unverified';
+    }
+
+    // PRIORITY 2: Fallback to quote data (from initial calculation)
+    // Check isVerified field from quote
     if (quote.isVerified === false) {
         return 'unverified';
     }
 
-    // ✨ Real-time sync: Check status map first (updated every 30s via polling)
-    const realtimeStatus = statusMap[companyName];
-    if (realtimeStatus === 'approved') return 'verified';
-    if (realtimeStatus === 'pending' || realtimeStatus === 'rejected') return 'unverified';
-
-    // Fallback: Check approval status from quote data (from initial calculation)
+    // Check approval status from quote data
     if (quote.approvalStatus === 'approved') {
         return 'verified';
     }
@@ -2789,7 +2800,7 @@ const VendorResultCard = ({
     quote: any;
     isBestValue?: boolean;
     isFastest?: boolean;
-    vendorStatusMap: Record<string, 'pending' | 'approved' | 'rejected'>;
+    vendorStatusMap: Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }>;
     onOpenRatingModal: (config: {
         vendorId: string;
         vendorName: string;
