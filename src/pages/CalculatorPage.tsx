@@ -2002,7 +2002,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         }
                                                     }
 
-                                                    if (q.isHidden) return (q.totalCharges ?? Infinity) <= maxPrice;
+                                                    // Apply all filters consistently to both tied-up and available vendors
                                                     return (
                                                         (q.totalCharges ?? Infinity) <= maxPrice &&
                                                         (q.estimatedTime ?? Infinity) <= maxTime &&
@@ -2094,26 +2094,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 return true;
                                             });
 
+                                            // Don't re-sort here - processQuotes already sorted by the selected criteria (sortBy)
                                             const otherVendors = otherVendorsRaw.filter(q => {
                                                 const key = vendorKey(q);
                                                 if (!key) return true;
                                                 if (seenVendors.has(key)) return false;
                                                 seenVendors.add(key);
                                                 return true;
-                                            }).sort((a, b) => {
-                                                // First sort by price (ascending)
-                                                const priceA = getQuotePrice(a);
-                                                const priceB = getQuotePrice(b);
-
-                                                // If prices are different, sort by price
-                                                if (priceA !== priceB) {
-                                                    return priceA - priceB;
-                                                }
-
-                                                // If prices are the same, maintain alphabetical order
-                                                const nameA = (a.companyName || a.transporterName || "").toLowerCase();
-                                                const nameB = (b.companyName || b.transporterName || "").toLowerCase();
-                                                return nameA.localeCompare(nameB);
                                             });
 
                                             const allProcessedQuotes = [...tiedUpVendors, ...otherVendors];
@@ -2315,17 +2302,26 @@ const FineTuneModal = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-black/30"
+            className="fixed inset-0 z-[9999] bg-black/30 flex items-center justify-center"
             onClick={onClose}
         >
             <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 20, opacity: 0 }}
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute right-4 top-20 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 p-5 space-y-5"
+                className="w-96 bg-white rounded-xl shadow-2xl border border-slate-200 p-6 space-y-5"
                 onClick={(e) => e.stopPropagation()}
             >
+                <div className="flex justify-between items-center border-b border-slate-200 pb-3 mb-2">
+                    <h3 className="text-lg font-bold text-slate-800">Fine-Tune Filters</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        ✕
+                    </button>
+                </div>
                 <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                         <label htmlFor="maxPrice" className="font-semibold text-slate-700">
