@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getTemporaryTransporters } from '../services/api';
 import { TemporaryTransporter } from '../utils/validators';
-import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, Eye } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, Eye, MoreHorizontal, FileText, MapPin, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import http from '../lib/http';
+import AdminLayout from '../components/admin/AdminLayout';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected';
 
@@ -42,6 +43,7 @@ const renderValue = (value: any, suffix = ''): string => {
 
   return `${value}${suffix}`
 }
+
 class InlineErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean }
@@ -82,7 +84,6 @@ class InlineErrorBoundary extends React.Component<
   }
 }
 
-
 const SuperAdminPage: React.FC = () => {
   const { isSuperAdmin } = useAuth();
   const navigate = useNavigate();
@@ -109,11 +110,9 @@ const SuperAdminPage: React.FC = () => {
       try {
         console.log('[SuperAdmin] Fetching all vendors...');
         const data = await getTemporaryTransporters(undefined);
-        console.log('[SuperAdmin] Fetched vendors:', data?.length || 0, 'vendors');
-        console.log('[SuperAdmin] Sample vendor:', data?.[0]);
         setVendors(data || []);
         if (!data || data.length === 0) {
-          toast.error('No vendors found in database');
+          // toast.error('No vendors found in database'); 
         }
       } catch (error) {
         console.error('[SuperAdmin] Failed to fetch vendors:', error);
@@ -185,9 +184,9 @@ const SuperAdminPage: React.FC = () => {
 
   // Tab configuration
   const tabs = [
-    { id: 'pending' as VendorStatus, label: 'Pending', icon: Clock, color: 'text-yellow-600' },
-    { id: 'approved' as VendorStatus, label: 'Approved', icon: CheckCircle, color: 'text-green-600' },
-    { id: 'rejected' as VendorStatus, label: 'Rejected', icon: XCircle, color: 'text-red-600' },
+    { id: 'pending' as VendorStatus, label: 'Pending Review', icon: Clock, count: 0, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { id: 'approved' as VendorStatus, label: 'Approved Vendors', icon: CheckCircle, count: 0, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { id: 'rejected' as VendorStatus, label: 'Rejected', icon: XCircle, count: 0, color: 'text-red-600', bg: 'bg-red-50' },
   ];
 
   // Get count for each tab
@@ -199,560 +198,361 @@ const SuperAdminPage: React.FC = () => {
   if (!isSuperAdmin) {
     return null;
   }
-const isVendorIncomplete = (vendor: VendorWithId) => {
-    if (!vendor) return true;
 
+  const isVendorIncomplete = (vendor: VendorWithId) => {
+    if (!vendor) return true;
     return (
       !vendor.prices ||
       !vendor.prices.priceRate ||
       Object.keys(vendor.prices.priceRate).length === 0
     );
   };
+
   return (
     <InlineErrorBoundary>
-    <div className="min-h-screen bg-slate-50 py-8" style={{ position: 'relative' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Super Admin Panel</h1>
-          <p className="text-slate-600 mt-2">Manage vendor applications and approvals</p>
-        </div>
-
-        {/* Search and Filter Bar */}
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search by company name, email, or contact person..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 mb-6">
-          <div className="border-b border-slate-200">
-            <div className="flex space-x-1 p-2">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
+      <AdminLayout 
+        title="Vendor Approvals" 
+        subtitle="Review and manage vendor onboarding applications."
+      >
+        
+        {/* Filters and Search */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+           
+           {/* Custom Tab Switcher */}
+           <div className="flex p-1 bg-slate-100 rounded-lg w-full md:w-auto">
+              {tabs.map(tab => {
                 const count = getTabCount(tab.id);
                 const isActive = activeTab === tab.id;
-
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                      isActive
-                        ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                        : 'text-slate-600 hover:bg-slate-50'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      isActive 
+                        ? 'bg-white text-slate-900 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 ${isActive ? tab.color : 'text-slate-400'}`} />
                     <span>{tab.label}</span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        isActive
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs ${isActive ? 'bg-slate-100' : 'bg-slate-200'} `}>
                       {count}
                     </span>
                   </button>
-                );
+                )
               })}
-            </div>
-          </div>
+           </div>
 
-          {/* Vendor List */}
-          <div className="p-6">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
-              </div>
-            ) : filteredVendors.length === 0 ? (
-              <div className="text-center py-12">
-                <Filter className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 text-lg">
-                  {searchQuery
-                    ? 'No vendors found matching your search'
-                    : `No ${activeTab} vendors`}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredVendors.map((vendor) => {
-                  if (!vendor || !vendor._id) return null;
-                  return (
-                  
-        
-                    <div
-                      key={vendor._id}
-                      className="border border-slate-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        {/* Vendor Info */}
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h3 className="text-lg font-semibold text-slate-900">
-                                {vendor.companyName || 'N/A'}
-                              </h3>
-                              <p className="text-sm text-slate-600">{vendor.contactPersonName || 'N/A'}</p>
+           {/* Search Bar */}
+           <div className="relative w-full md:w-72">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+             <input
+               type="text"
+               placeholder="Search vendors..."
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+             />
+           </div>
+        </div>
+
+        {/* Vendors Table */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+           {loading ? (
+             <div className="flex flex-col items-center justify-center py-20">
+               <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+               <p className="text-slate-500 font-medium">Loading vendor data...</p>
+             </div>
+           ) : filteredVendors.length === 0 ? (
+             <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+               <div className="p-4 bg-slate-50 rounded-full mb-4">
+                 <Filter className="w-8 h-8 text-slate-400" />
+               </div>
+               <h3 className="text-lg font-bold text-slate-900 mb-1">No vendors found</h3>
+               <p className="text-slate-500 max-w-sm">
+                 {searchQuery 
+                   ? `No results matching "${searchQuery}"` 
+                   : `There are no ${activeTab} vendors at the moment.`}
+               </p>
+             </div>
+           ) : (
+             <div className="overflow-x-auto">
+               <table className="w-full text-left border-collapse">
+                 <thead>
+                   <tr className="bg-slate-50 border-b border-slate-200">
+                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company</th>
+                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
+                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Location</th>
+                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-slate-100">
+                   {filteredVendors.map((vendor) => (
+                     <tr key={vendor._id} className="hover:bg-slate-50/80 transition-colors group">
+                       <td className="px-6 py-4">
+                         <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                             {(vendor.companyName?.[0] || 'C').toUpperCase()}
+                           </div>
+                           <div>
+                             <p className="font-bold text-slate-900">{vendor.companyName}</p>
+                             <p className="text-xs text-slate-500">GST: {vendor.gstin || vendor.gstNo || 'N/A'}</p>
+                           </div>
+                         </div>
+                       </td>
+                       <td className="px-6 py-4">
+                         <div className="space-y-1">
+                           <p className="text-sm font-medium text-slate-900">{vendor.contactPersonName || 'N/A'}</p>
+                           <p className="text-xs text-slate-500">{vendor.vendorEmailAddress}</p>
+                           <p className="text-xs text-slate-500">{vendor.vendorPhoneNumber}</p>
+                         </div>
+                       </td>
+                       <td className="px-6 py-4">
+                         <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-semibold uppercase border border-slate-200">
+                              {(vendor.transportMode || vendor.mode || 'N/A')}
+                            </span>
+                            {isVendorIncomplete(vendor) && (
+                              <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Incomplete</span>
+                            )}
+                         </div>
+                       </td>
+                       <td className="px-6 py-4">
+                          <div className="text-sm text-slate-600">
+                            <div className="flex items-center gap-1.5">
+                              <MapPin size={14} className="text-slate-400" />
+                              <span>{vendor.city || vendor.geo?.city || 'N/A'}, {vendor.state || vendor.geo?.state}</span>
                             </div>
+                            <p className="text-xs pl-5 text-slate-400">{vendor.pincode || vendor.geo?.pincode}</p>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-slate-600">
-                            <div>
-                              <span className="font-medium">Email:</span> {vendor.vendorEmailAddress || 'N/A'}
-                            </div>
-                            <div>
-                              <span className="font-medium">Phone:</span> {vendor.vendorPhoneNumber || 'N/A'}
-                            </div>
-                            <div>
-                              <span className="font-medium">GST:</span> {vendor.gstin || 'N/A'}
-                            </div>
-                            <div>
-                              <span className="font-medium">Transport:</span>{' '}
-                              {vendor.transportMode?.toUpperCase() || 'N/A'}
-                            </div>
-                            <div>
-                              <span className="font-medium">Location:</span> {vendor.geo?.city || 'N/A'},{' '}
-                              {vendor.geo?.state || 'N/A'}
-                            </div>
-                            <div>
-                              <span className="font-medium">Pincode:</span> {vendor.geo?.pincode || 'N/A'}
-                            </div>
-                          </div>
-                        </div>
+                       </td>
+                       <td className="px-6 py-4 text-right">
+                         <div className="flex items-center justify-end gap-2">
+                           {activeTab === 'pending' && (
+                             <>
+                               <button 
+                                 onClick={() => handleVendorAction(vendor._id, 'approve')}
+                                 disabled={!!actionLoading}
+                                 className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50" 
+                                 title="Approve"
+                               >
+                                 <CheckCircle size={18} />
+                               </button>
+                               <button 
+                                 onClick={() => handleVendorAction(vendor._id, 'reject')}
+                                 disabled={!!actionLoading}
+                                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                 title="Reject"
+                               >
+                                 <XCircle size={18} />
+                               </button>
+                             </>
+                           )}
+                           
+                           {activeTab === 'approved' && (
+                              <button 
+                                onClick={() => handleVendorAction(vendor._id, 'reject')}
+                                disabled={!!actionLoading}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Reject / Deactivate"
+                              >
+                                <XCircle size={18} />
+                              </button>
+                           )}
 
-                      {/* Action Buttons */}
-                      {activeTab === 'pending' && (
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleVendorAction(vendor._id, 'approve')}
-                            disabled={actionLoading === vendor._id}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {actionLoading === vendor._id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4" />
-                            )}
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleVendorAction(vendor._id, 'reject')}
-                            disabled={actionLoading === vendor._id}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {actionLoading === vendor._id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <XCircle className="w-4 h-4" />
-                            )}
-                            Reject
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewVendor(vendor);
-                            }}
-                            className="flex items-center justify-center p-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                        </div>
-                      )}
+                           {activeTab === 'rejected' && (
+                              <button 
+                                onClick={() => handleVendorAction(vendor._id, 'approve')}
+                                disabled={!!actionLoading}
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                title="Re-Approve"
+                              >
+                                <CheckCircle size={18} />
+                              </button>
+                           )}
 
-                      {activeTab === 'approved' && (
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleVendorAction(vendor._id, 'reject')}
-                            disabled={actionLoading === vendor._id}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {actionLoading === vendor._id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <XCircle className="w-4 h-4" />
-                            )}
-                            Reject
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewVendor(vendor);
-                            }}
-                            className="flex items-center justify-center p-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {activeTab === 'rejected' && (
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleVendorAction(vendor._id, 'approve')}
-                            disabled={actionLoading === vendor._id}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {actionLoading === vendor._id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4" />
-                            )}
-                            Approve
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewVendor(vendor);
-                            }}
-                            className="flex items-center justify-center p-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    
-                  </div>
-                  );
-                })}
-              </div>
-             
-          )}
-          </div>
-         
+                           <button 
+                             onClick={() => handleViewVendor(vendor)}
+                             className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors ml-2"
+                           >
+                             View Details
+                           </button>
+                         </div>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+           )}
         </div>
 
         {/* Vendor Details Modal */}
         {isModalOpen && selectedVendor && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
             onClick={handleCloseModal}
           >
             <div
-              className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="bg-purple-600 text-white px-6 py-4 flex items-center justify-between">
-                <h2 className="text-xl font-bold">Vendor Details</h2>
+              <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+                <div>
+                   <h2 className="text-xl font-bold text-slate-800">Vendor Details</h2>
+                   <p className="text-sm text-slate-500">Reviewing application for {selectedVendor.companyName}</p>
+                </div>
                 <button
                   onClick={handleCloseModal}
-                  className="text-white hover:bg-purple-700 rounded-full p-1 transition-colors"
+                  className="text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-full p-2 transition-all"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                
                 {isVendorIncomplete(selectedVendor) && (
-  <div className="mb-6 border border-yellow-300 bg-yellow-50 rounded-lg p-4">
-    <h4 className="font-semibold text-yellow-800 mb-1">
-      Vendor Information Not Added
-    </h4>
-    <p className="text-sm text-yellow-700">
-      Pricing or service configuration has not been added for this vendor.
-      Some values may appear as <strong>N/A</strong>.
-    </p>
-  </div>
-)}
-
-                {/* Company & Contact Information */}
-                <section className="mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-3 border-b pb-2">
-                    Company & Contact Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <span className="font-medium text-slate-700">Legal Transporter Name:</span>
-                      <p className="text-slate-900">{selectedVendor.companyName}</p>
+                  <div className="mb-6 border border-amber-200 bg-amber-50 rounded-xl p-4 flex gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg h-fit text-amber-700">
+                      <FileText size={20} />
                     </div>
                     <div>
-                      <span className="font-medium text-slate-700">Contact Person:</span>
-                      <p className="text-slate-900">{selectedVendor.contactPersonName || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Phone Number:</span>
-                      <p className="text-slate-900">{selectedVendor.vendorPhoneNumber || selectedVendor.vendorPhone || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Email Address:</span>
-                      <p className="text-slate-900">{selectedVendor.vendorEmailAddress || selectedVendor.vendorEmail || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">GST Number:</span>
-                      <p className="text-slate-900">{selectedVendor.gstin || selectedVendor.gstNo || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Transporter Code:</span>
-                      <p className="text-slate-900">{selectedVendor.vendorCode || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Sub Transporter:</span>
-                      <p className="text-slate-900">{selectedVendor.subVendor || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Company Rating:</span>
-                      <p className="text-slate-900">{selectedVendor.rating ? `${selectedVendor.rating} / 5.0` : 'N/A'}</p>
+                      <h4 className="font-bold text-amber-800 text-sm">Missing Configuration</h4>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Pricing or service configuration has not been added. Essential values may be missing.
+                      </p>
                     </div>
                   </div>
-                </section>
+                )}
 
-                {/* Location Information */}
-                <section className="mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-3 border-b pb-2">
-                    Location Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <span className="font-medium text-slate-700">Address:</span>
-                      <p className="text-slate-900">{selectedVendor.address || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">State:</span>
-                      <p className="text-slate-900">{selectedVendor.state || selectedVendor.geo?.state || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">City:</span>
-                      <p className="text-slate-900">{selectedVendor.city || selectedVendor.geo?.city || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Pincode:</span>
-                      <p className="text-slate-900">{selectedVendor.pincode || selectedVendor.geo?.pincode || 'N/A'}</p>
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Left Col */}
+                  <div className="space-y-8">
+                     <section>
+                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Company Info</h3>
+                       <div className="space-y-4">
+                         <div>
+                           <label className="text-xs text-slate-500 font-medium">Company Name</label>
+                           <p className="font-semibold text-slate-900">{selectedVendor.companyName}</p>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                           <div>
+                             <label className="text-xs text-slate-500 font-medium">GST Number</label>
+                             <p className="font-medium text-slate-900">{selectedVendor.gstin || vendor.gstNo || 'N/A'}</p>
+                           </div>
+                           <div>
+                             <label className="text-xs text-slate-500 font-medium">Vendor Code</label>
+                             <p className="font-medium text-slate-900">{selectedVendor.vendorCode || 'N/A'}</p>
+                           </div>
+                         </div>
+                         <div>
+                            <label className="text-xs text-slate-500 font-medium">Rating</label>
+                            <div className="flex items-center gap-1">
+                               <div className="flex text-yellow-400 text-sm">
+                                  {'★'.repeat(Math.round(selectedVendor.rating || 0))}
+                                  <span className="text-slate-200">{'★'.repeat(5 - Math.round(selectedVendor.rating || 0))}</span>
+                               </div>
+                               <span className="text-xs text-slate-500 font-medium">({selectedVendor.rating || 0}/5)</span>
+                            </div>
+                         </div>
+                       </div>
+                     </section>
+
+                     <section>
+                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Contact Details</h3>
+                       <div className="space-y-4">
+                          <div>
+                             <label className="text-xs text-slate-500 font-medium">Contact Person</label>
+                             <p className="font-medium text-slate-900">{selectedVendor.contactPersonName || 'N/A'}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                             <div>
+                               <label className="text-xs text-slate-500 font-medium">Email</label>
+                               <p className="font-medium text-slate-900 break-words">{selectedVendor.vendorEmailAddress || 'N/A'}</p>
+                             </div>
+                             <div>
+                               <label className="text-xs text-slate-500 font-medium">Phone</label>
+                               <p className="font-medium text-slate-900">{selectedVendor.vendorPhoneNumber || 'N/A'}</p>
+                             </div>
+                          </div>
+                       </div>
+                     </section>
                   </div>
-                </section>
 
-                {/* Service Information */}
-                {/* <section className="mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-3 border-b pb-2">
-                    Service Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <span className="font-medium text-slate-700">Transport Mode:</span>
-                      <p className="text-slate-900">{(selectedVendor.transportMode || selectedVendor.mode)?.toUpperCase() || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Service Mode:</span>
-                      <p className="text-slate-900">{selectedVendor.prices?.priceRate?.serviceMode || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-700">Selected Zones:</span>
-                      <p className="text-slate-900">{selectedVendor.selectedZones?.join(', ') || 'N/A'}</p>
-                    </div>
+                  {/* Right Col */}
+                  <div className="space-y-8">
+                     <section>
+                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Service & Location</h3>
+                       <div className="space-y-4">
+                          <div>
+                            <label className="text-xs text-slate-500 font-medium">Address</label>
+                            <p className="font-medium text-slate-900 text-sm">{selectedVendor.address || 'N/A'}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                               <label className="text-xs text-slate-500 font-medium">Mode</label>
+                               <p className="font-bold text-blue-600">{(selectedVendor.transportMode || selectedVendor.mode)?.toUpperCase() || 'N/A'}</p>
+                            </div>
+                            <div>
+                               <label className="text-xs text-slate-500 font-medium">Service Type</label>
+                               <p className="font-medium text-slate-900">{renderValue(selectedVendor.prices?.priceRate?.serviceMode)}</p>
+                            </div>
+                          </div>
+                       </div>
+                     </section>
+
+                     <section>
+                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Pricing Snapshot</h3>
+                       {selectedVendor.prices?.priceRate ? (
+                         <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-50 p-2 rounded">
+                               <span className="text-xs text-slate-500 block">Min Weight</span>
+                               <span className="font-bold text-slate-800">{selectedVendor.prices.priceRate.minWeight || 0} kg</span>
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded">
+                               <span className="text-xs text-slate-500 block">Min Charge</span>
+                               <span className="font-bold text-slate-800">₹{selectedVendor.prices.priceRate.minCharges || 0}</span>
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded">
+                               <span className="text-xs text-slate-500 block">Fuel Charge</span>
+                               <span className="font-bold text-slate-800">{selectedVendor.prices.priceRate.fuel || 0}%</span>
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded">
+                               <span className="text-xs text-slate-500 block">Docket</span>
+                               <span className="font-bold text-slate-800">₹{selectedVendor.prices.priceRate.docketCharges || 0}</span>
+                            </div>
+                         </div>
+                       ) : (
+                         <p className="text-sm text-slate-400 italic">No pricing configured</p>
+                       )}
+                     </section>
                   </div>
-                </section> */}
+                </div>
 
-                {/* Service Information */}
-<section className="mb-6">
-  <h3 className="text-lg font-semibold text-slate-900 mb-3 border-b pb-2">
-    Service Information
-  </h3>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <span className="font-medium text-slate-700">Transport Mode:</span>
-      <p className="text-slate-900">
-        {(selectedVendor.transportMode || selectedVendor.mode)?.toUpperCase() || 'N/A'}
-      </p>
-    </div>
-
-    <div>
-      <span className="font-medium text-slate-700">Service Mode:</span>
-      <p className="text-slate-900">
-        {renderValue(selectedVendor.prices?.priceRate?.serviceMode)}
-      </p>
-    </div>
-
-    <div>
-      <span className="font-medium text-slate-700">Selected Zones:</span>
-      <p className="text-slate-900">
-        {selectedVendor.selectedZones?.join(', ') || 'N/A'}
-      </p>
-    </div>
-  </div>
-</section>
-
-
-                {/* Zone Configuration */}
+                {/* Zone Config Details */}
                 {selectedVendor.zoneConfig && Object.keys(selectedVendor.zoneConfig).length > 0 && (
-                  <section className="mb-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-3 border-b pb-2">
-                      Zone Configuration
-                    </h3>
-                    <div className="space-y-3">
-                      {Object.entries(selectedVendor.zoneConfig).map(([zone, pincodes]) => (
-                        <div key={zone} className="bg-slate-50 p-3 rounded-lg">
-                          <span className="font-medium text-slate-700">Zone {zone}:</span>
-                          <p className="text-sm text-slate-600 mt-1">
-                            {Array.isArray(pincodes) ? `${pincodes.length} pincodes configured` : 'No pincodes'}
-                          </p>
-                          {Array.isArray(pincodes) && pincodes.length > 0 && (
-                            <details className="mt-2">
-                              <summary className="cursor-pointer text-blue-600 hover:text-blue-800 text-sm">
-                                View Pincodes
-                              </summary>
-                              <div className="mt-2 max-h-40 overflow-y-auto bg-white p-2 rounded text-xs">
-                                {pincodes.join(', ')}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </section>
+                   <div className="mt-8 pt-6 border-t border-slate-100">
+                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Zone Configuration</h3>
+                     <div className="flex flex-wrap gap-2">
+                       {Object.keys(selectedVendor.zoneConfig).map(zone => (
+                         <div key={zone} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-100">
+                           Zone {zone}
+                         </div>
+                       ))}
+                     </div>
+                   </div>
                 )}
 
-                {/* Price Rate Information */}
-                {selectedVendor.prices?.priceRate && (
-                  <section className="mb-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-3 border-b pb-2">
-                      Pricing Information
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <span className="font-medium text-slate-700">Min Weight:</span>
-                        <p className="text-slate-900">{selectedVendor.prices.priceRate.minWeight || 'N/A'} kg</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Docket Charges:</span>
-                        <p className="text-slate-900">₹{selectedVendor.prices.priceRate.docketCharges || 0}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Fuel Surcharge:</span>
-                        <p className="text-slate-900">{selectedVendor.prices.priceRate.fuel || 0}%</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Min Charges:</span>
-                        <p className="text-slate-900">₹{selectedVendor.prices.priceRate.minCharges || 0}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Divisor:</span>
-                        <p className="text-slate-900">{selectedVendor.prices.priceRate.divisor || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Volumetric Unit:</span>
-                        <p className="text-slate-900">{selectedVendor.prices.priceRate.volumetricUnit?.toUpperCase() || 'N/A'}</p>
-                      </div>
-                    </div>
-
-                    {/* Additional Charges */}
-                    <div className="mt-4 bg-slate-50 p-4 rounded-lg">
-                      <h4 className="font-medium text-slate-800 mb-2">Additional Charges</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <span className="text-slate-600">ROV:</span>
-                          <p className="text-slate-900">
-                            {typeof selectedVendor.prices.priceRate.rovCharges === 'object'
-                              ? `₹${selectedVendor.prices.priceRate.rovCharges?.fixed || 0} ${selectedVendor.prices.priceRate.rovCharges?.unit || ''}`
-                              : `₹${selectedVendor.prices.priceRate.rovCharges || 0}`}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">COD:</span>
-                          <p className="text-slate-900">
-                            {typeof selectedVendor.prices.priceRate.codCharges === 'object'
-                              ? `₹${selectedVendor.prices.priceRate.codCharges?.fixed || 0} ${selectedVendor.prices.priceRate.codCharges?.unit || ''}`
-                              : `₹${selectedVendor.prices.priceRate.codCharges || 0}`}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">To Pay:</span>
-                          <p className="text-slate-900">
-                            {typeof selectedVendor.prices.priceRate.topayCharges === 'object'
-                              ? `₹${selectedVendor.prices.priceRate.topayCharges?.fixed || 0} ${selectedVendor.prices.priceRate.topayCharges?.unit || ''}`
-                              : `₹${selectedVendor.prices.priceRate.topayCharges || 0}`}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Handling:</span>
-                          <p className="text-slate-900">
-                            {typeof selectedVendor.prices.priceRate.handlingCharges === 'object'
-                              ? `₹${selectedVendor.prices.priceRate.handlingCharges?.fixed || 0} ${selectedVendor.prices.priceRate.handlingCharges?.unit || ''}`
-                              : `₹${selectedVendor.prices.priceRate.handlingCharges || 0}`}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Appointment:</span>
-                          <p className="text-slate-900">
-                            {typeof selectedVendor.prices.priceRate.appointmentCharges === 'object'
-                              ? `₹${selectedVendor.prices.priceRate.appointmentCharges?.fixed || 0} ${selectedVendor.prices.priceRate.appointmentCharges?.unit || ''}`
-                              : `₹${selectedVendor.prices.priceRate.appointmentCharges || 0}`}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Green Tax:</span>
-                          <p className="text-slate-900">₹{selectedVendor.prices.priceRate.greenTax || 0}</p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Hamali:</span>
-                          <p className="text-slate-900">₹{selectedVendor.prices.priceRate.hamaliCharges || 0}</p>
-                        </div>
-                        <div>
-                          <span className="text-slate-600">Miscellaneous:</span>
-                          <p className="text-slate-900">₹{selectedVendor.prices.priceRate.miscellanousCharges || 0}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-                )}
-
-                {/* Invoice Value Charges */}
-                {selectedVendor.invoiceValueCharges && (
-                  <section className="mb-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-3 border-b pb-2">
-                      Invoice Value Charges
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <span className="font-medium text-slate-700">Enabled:</span>
-                        <p className="text-slate-900">{selectedVendor.invoiceValueCharges.enabled ? 'Yes' : 'No'}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Percentage:</span>
-                        <p className="text-slate-900">{selectedVendor.invoiceValueCharges.percentage * 100}%</p>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Minimum Amount:</span>
-                        <p className="text-slate-900">₹{selectedVendor.invoiceValueCharges.minimumAmount || 0}</p>
-                      </div>
-                    </div>
-                  </section>
-                )}
               </div>
-              
-              {isVendorIncomplete(selectedVendor) && (
-  <div className="mb-6 border border-yellow-300 bg-yellow-50 rounded-lg p-4">
-    <h4 className="font-semibold text-yellow-800 mb-1">
-      Vendor Information Incomplete
-    </h4>
-    <p className="text-sm text-yellow-700">
-      Pricing or service configuration is not added for this vendor.
-      Some details may appear as <strong>N/A</strong>.
-    </p>
-  </div>
-)}
-
 
               {/* Modal Footer */}
-              <div className="bg-slate-50 px-6 py-4 flex justify-end">
+              <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 border-t border-slate-100">
                 <button
                   onClick={handleCloseModal}
-                  className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                  className="px-6 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
                 >
                   Close
                 </button>
@@ -760,8 +560,7 @@ const isVendorIncomplete = (vendor: VendorWithId) => {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </AdminLayout>
     </InlineErrorBoundary>
   );
 };

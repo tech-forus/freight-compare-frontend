@@ -4,20 +4,18 @@ import { useAuth } from '../hooks/useAuth';
 import {
   Users,
   CheckSquare,
-  LayoutDashboard,
   Settings,
   Truck,
-  UserCircle,
-  FileText,
-  ArrowRight,
   ShieldCheck,
   Building2,
   ChevronRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import AdminLayout from '../components/admin/AdminLayout';
+import AdminStatsCard from '../components/admin/AdminStatsCard';
 
 const SuperAdminDashboard: React.FC = () => {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, user } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if not super admin
@@ -32,134 +30,154 @@ const SuperAdminDashboard: React.FC = () => {
     return null;
   }
 
-  const dashboardSections = [
+  // MOCK DATA - In production, fetch this from an API
+  // Use "getTemporaryTransporters" or similar to populate "Pending"
+  const stats = [
     {
-      title: 'Vendor Management',
-      description: 'Oversee vendor onboarding, verifications, and approvals.',
-      icon: Building2,
-      color: 'bg-blue-100 text-blue-600',
-      links: [
-        {
-          title: 'Vendor Approval Queue',
-          description: 'Review pending applications',
-          icon: CheckSquare,
-          path: '/super-admin/vendor-approval',
-        },
-        {
-          title: 'All Transporters & Vendors',
-          description: 'Manage all accounts',
-          icon: Truck,
-          path: '/super-admin/user-management/transporters',
-        },
-      ],
+      title: 'Total Active Vendors',
+      value: '124',
+      icon: Truck,
+      trend: '12%',
+      trendUp: true,
+      description: 'Verified shipping partners',
+      color: 'blue'
     },
     {
-      title: 'User Governance',
-      description: 'Manage customer accounts, roles, and platform permissions.',
+      title: 'Pending Approvals',
+      value: '4', // We can fetch this dynamically later
+      icon: CheckSquare,
+      trend: '2 pending',
+      trendUp: false, // Attention needed
+      description: 'Awaiting your review',
+      color: 'orange'
+    },
+    {
+      title: 'Total Customers',
+      value: '1,893',
       icon: Users,
-      color: 'bg-indigo-100 text-indigo-600',
-      links: [
-        {
-          title: 'Customer Management',
-          description: 'View customer database',
-          icon: UserCircle,
-          path: '/super-admin/user-management/customers',
-        },
-        {
-          title: 'Transporter Management',
-          description: 'Monitor transporter activities',
-          icon: Truck,
-          path: '/super-admin/user-management/transporters',
-        },
-      ],
+      trend: '85 this week',
+      trendUp: true,
+      description: 'Registered active users',
+      color: 'purple'
     },
     {
       title: 'Platform Config',
-      description: 'Customize system settings, forms, and technical configurations.',
+      value: 'Active',
       icon: Settings,
-      color: 'bg-slate-100 text-slate-600',
-      links: [
-        {
-          title: 'Form Builder',
-          description: 'Edit registration forms',
-          icon: FileText,
-          path: '/super-admin/form-builder',
-        },
-      ],
+      description: 'System operational',
+      color: 'green'
     },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-12">
+    <AdminLayout
+      title="Dashboard Overview"
+      subtitle={`Welcome back, ${user?.name || 'Admin'}. Here's what's happening today.`}
+    >
 
-        {/* Header Section */}
-        <div className="text-center md:text-left space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 mb-4">
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
-            <span className="text-xs font-semibold tracking-wide text-blue-700 uppercase">Admin Access</span>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, idx) => (
+          <AdminStatsCard key={idx} {...stat} />
+        ))}
+      </div>
+
+      {/* Content Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        {/* Main Chart / Activity Area (Spans 2 cols) */}
+        <div className="lg:col-span-2 space-y-8">
+
+          {/* Recent Activity / Quick Actions */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-800">Quick Actions</h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={() => navigate('/super-admin/vendor-approval')}
+                className="flex items-center gap-4 p-4 rounded-xl bg-orange-50 border border-orange-100 hover:bg-orange-100 hover:border-orange-200 transition-all group text-left"
+              >
+                <div className="p-3 bg-orange-500 text-white rounded-lg shadow-md shadow-orange-200 group-hover:scale-110 transition-transform">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <span className="block font-bold text-slate-800">Review Vendors</span>
+                  <span className="text-xs text-slate-500">4 applications pending</span>
+                </div>
+                <ChevronRight className="ml-auto text-orange-400" />
+              </button>
+
+              <button
+                onClick={() => navigate('/super-admin/user-management/transporters')}
+                className="flex items-center gap-4 p-4 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all group text-left"
+              >
+                <div className="p-3 bg-blue-600 text-white rounded-lg shadow-md shadow-blue-200 group-hover:scale-110 transition-transform">
+                  <Truck size={20} />
+                </div>
+                <div>
+                  <span className="block font-bold text-slate-800">Manage Transporters</span>
+                  <span className="text-xs text-slate-500">View all database entries</span>
+                </div>
+                <ChevronRight className="ml-auto text-blue-400" />
+              </button>
+            </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
-            Super Admin <span className="text-blue-600">Dashboard</span>
-          </h1>
-          <p className="text-lg text-slate-600 max-w-2xl">
-            Centralized control for managing vendors, users, and platform configurations efficiently.
-          </p>
+
+          {/* Placeholder Chart */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-h-[300px] flex flex-col justify-center items-center text-center">
+            <div className="p-4 bg-slate-50 rounded-full mb-4">
+              <Building2 className="w-8 h-8 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Platform Growth Analytics</h3>
+            <p className="text-slate-500 max-w-sm">
+              Detailed analytics charts for user registrations and vendor onboarding metrics will appear here.
+            </p>
+          </div>
+
         </div>
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {dashboardSections.map((section, idx) => {
-            const SectionIcon = section.icon;
-            return (
-              <div
-                key={idx}
-                className="group flex flex-col items-start bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:border-blue-200 transition-all duration-300 ease-in-out hover:-translate-y-1"
-              >
-                {/* Section Header */}
-                <div className={`p-3 rounded-xl mb-6 ${section.color} group-hover:scale-110 transition-transform duration-300`}>
-                  <SectionIcon className="w-8 h-8" />
-                </div>
+        {/* Sidebar / Secondary Area */}
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 text-white shadow-xl shadow-indigo-200">
+            <h3 className="font-bold text-lg mb-2">Admin Pro Tips</h3>
+            <p className="text-indigo-100 text-sm mb-4">
+              Did you know you can verify vendors directly from the approval queue with a single click?
+            </p>
+            <button
+              onClick={() => navigate('/super-admin/vendor-approval')}
+              className="w-full py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-sm font-semibold transition-colors"
+            >
+              Go to Approvals
+            </button>
+          </div>
 
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                  {section.title}
-                </h2>
-                <p className="text-slate-500 mb-8 min-h-[48px]">
-                  {section.description}
-                </p>
-
-                {/* Links / Actions */}
-                <div className="w-full space-y-3 mt-auto">
-                  {section.links.map((link, linkIdx) => {
-                    const LinkIcon = link.icon;
-                    return (
-                      <button
-                        key={linkIdx}
-                        onClick={() => navigate(link.path)}
-                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-blue-100 hover:shadow-md transition-all duration-200 group/btn"
-                      >
-                        <div className="flex items-center gap-3">
-                          <LinkIcon className="w-5 h-5 text-slate-400 group-hover/btn:text-blue-600 transition-colors" />
-                          <div className="text-left">
-                            <span className="block font-semibold text-slate-700 group-hover/btn:text-slate-900 transition-colors">
-                              {link.title}
-                            </span>
-                            <span className="text-xs text-slate-400 font-medium">
-                              {link.description}
-                            </span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover/btn:text-blue-500 group-hover/btn:translate-x-1 transition-all" />
-                      </button>
-                    );
-                  })}
-                </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h3 className="font-bold text-slate-800 mb-4">System Status</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Server Status</span>
+                <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Online</span>
               </div>
-            );
-          })}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Database</span>
+                <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Healthy</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Email Service</span>
+                <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Version</span>
+                <span className="text-slate-700 font-mono bg-slate-100 px-2 py-0.5 rounded">v1.2.9</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+    </AdminLayout>
   );
 };
 
