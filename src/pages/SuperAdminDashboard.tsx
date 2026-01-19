@@ -1,7 +1,19 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Users, CheckSquare, LayoutDashboard, Settings, Truck, UserCircle, FileText, ArrowRight } from 'lucide-react';
+import {
+  Users,
+  CheckSquare,
+  LayoutDashboard,
+  Settings,
+  Truck,
+  UserCircle,
+  FileText,
+  ArrowRight,
+  ShieldCheck,
+  Building2,
+  ChevronRight
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SuperAdminDashboard: React.FC = () => {
@@ -23,50 +35,53 @@ const SuperAdminDashboard: React.FC = () => {
   const dashboardSections = [
     {
       title: 'Vendor Management',
-      description: 'Manage vendor applications and approvals',
-      icon: CheckSquare,
+      description: 'Oversee vendor onboarding, verifications, and approvals.',
+      icon: Building2,
+      color: 'bg-blue-100 text-blue-600',
       links: [
         {
           title: 'Vendor Approval Queue',
-          description: 'Review and approve pending vendor applications',
+          description: 'Review pending applications',
           icon: CheckSquare,
           path: '/super-admin/vendor-approval',
         },
         {
           title: 'All Transporters & Vendors',
-          description: 'View and manage all transporter accounts',
+          description: 'Manage all accounts',
           icon: Truck,
           path: '/super-admin/user-management/transporters',
         },
       ],
     },
     {
-      title: 'User Management',
-      description: 'Manage users and their permissions',
+      title: 'User Governance',
+      description: 'Manage customer accounts, roles, and platform permissions.',
       icon: Users,
+      color: 'bg-indigo-100 text-indigo-600',
       links: [
         {
           title: 'Customer Management',
-          description: 'Manage customer accounts and subscriptions',
+          description: 'View customer database',
           icon: UserCircle,
           path: '/super-admin/user-management/customers',
         },
         {
           title: 'Transporter Management',
-          description: 'Manage transporter accounts and vendors',
+          description: 'Monitor transporter activities',
           icon: Truck,
           path: '/super-admin/user-management/transporters',
         },
       ],
     },
     {
-      title: 'Form Builder & Settings',
-      description: 'Customize forms and platform configuration',
+      title: 'Platform Config',
+      description: 'Customize system settings, forms, and technical configurations.',
       icon: Settings,
+      color: 'bg-slate-100 text-slate-600',
       links: [
         {
-          title: 'Vendor Registration Form Builder',
-          description: 'Customize Add Vendor form fields',
+          title: 'Form Builder',
+          description: 'Edit registration forms',
           icon: FileText,
           path: '/super-admin/form-builder',
         },
@@ -75,59 +90,69 @@ const SuperAdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <LayoutDashboard className="w-8 h-8 text-red-600" />
-            <h1 className="text-3xl font-bold text-slate-900">Super Admin Dashboard</h1>
+    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-12">
+
+        {/* Header Section */}
+        <div className="text-center md:text-left space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 mb-4">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-semibold tracking-wide text-blue-700 uppercase">Admin Access</span>
           </div>
-          <p className="text-slate-600 mt-2">Manage your platform from here</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
+            Super Admin <span className="text-blue-600">Dashboard</span>
+          </h1>
+          <p className="text-lg text-slate-600 max-w-2xl">
+            Centralized control for managing vendors, users, and platform configurations efficiently.
+          </p>
         </div>
 
-        {/* Dashboard Cards */}
-        <div className="space-y-6">
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {dashboardSections.map((section, idx) => {
             const SectionIcon = section.icon;
             return (
-              <div key={idx} className="bg-white rounded-lg shadow-sm border border-slate-200">
-                {/* Card Header */}
-                <div className="px-6 py-4 border-b border-slate-200">
-                  <div className="flex items-center gap-3">
-                    <SectionIcon className="w-6 h-6 text-blue-600" />
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900">{section.title}</h2>
-                      <p className="text-sm text-slate-600 mt-1">{section.description}</p>
-                    </div>
-                  </div>
+              <div
+                key={idx}
+                className="group flex flex-col items-start bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:border-blue-200 transition-all duration-300 ease-in-out hover:-translate-y-1"
+              >
+                {/* Section Header */}
+                <div className={`p-3 rounded-xl mb-6 ${section.color} group-hover:scale-110 transition-transform duration-300`}>
+                  <SectionIcon className="w-8 h-8" />
                 </div>
 
-                {/* Card Links */}
-                <div className="p-4">
-                  <div className="space-y-2">
-                    {section.links.map((link, linkIdx) => {
-                      const LinkIcon = link.icon;
-                      return (
-                        <button
-                          key={linkIdx}
-                          onClick={() => navigate(link.path)}
-                          className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all group"
-                        >
-                          <div className="flex items-start gap-3 flex-1 text-left">
-                            <LinkIcon className="w-5 h-5 text-blue-600 mt-0.5" />
-                            <div>
-                              <h3 className="text-base font-semibold text-blue-600 group-hover:text-blue-700">
-                                {link.title}
-                              </h3>
-                              <p className="text-sm text-slate-600 mt-0.5">{link.description}</p>
-                            </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                  {section.title}
+                </h2>
+                <p className="text-slate-500 mb-8 min-h-[48px]">
+                  {section.description}
+                </p>
+
+                {/* Links / Actions */}
+                <div className="w-full space-y-3 mt-auto">
+                  {section.links.map((link, linkIdx) => {
+                    const LinkIcon = link.icon;
+                    return (
+                      <button
+                        key={linkIdx}
+                        onClick={() => navigate(link.path)}
+                        className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-blue-100 hover:shadow-md transition-all duration-200 group/btn"
+                      >
+                        <div className="flex items-center gap-3">
+                          <LinkIcon className="w-5 h-5 text-slate-400 group-hover/btn:text-blue-600 transition-colors" />
+                          <div className="text-left">
+                            <span className="block font-semibold text-slate-700 group-hover/btn:text-slate-900 transition-colors">
+                              {link.title}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium">
+                              {link.description}
+                            </span>
                           </div>
-                          <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover/btn:text-blue-500 group-hover/btn:translate-x-1 transition-all" />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
