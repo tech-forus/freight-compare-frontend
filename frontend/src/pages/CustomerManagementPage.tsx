@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import {
   Search,
   Filter,
@@ -29,7 +28,7 @@ import {
 import AdminLayout from '../components/admin/AdminLayout';
 
 const CustomerManagementPage: React.FC = () => {
-  const { isSuperAdmin } = useAuth();
+  // Note: Permission check is handled by AdminRoute in App.tsx
   const navigate = useNavigate();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -40,14 +39,6 @@ const CustomerManagementPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [stats, setStats] = useState({ total: 0, subscribed: 0, unsubscribed: 0 });
-
-  // Redirect if not super admin
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error('Access denied. Super admin privileges required.');
-      navigate('/dashboard');
-    }
-  }, [isSuperAdmin, navigate]);
 
   // Fetch customers
   useEffect(() => {
@@ -131,10 +122,6 @@ const CustomerManagementPage: React.FC = () => {
     }
   };
 
-  if (!isSuperAdmin) {
-    return null;
-  }
-
   return (
     <AdminLayout
       title="Customer Management"
@@ -183,8 +170,8 @@ const CustomerManagementPage: React.FC = () => {
           <button
             onClick={() => setFilterStatus('all')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === 'all'
-                ? 'bg-slate-800 text-white shadow-sm'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
           >
             All Users
@@ -192,8 +179,8 @@ const CustomerManagementPage: React.FC = () => {
           <button
             onClick={() => setFilterStatus('subscribed')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === 'subscribed'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
           >
             Subscribed
@@ -201,8 +188,8 @@ const CustomerManagementPage: React.FC = () => {
           <button
             onClick={() => setFilterStatus('unsubscribed')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === 'unsubscribed'
-                ? 'bg-slate-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+              ? 'bg-slate-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
               }`}
           >
             Free Users
@@ -308,8 +295,8 @@ const CustomerManagementPage: React.FC = () => {
                           onClick={() => handleToggleSubscription(customer._id, customer.isSubscribed)}
                           disabled={actionLoading === customer._id}
                           className={`p-2 rounded-lg transition-colors border ${customer.isSubscribed
-                              ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                              : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
+                            ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
                             }`}
                           title={customer.isSubscribed ? 'Revoke Subscription' : 'Upgrade to Premium'}
                         >
@@ -507,8 +494,8 @@ const CustomerManagementPage: React.FC = () => {
                     handleToggleSubscription(selectedCustomer._id, selectedCustomer.isSubscribed)
                   }
                   className={`px-6 py-2 rounded-xl text-sm font-medium transition-colors ${selectedCustomer.isSubscribed
-                      ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                    ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
                     }`}
                 >
                   {selectedCustomer.isSubscribed ? 'Revoke Subscription' : 'Activate Premium'}

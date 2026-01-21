@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import {
   ArrowLeft,
   Search,
@@ -56,7 +55,7 @@ interface TempVendor {
 }
 
 const TransporterManagementPage: React.FC = () => {
-  const { isSuperAdmin } = useAuth();
+  // Note: Permission check is handled by AdminRoute in App.tsx
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'vendors' | 'transporters'>('vendors');
@@ -74,14 +73,6 @@ const TransporterManagementPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any>({});
   const [saveLoading, setSaveLoading] = useState(false);
-
-  // Redirect if not super admin
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error('Access denied. Super admin privileges required.');
-      navigate('/dashboard');
-    }
-  }, [isSuperAdmin, navigate]);
 
   // Fetch data when tab changes
   useEffect(() => {
@@ -226,10 +217,6 @@ const TransporterManagementPage: React.FC = () => {
       setSaveLoading(false);
     }
   };
-
-  if (!isSuperAdmin) {
-    return null;
-  }
 
   const statusTabs = [
     { id: 'all' as const, label: 'All', icon: Filter, color: 'text-slate-600' },

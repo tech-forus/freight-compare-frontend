@@ -1,24 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { Users, ArrowLeft, UserCircle, Truck } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 const UserManagementPage: React.FC = () => {
-  const { isSuperAdmin } = useAuth();
+  // Note: Permission check is handled by AdminRoute in App.tsx
   const navigate = useNavigate();
-
-  // Redirect if not super admin
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error('Access denied. Super admin privileges required.');
-      navigate('/dashboard');
-    }
-  }, [isSuperAdmin, navigate]);
-
-  if (!isSuperAdmin) {
-    return null;
-  }
 
   const categories = [
     {
