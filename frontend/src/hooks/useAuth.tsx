@@ -44,7 +44,7 @@ interface AuthUser {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: AuthUser | null;
-  login: (email: string, pass: string) => Promise<{ success: boolean;  error?: string }>;
+  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loading: boolean;
   isSuperAdmin: boolean;
@@ -106,29 +106,78 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    const token = Cookies.get('authToken');
-    const storedUser = localStorage.getItem('authUser');
+    const initializeAuth = async () => {
+      const token = Cookies.get('authToken');
+      const storedUser = localStorage.getItem('authUser');
 
-    if (token && storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setIsAuthenticated(true);
-        setUser(parsedUser as AuthUser);
-
-        // Extract admin info using helper
-        const adminInfo = extractAdminInfo(parsedUser);
-        setIsSuperAdmin(adminInfo.isSuperAdmin);
-        setIsAdmin(adminInfo.isAdmin);
-        setAdminPermissions(adminInfo.permissions);
-
-      } catch (e) {
-        console.error("AuthProvider: Failed to parse stored user or token invalid", e);
-        Cookies.remove('authToken');
-        localStorage.removeItem('authUser');
-        localStorage.removeItem('token');
+      if (!token) {
+        // No token = not authenticated
+        setLoading(false);
+        return;
       }
-    }
-    setLoading(false); // Auth state is now determined
+
+      // First, set initial state from localStorage for fast UX
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setIsAuthenticated(true);
+          setUser(parsedUser as AuthUser);
+          const adminInfo = extractAdminInfo(parsedUser);
+          setIsSuperAdmin(adminInfo.isSuperAdmin);
+          setIsAdmin(adminInfo.isAdmin);
+          setAdminPermissions(adminInfo.permissions);
+        } catch (e) {
+          console.error("AuthProvider: Failed to parse stored user", e);
+        }
+      }
+
+      // Then, fetch fresh data from API to ensure permissions are current
+      try {
+        console.log('[Auth] Fetching fresh user data from /api/auth/me...');
+        const response = await http.get('/api/auth/me');
+
+        if (response.data.success && response.data.customer) {
+          const freshUser = response.data.customer;
+          console.log('[Auth] Fresh user data received:', {
+            email: freshUser.email,
+            isAdmin: freshUser.isAdmin,
+            adminPermissions: freshUser.adminPermissions
+          });
+
+          // Update localStorage with fresh data
+          localStorage.setItem('authUser', JSON.stringify(freshUser));
+
+          // Update state with fresh data
+          setUser(freshUser as AuthUser);
+          setIsAuthenticated(true);
+
+          const adminInfo = extractAdminInfo(freshUser);
+          setIsSuperAdmin(adminInfo.isSuperAdmin);
+          setIsAdmin(adminInfo.isAdmin);
+          setAdminPermissions(adminInfo.permissions);
+        }
+      } catch (error: any) {
+        console.error('[Auth] Failed to fetch fresh user data:', error.response?.data || error.message);
+
+        // If 401 (token expired/invalid), clear auth
+        if (error.response?.status === 401) {
+          console.log('[Auth] Token invalid, clearing auth state');
+          Cookies.remove('authToken');
+          localStorage.removeItem('authUser');
+          localStorage.removeItem('token');
+          setIsAuthenticated(false);
+          setUser(null);
+          setIsSuperAdmin(false);
+          setIsAdmin(false);
+          setAdminPermissions(null);
+        }
+        // For other errors, keep the localStorage data as fallback
+      }
+
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (
