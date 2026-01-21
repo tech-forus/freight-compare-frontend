@@ -470,7 +470,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     useEffect(() => {
         if (didAutofillFromProfile.current) return;
-        const pin = (user as any)?.customer?.pincode;
+        const pin = (user as any)?.customer?.pincode || (user as any)?.pincode;
         if (pin && (fromPincode === "" || fromPincode == null)) {
             setFromPincode(String(pin));
             didAutofillFromProfile.current = true;
@@ -578,7 +578,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     useEffect(() => {
         fetchSavedBoxes();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [(user as any)?.customer?._id, token]);
+    }, [(user as any)?.customer?._id, (user as any)?._id, token]);
 
     useEffect(() => {
         if (
@@ -687,9 +687,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const fetchSavedBoxes = async () => {
         if (!user || !token) return;
         try {
+            const customerId = (user as any).customer?._id || (user as any)._id;
             const response = await axios.get(
-                `${API_BASE_URL}/api/transporter/getpackinglist?customerId=${(user as any).customer._id
-                }`,
+                `${API_BASE_URL}/api/transporter/getpackinglist?customerId=${customerId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setSavedBoxes(
@@ -833,7 +833,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         const payload = {
             name,
             description: name,
-            customerId: (user as any).customer._id,
+            customerId: (user as any).customer?._id || (user as any)._id,
             originPincode: Number(fromPincode),
             destinationPincode: Number(toPincode),
             length: box.length!,
