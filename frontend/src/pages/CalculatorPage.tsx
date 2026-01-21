@@ -299,6 +299,16 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const token = Cookies.get("authToken");
     const navigate = useNavigate();
 
+    // Helper to safely get customer data regardless of user object structure
+    // After useAuth fetches from /api/auth/me, user becomes the customer directly
+    // But from JWT decode, user has { customer: {...} } structure
+    const getCustomer = () => {
+        if (!user) return null;
+        const u = user as any;
+        // If user.customer exists, use it; otherwise user IS the customer
+        return u.customer || u;
+    };
+
     // UI state
     const [sortBy, setSortBy] = useState<"price" | "time" | "rating">("price");
     const [isCalculating, setIsCalculating] = useState(false);
@@ -470,12 +480,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     useEffect(() => {
         if (didAutofillFromProfile.current) return;
-        const pin = (user as any)?.customer?.pincode || (user as any)?.pincode;
+        const pin = getCustomer()?.pincode;
         if (pin && (fromPincode === "" || fromPincode == null)) {
             setFromPincode(String(pin));
             didAutofillFromProfile.current = true;
         }
         // purposely NOT depending on fromPincode to avoid re-autofill loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
 
@@ -578,7 +589,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     useEffect(() => {
         fetchSavedBoxes();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [(user as any)?.customer?._id, (user as any)?._id, token]);
+    }, [getCustomer()?._id, token]);
 
     useEffect(() => {
         if (
@@ -685,9 +696,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     // Presets
     const fetchSavedBoxes = async () => {
-        if (!user || !token) return;
+        const customerId = getCustomer()?._id;
+        if (!customerId || !token) return;
         try {
-            const customerId = (user as any).customer?._id || (user as any)._id;
             const response = await axios.get(
                 `${API_BASE_URL}/api/transporter/getpackinglist?customerId=${customerId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -827,13 +838,19 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             return;
         }
 
+        const customerId = getCustomer()?._id;
+        if (!customerId) {
+            setError("Unable to identify user. Please log in again.");
+            return;
+        }
+
         setError(null);
         setPresetStatus(boxId, "saving");
 
         const payload = {
             name,
             description: name,
-            customerId: (user as any).customer?._id || (user as any)._id,
+            customerId,
             originPincode: Number(fromPincode),
             destinationPincode: Number(toPincode),
             length: box.length!,
@@ -1003,11 +1020,12 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             // PERF: Minimal logging in hot path
             const calcStartTime = performance.now();
 
+            const customer = getCustomer();
             const resp = await axios.post(
                 `${API_BASE_URL}/api/transporter/calculate`,
                 {
-                    customerID: (user as any).customer._id,
-                    userogpincode: (user as any).customer.pincode,
+                    customerID: customer?._id,
+                    userogpincode: customer?.pincode,
                     modeoftransport: modeOfTransport,
                     fromPincode,
                     toPincode,
@@ -2103,8 +2121,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 'Delhivery (Shipshopy)',
                                                 'TCI Freight'
                                             ];
-                                            const isUttamGoyal = (user as any)?.customer?.email?.toLowerCase() === 'forus@gmail.com' ||
-                                                (user as any)?.email?.toLowerCase() === 'forus@gmail.com';
+                                            const customerEmail = getCustomer()?.email?.toLowerCase();
+                                            const isUttamGoyal = customerEmail === 'forus@gmail.com';
 
                                             // Helper to check if vendor name matches special list (exact match, case-insensitive)
                                             const isSpecialTiedUpVendor = (q: any): boolean => {
@@ -2195,7 +2213,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                     )}
 
                                                     {otherVendors.length > 0 && (() => {
-                                                        const isSubscribed = (user as any)?.customer?.isSubscribed;
+                                                        const isSubscribed = getCustomer()?.isSubscribed;
                                                         return (
                                                             <section>
                                                                 <h2 className="text-2xl font-bold text-slate-800 mb-5 border-l-4 border-slate-400 pl-4">
@@ -2890,7 +2908,14 @@ const VendorResultCard = ({
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const isSubscribed = Boolean((user as any)?.customer?.isSubscribed);
+    // Helper to safely get customer data regardless of user object structure
+    const getCustomerData = () => {
+        if (!user) return null;
+        const u = user as any;
+        return u.customer || u;
+    };
+
+    const isSubscribed = Boolean(getCustomerData()?.isSubscribed);
     const isSpecialVendor =
         quote.companyName === "LOCAL FTL" || quote.companyName === "Wheelseye FTL";
 

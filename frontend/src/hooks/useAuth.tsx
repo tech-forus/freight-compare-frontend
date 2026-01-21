@@ -137,18 +137,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const response = await http.get('/api/auth/me');
 
         if (response.data.success && response.data.customer) {
-          const freshUser = response.data.customer;
+          const freshCustomer = response.data.customer;
           console.log('[Auth] Fresh user data received:', {
-            email: freshUser.email,
-            isAdmin: freshUser.isAdmin,
-            adminPermissions: freshUser.adminPermissions
+            email: freshCustomer.email,
+            isAdmin: freshCustomer.isAdmin,
+            adminPermissions: freshCustomer.adminPermissions
           });
 
-          // Update localStorage with fresh data
+          // Wrap in { customer: ... } to maintain consistent structure with JWT decode
+          // This ensures (user as any).customer._id works throughout the app
+          const freshUser = { customer: freshCustomer };
+
+          // Update localStorage with wrapped data for consistency
           localStorage.setItem('authUser', JSON.stringify(freshUser));
 
-          // Update state with fresh data
-          setUser(freshUser as AuthUser);
+          // Update state with wrapped data
+          setUser(freshUser as unknown as AuthUser);
           setIsAuthenticated(true);
 
           const adminInfo = extractAdminInfo(freshUser);

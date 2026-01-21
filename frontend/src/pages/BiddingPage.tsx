@@ -46,25 +46,38 @@ const BiddingPage: React.FC = () => {
   const [activeBids, setActiveBids] = useState<ActiveBid[]>([]);
   const [expandedBidId, setExpandedBidId] = useState<string | null>(null);
 
+  // Helper to safely get customer data regardless of user object structure
+  const getCustomer = () => {
+    if (!user) return null;
+    const u = user as any;
+    return u.customer || u;
+  };
+
   const { register, handleSubmit, watch, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    defaultValues: { userId: user ? (user as any).customer._id : '', bidType: 'open', transporterIds: [], transporterRating: '', weightOfBox: undefined, noofboxes: undefined, length: undefined, width: undefined, height: undefined, origin: '', destination: '', bidEndTime: '', pickupDate: '', pickupTime: '', },
+    defaultValues: { userId: getCustomer()?._id || '', bidType: 'open', transporterIds: [], transporterRating: '', weightOfBox: undefined, noofboxes: undefined, length: undefined, width: undefined, height: undefined, origin: '', destination: '', bidEndTime: '', pickupDate: '', pickupTime: '', },
   });
   const bidType = watch('bidType');
 
   // --- DATA FETCHING (Unchanged) ---
   useEffect(() => {
-    const userId = user ? (user as any).customer._id : '';
+    const customerId = getCustomer()?._id;
+    if (!customerId) return;
     const fetchData = async () => {
-      await axios.get<{ data: ActiveBid[] }>(`${API_BASE_URL}/api/bidding/user/${userId}`).then(res => setActiveBids(res.data.data)).catch(err => console.error('Failed to load active bids', err));
+      await axios.get<{ data: ActiveBid[] }>(`${API_BASE_URL}/api/bidding/user/${customerId}`).then(res => setActiveBids(res.data.data)).catch(err => console.error('Failed to load active bids', err));
     };
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // --- FORM SUBMISSION (Unchanged) ---
   const onSubmit: SubmitHandler<FormValues> = async data => {
     try {
-      ``
-      const payload = { userId: (user as any).customer._id, weightOfBox: Number(data.weightOfBox), noofboxes: Number(data.noofboxes), length: Number(data.length), width: Number(data.width), height: Number(data.height), origin: data.origin, destination: data.destination, bidEndTime: data.bidEndTime, pickupDate: data.pickupDate, pickupTime: data.pickupTime, bidType: data.bidType, transporterIds: data.bidType === 'semi-limited' ? data.transporterIds : [], transporterRating: data.bidType === 'semi-limited' && data.transporterRating !== '' ? Number(data.transporterRating) : undefined, };
+      const customerId = getCustomer()?._id;
+      if (!customerId) {
+        alert('Unable to identify user. Please log in again.');
+        return;
+      }
+      const payload = { userId: customerId, weightOfBox: Number(data.weightOfBox), noofboxes: Number(data.noofboxes), length: Number(data.length), width: Number(data.width), height: Number(data.height), origin: data.origin, destination: data.destination, bidEndTime: data.bidEndTime, pickupDate: data.pickupDate, pickupTime: data.pickupTime, bidType: data.bidType, transporterIds: data.bidType === 'semi-limited' ? data.transporterIds : [], transporterRating: data.bidType === 'semi-limited' && data.transporterRating !== '' ? Number(data.transporterRating) : undefined, };
       const response = await axios.post(`${API_BASE_URL}/api/bidding/addbid`, payload);
       if (response.data.success) {
         toast.success('Bidding created successfully!');
