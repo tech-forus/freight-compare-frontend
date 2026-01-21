@@ -278,7 +278,7 @@ const VendorApprovalPage: React.FC = () => {
               <div className="p-4 bg-slate-50 rounded-full mb-4">
                 <Filter className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">No vendors found</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">No {activeTab} vendors</h3>
               <p className="text-slate-500 max-w-sm">
                 {searchQuery
                   ? `No results matching "${searchQuery}"`

@@ -2806,13 +2806,20 @@ const getVerificationStatus = (
     quote: any,
     statusMap: Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }> = {}
 ): VerificationStatus => {
+    // Check by company name first
+    const companyName = (quote.companyName || '').trim().toLowerCase();
+
+    // Force Gati and Cargo Planet to always show as unverified
+    if (companyName === 'gati' || companyName === 'cargo planet') {
+        return 'unverified';
+    }
+
     // Special vendors (client-side injected) are always verified
     if (quote.isSpecialVendor) {
         return 'verified';
     }
 
     // Check by company name (fallback for special vendors)
-    const companyName = (quote.companyName || '').trim().toLowerCase();
     if (companyName === 'local ftl' || companyName === 'wheelseye ftl') {
         return 'verified';
     }
