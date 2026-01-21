@@ -2008,8 +2008,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                     }
 
                                                     // Apply all filters consistently to both tied-up and available vendors
+                                                    // P1 FIX: Use getQuotePrice() for consistent price filtering (was: q.totalCharges ?? Infinity)
+                                                    // ROLLBACK: Change getQuotePrice(q) back to (q.totalCharges ?? Infinity)
                                                     return (
-                                                        (q.totalCharges ?? Infinity) <= maxPrice &&
+                                                        getQuotePrice(q) <= maxPrice &&
                                                         (q.estimatedTime ?? Infinity) <= maxTime &&
                                                         rating >= minRating
                                                     );
