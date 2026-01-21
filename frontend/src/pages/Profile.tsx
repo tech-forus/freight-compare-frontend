@@ -51,7 +51,8 @@ const ProfilePage: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const { user } = useAuth();
 
-    const customer = (user as any)?.customer || {};
+    // Handle both formats: user.customer (from login) OR user directly (from /api/auth/me)
+    const customer = (user as any)?.customer || (user as any) || {};
     const userInitial = customer.firstName ? customer.firstName.charAt(0).toUpperCase() : '?';
 
     const handlePasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

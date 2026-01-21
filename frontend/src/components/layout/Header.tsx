@@ -40,8 +40,10 @@ const UserProfileDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Safely extract customer info
-  const customer = (user as any)?.customer;
+  // Safely extract customer info - handle both formats:
+  // 1. user.customer (from login response)
+  // 2. user directly (from /api/auth/me or localStorage)
+  const customer = (user as any)?.customer || (user as any);
   const userInitial = customer?.firstName?.charAt(0)?.toUpperCase() || '?';
 
   useEffect(() => {
