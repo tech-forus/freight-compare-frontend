@@ -2122,6 +2122,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 // For Uttam Goyal: ONLY special 4 vendors in tied-up, ALL others in available
                                                 tiedUpVendorsFinal = allVendorsRaw.filter(q => isSpecialTiedUpVendor(q));
                                                 otherVendorsFinal = allVendorsRaw.filter(q => !isSpecialTiedUpVendor(q));
+
+                                                // FIX: Re-sort after filtering since filter() preserves concatenation order, not price order
+                                                // ROLLBACK: Remove these two sort calls
+                                                tiedUpVendorsFinal.sort((a, b) => getQuotePrice(a) - getQuotePrice(b));
+                                                otherVendorsFinal.sort((a, b) => getQuotePrice(a) - getQuotePrice(b));
                                             } else {
                                                 // For other users: use original backend categorization
                                                 tiedUpVendorsFinal = tiedUpVendorsRaw;
