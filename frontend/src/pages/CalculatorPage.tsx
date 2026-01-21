@@ -2092,7 +2092,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                             const seenVendors = new Set<string>();
 
                                             // 🎯 Special tied-up vendors for Uttam Goyal (forus@gmail.com)
-                                            // These vendors appear in "Your Tied-Up Vendors" section visually
+                                            // ONLY these 4 vendors appear in "Your Tied-Up Vendors" section
+                                            // All other vendors (including backend tied-up) go to "Our Available Vendors"
                                             // EXACT companyName values from DB:
                                             const SPECIAL_TIEDUP_VENDORS = [
                                                 'Safexpress',
@@ -2109,16 +2110,24 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 return SPECIAL_TIEDUP_VENDORS.some(v => v.toLowerCase() === name.toLowerCase());
                                             };
 
-                                            // For Uttam Goyal: move matching vendors from "other" to "tied-up"
-                                            let specialVendorsFromOther: typeof otherVendorsRaw = [];
-                                            let remainingOtherVendorsRaw = otherVendorsRaw;
+                                            // Combine all vendors from both sources for unified processing
+                                            const allVendorsRaw = [...tiedUpVendorsRaw, ...otherVendorsRaw];
+
+                                            let tiedUpVendorsFinal: typeof allVendorsRaw = [];
+                                            let otherVendorsFinal: typeof allVendorsRaw = [];
 
                                             if (isUttamGoyal) {
-                                                specialVendorsFromOther = otherVendorsRaw.filter(q => isSpecialTiedUpVendor(q));
-                                                remainingOtherVendorsRaw = otherVendorsRaw.filter(q => !isSpecialTiedUpVendor(q));
+                                                // For Uttam Goyal: ONLY special 4 vendors in tied-up, ALL others in available
+                                                tiedUpVendorsFinal = allVendorsRaw.filter(q => isSpecialTiedUpVendor(q));
+                                                otherVendorsFinal = allVendorsRaw.filter(q => !isSpecialTiedUpVendor(q));
+                                            } else {
+                                                // For other users: use original backend categorization
+                                                tiedUpVendorsFinal = tiedUpVendorsRaw;
+                                                otherVendorsFinal = otherVendorsRaw;
                                             }
 
-                                            const tiedUpVendors = [...tiedUpVendorsRaw, ...specialVendorsFromOther].filter(q => {
+                                            // Deduplicate tied-up vendors
+                                            const tiedUpVendors = tiedUpVendorsFinal.filter(q => {
                                                 const key = vendorKey(q);
                                                 if (!key) return true;
                                                 if (seenVendors.has(key)) return false;
@@ -2126,8 +2135,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 return true;
                                             });
 
-                                            // Don't re-sort here - processQuotes already sorted by the selected criteria (sortBy)
-                                            const otherVendors = remainingOtherVendorsRaw.filter(q => {
+                                            // Deduplicate other vendors (don't re-sort - processQuotes already sorted)
+                                            const otherVendors = otherVendorsFinal.filter(q => {
                                                 const key = vendorKey(q);
                                                 if (!key) return true;
                                                 if (seenVendors.has(key)) return false;
