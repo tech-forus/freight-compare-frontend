@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { getTemporaryTransporters } from '../services/api';
 import { TemporaryTransporter } from '../utils/validators';
-import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, Eye, FileText, MapPin } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, FileText, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import http from '../lib/http';
 import AdminLayout from '../components/admin/AdminLayout';
@@ -86,8 +84,8 @@ class InlineErrorBoundary extends React.Component<
 }
 
 const VendorApprovalPage: React.FC = () => {
-  const { isSuperAdmin } = useAuth();
-  const navigate = useNavigate();
+  // Note: Permission check is handled by AdminRoute in App.tsx
+  // This page is only rendered if the user has vendorApproval permission
   const [activeTab, setActiveTab] = useState<VendorStatus>('pending');
   const [vendors, setVendors] = useState<VendorWithId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,13 +94,6 @@ const VendorApprovalPage: React.FC = () => {
   const [selectedVendor, setSelectedVendor] = useState<VendorWithId | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Redirect if not super admin
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error('Access denied. Super admin privileges required.');
-      navigate('/dashboard');
-    }
-  }, [isSuperAdmin, navigate]);
 
   // Fetch vendors
   useEffect(() => {
@@ -121,10 +112,8 @@ const VendorApprovalPage: React.FC = () => {
       }
     };
 
-    if (isSuperAdmin) {
-      fetchVendors();
-    }
-  }, [isSuperAdmin]);
+    fetchVendors();
+  }, []);
 
   // Filter vendors by status and search query
   const filteredVendors = Array.isArray(vendors) ? vendors.filter((vendor) => {
@@ -220,9 +209,7 @@ const VendorApprovalPage: React.FC = () => {
     return vendors.filter((v) => v && (v.approvalStatus || 'pending') === status).length;
   };
 
-  if (!isSuperAdmin) {
-    return null;
-  }
+
 
   const isVendorIncomplete = (vendor: VendorWithId) => {
     if (!vendor) return true;
@@ -379,8 +366,8 @@ const VendorApprovalPage: React.FC = () => {
                                 onClick={() => handleToggleVerification(vendor._id, vendor.isVerified)}
                                 disabled={!!actionLoading}
                                 className={`p-2 rounded-lg transition-colors ${vendor.isVerified
-                                    ? 'text-emerald-600 hover:bg-emerald-50'
-                                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                                  ? 'text-emerald-600 hover:bg-emerald-50'
+                                  : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                                   }`}
                                 title={vendor.isVerified ? "Mark as Unverified" : "Mark as Verified"}
                               >
