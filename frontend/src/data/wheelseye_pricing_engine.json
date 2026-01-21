@@ -1,0 +1,656 @@
+{
+  "distanceSlabs": [
+    60,
+    100,
+    150,
+    250,
+    300,
+    350,
+    400,
+    450,
+    500,
+    600,
+    700,
+    800,
+    900,
+    1000,
+    1200,
+    1500,
+    1800,
+    2000,
+    2200,
+    2500,
+    2600,
+    2700
+  ],
+  "baseVehicles": [
+    {
+      "vehicleId": "TATA_ACE",
+      "label": "Tata Ace",
+      "lengthFt": 7,
+      "slabWeightKg": 1000,
+      "prices": {
+        "60": 2200,
+        "100": 4300,
+        "150": 6000,
+        "250": 7000,
+        "300": 9500,
+        "350": 10400,
+        "400": 10400,
+        "450": 10400,
+        "500": 12300,
+        "600": 12300,
+        "700": 15700,
+        "800": 18500,
+        "900": 18500,
+        "1000": 18500
+      }
+    },
+    {
+      "vehicleId": "PICKUP",
+      "label": "Pickup",
+      "lengthFt": 8,
+      "slabWeightKg": 1200,
+      "prices": {
+        "60": 2200,
+        "100": 5300,
+        "150": 6000,
+        "250": 7200,
+        "300": 11500,
+        "350": 11500,
+        "400": 11500,
+        "450": 11500,
+        "500": 12800,
+        "600": 15700,
+        "700": 17000,
+        "800": 17000,
+        "900": 23100,
+        "1000": 23100
+      }
+    },
+    {
+      "vehicleId": "TEN_FT",
+      "label": "10 ft",
+      "lengthFt": 10,
+      "slabWeightKg": 1500,
+      "prices": {
+        "60": 2200,
+        "100": 5800,
+        "150": 6000,
+        "250": 9700,
+        "300": 12000,
+        "350": 12000,
+        "400": 13000,
+        "450": 14600,
+        "500": 16400,
+        "600": 20300,
+        "700": 23000,
+        "800": 26900,
+        "900": 26900,
+        "1000": 26900
+      }
+    },
+    {
+      "vehicleId": "EICHER_14",
+      "label": "Eicher 14 ft",
+      "lengthFt": 14,
+      "slabWeightKg": 4000,
+      "prices": {
+        "60": 3600,
+        "100": 7200,
+        "150": 9200,
+        "250": 12400,
+        "300": 18000,
+        "350": 18000,
+        "400": 18000,
+        "450": 21000,
+        "500": 22600,
+        "600": 22600,
+        "700": 28800,
+        "800": 28800,
+        "900": 28800,
+        "1000": 36900,
+        "1200": 37700,
+        "1500": 50800,
+        "1800": 65100,
+        "2000": 65100,
+        "2200": 67500,
+        "2500": 74100,
+        "2600": 77300,
+        "2700": 79100
+      }
+    },
+    {
+      "vehicleId": "EICHER_19",
+      "label": "Eicher 19 ft",
+      "lengthFt": 19,
+      "slabWeightKg": 7000,
+      "prices": {
+        "60": 6000,
+        "100": 10000,
+        "150": 11200,
+        "250": 14000,
+        "300": 17200,
+        "350": 22500,
+        "400": 22500,
+        "450": 22500,
+        "500": 25500,
+        "600": 33800,
+        "700": 35600,
+        "800": 35600,
+        "900": 43400,
+        "1000": 43400,
+        "1200": 44500,
+        "1500": 56400,
+        "1800": 62100,
+        "2000": 62100,
+        "2200": 78300,
+        "2500": 86200,
+        "2600": 93200,
+        "2700": 98200
+      }
+    },
+    {
+      "vehicleId": "EICHER_20",
+      "label": "Eicher 20 ft",
+      "lengthFt": 20,
+      "slabWeightKg": 10000,
+      "prices": {
+        "60": 10800,
+        "100": 13300,
+        "150": 13700,
+        "250": 18500,
+        "300": 21500,
+        "350": 27500,
+        "400": 27500,
+        "450": 27500,
+        "500": 32000,
+        "600": 32000,
+        "700": 35600,
+        "800": 42900,
+        "900": 47000,
+        "1000": 47000,
+        "1200": 62600,
+        "1500": 65800,
+        "1800": 82900,
+        "2000": 72400,
+        "2200": 92600,
+        "2500": 101200,
+        "2600": 106800,
+        "2700": 107900
+      }
+    },
+    {
+      "vehicleId": "CONTAINER_32",
+      "label": "Container 32 ft MXL",
+      "lengthFt": 32,
+      "slabWeightKg": 18000,
+      "prices": {
+        "60": 15900,
+        "100": 25500,
+        "150": 29100,
+        "250": 32200,
+        "300": 35800,
+        "350": 38400,
+        "400": 40700,
+        "450": 43500,
+        "500": 49300,
+        "600": 57000,
+        "700": 64400,
+        "800": 72100,
+        "900": 86900,
+        "1000": 86900,
+        "1200": 87900,
+        "1500": 100300,
+        "1800": 113300,
+        "2000": 113300,
+        "2200": 122600,
+        "2500": 134800,
+        "2600": 142800,
+        "2700": 148400
+      }
+    }
+  ],
+  "weightBuckets": [
+    {
+      "min": 0,
+      "max": 1000,
+      "slabWeightKg": 1000
+    },
+    {
+      "min": 1001,
+      "max": 1200,
+      "slabWeightKg": 1200
+    },
+    {
+      "min": 1201,
+      "max": 1500,
+      "slabWeightKg": 1500
+    },
+    {
+      "min": 1501,
+      "max": 4000,
+      "slabWeightKg": 4000
+    },
+    {
+      "min": 4001,
+      "max": 7000,
+      "slabWeightKg": 7000
+    },
+    {
+      "min": 7001,
+      "max": 10000,
+      "slabWeightKg": 10000
+    },
+    {
+      "min": 10001,
+      "max": 18000,
+      "slabWeightKg": 18000
+    }
+  ],
+  "combos": [
+    {
+      "comboWeightKg": 8000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_14",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 8200,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            },
+            {
+              "vehicleId": "PICKUP",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 8500,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            },
+            {
+              "vehicleId": "TEN_FT",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 9000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 10000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 11000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            },
+            {
+              "vehicleId": "TATA_ACE",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "CONTAINER_32",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 12000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 1
+            },
+            {
+              "vehicleId": "TATA_ACE",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_14",
+              "count": 3
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "CONTAINER_32",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 14000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 1
+            },
+            {
+              "vehicleId": "TATA_ACE",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "CONTAINER_32",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 15000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_14",
+              "count": 2
+            },
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "CONTAINER_32",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 2
+            },
+            {
+              "vehicleId": "TATA_ACE",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 16000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "CONTAINER_32",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_14",
+              "count": 4
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 2
+            },
+            {
+              "vehicleId": "TATA_ACE",
+              "count": 2
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 2
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comboWeightKg": 17000,
+      "options": [
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_20",
+              "count": 1
+            },
+            {
+              "vehicleId": "EICHER_19",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "CONTAINER_32",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "vehicleId": "EICHER_19",
+              "count": 2
+            },
+            {
+              "vehicleId": "EICHER_14",
+              "count": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
