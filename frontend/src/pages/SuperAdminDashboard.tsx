@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -10,25 +10,14 @@ import {
   Building2,
   ChevronRight
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import AdminLayout from '../components/admin/AdminLayout';
 import AdminStatsCard from '../components/admin/AdminStatsCard';
 
 const SuperAdminDashboard: React.FC = () => {
-  const { isSuperAdmin, user } = useAuth();
+  // Note: Permission check is handled by AdminRoute in App.tsx
+  // This page is only rendered if the user has 'dashboard' permission or is super admin
+  const { user } = useAuth();
   const navigate = useNavigate();
-
-  // Redirect if not super admin
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error('Access denied. Super admin privileges required.');
-      navigate('/dashboard');
-    }
-  }, [isSuperAdmin, navigate]);
-
-  if (!isSuperAdmin) {
-    return null;
-  }
 
   // MOCK DATA - In production, fetch this from an API
   // Use "getTemporaryTransporters" or similar to populate "Pending"
