@@ -546,7 +546,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                         const normalizedName = vendor.companyName.trim().toLowerCase();
                         map[normalizedName] = {
                             approvalStatus: vendor.approvalStatus as 'pending' | 'approved' | 'rejected',
-                            isVerified: vendor.isVerified !== false // Default to true unless explicitly false
+                            isVerified: vendor.isVerified === true // Only verified if DB explicitly has true
                         };
                     }
                     return map;
@@ -2809,10 +2809,7 @@ const getVerificationStatus = (
     // Check by company name first
     const companyName = (quote.companyName || '').trim().toLowerCase();
 
-    // Force Gati and Cargo Planet to always show as unverified
-    if (companyName === 'gati' || companyName === 'cargo planet') {
-        return 'unverified';
-    }
+    // Removed forced override - verification status now comes purely from database
 
     // Special vendors (client-side injected) are always verified
     if (quote.isSpecialVendor) {
