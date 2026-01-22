@@ -572,3 +572,120 @@ export const updateAdminPermissions = async (
     throw error;
   }
 };
+
+// =============================================================================
+// REGULAR TRANSPORTER VERIFICATION API METHODS
+// =============================================================================
+
+/** Regular transporter type (from transporters collection) */
+export interface RegularTransporter {
+  _id: string;
+  companyName: string;
+  phone: number;
+  email: string;
+  gstNo: string;
+  address: string;
+  state: string;
+  pincode: number;
+  deliveryMode?: string;
+  rating?: number;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Fetch all regular transporters (for super admin)
+ * GET /api/transporter/regular
+ */
+export const getRegularTransporters = async (): Promise<RegularTransporter[]> => {
+  try {
+    console.log('[API] getRegularTransporters START');
+    emitDebug('API_GET_REGULAR_TRANSPORTERS_START', {});
+
+    const headers = buildHeaders();
+    const url = `${API_BASE}/api/transporter/regular`;
+    console.log('[API] Fetching from:', url);
+    const response = await fetch(url, { method: 'GET', headers });
+    console.log('[API] Response status:', response.status);
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        emitDebugError('API_GET_REGULAR_TRANSPORTERS_UNAUTHORIZED');
+        return [];
+      }
+      emitDebugError('API_GET_REGULAR_TRANSPORTERS_ERROR', { status: response.status });
+      return [];
+    }
+
+    const json = await safeJson<{ success: boolean; data: RegularTransporter[] }>(response);
+    const arr = json?.data || [];
+    console.log('[API] Fetched regular transporters:', arr.length);
+    emitDebug('API_GET_REGULAR_TRANSPORTERS_SUCCESS', { count: arr.length });
+    return arr;
+  } catch (error) {
+    emitDebugError('API_GET_REGULAR_TRANSPORTERS_EXCEPTION', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+};
+
+/**
+ * Update regular transporter approval status
+ * PUT /api/transporter/regular/:id/status
+ */
+export const updateTransporterStatus = async (
+  id: string,
+  status: 'pending' | 'approved' | 'rejected'
+): Promise<{ success: boolean; message?: string }> => {
+  try {
+    console.log('[API] updateTransporterStatus:', id, status);
+    const url = `${API_BASE}/api/transporter/regular/${id}/status`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: buildHeaders(),
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const errorData = await safeJson<{ message?: string }>(response);
+      return { success: false, message: errorData?.message || 'Failed to update status' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('API Error (updateTransporterStatus):', error);
+    return { success: false, message: 'Network error' };
+  }
+};
+
+/**
+ * Toggle regular transporter verification status
+ * PUT /api/transporter/regular/:id/verification
+ */
+export const toggleTransporterVerification = async (
+  id: string,
+  isVerified: boolean
+): Promise<{ success: boolean; message?: string }> => {
+  try {
+    console.log('[API] toggleTransporterVerification:', id, isVerified);
+    const url = `${API_BASE}/api/transporter/regular/${id}/verification`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: buildHeaders(),
+      body: JSON.stringify({ isVerified }),
+    });
+
+    if (!response.ok) {
+      const errorData = await safeJson<{ message?: string }>(response);
+      return { success: false, message: errorData?.message || 'Failed to update verification' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('API Error (toggleTransporterVerification):', error);
+    return { success: false, message: 'Network error' };
+  }
+};

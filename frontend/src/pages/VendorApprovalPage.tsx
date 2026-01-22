@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getTemporaryTransporters } from '../services/api';
+import { getTemporaryTransporters, getRegularTransporters, updateTransporterStatus, toggleTransporterVerification, RegularTransporter } from '../services/api';
 import { TemporaryTransporter } from '../utils/validators';
-import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, FileText, MapPin } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Search, Filter, X, FileText, MapPin, Truck, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import http from '../lib/http';
 import AdminLayout from '../components/admin/AdminLayout';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected';
+type TransporterType = 'temporary' | 'regular';
 
 interface VendorWithId extends TemporaryTransporter {
   _id: string;
@@ -29,6 +30,10 @@ interface VendorWithId extends TemporaryTransporter {
   prices?: any;
   invoiceValueCharges?: any;
   contactPersonName?: string;
+  // For regular transporters
+  phone?: number;
+  email?: string;
+  deliveryMode?: string;
 }
 
 const renderValue = (value: any, suffix = ''): string => {
@@ -86,6 +91,7 @@ class InlineErrorBoundary extends React.Component<
 const VendorApprovalPage: React.FC = () => {
   // Note: Permission check is handled by AdminRoute in App.tsx
   // This page is only rendered if the user has vendorApproval permission
+  const [transporterType, setTransporterType] = useState<TransporterType>('temporary');
   const [activeTab, setActiveTab] = useState<VendorStatus>('pending');
   const [vendors, setVendors] = useState<VendorWithId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,14 +101,30 @@ const VendorApprovalPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
 
-  // Fetch vendors
+  // Fetch vendors based on transporter type
   useEffect(() => {
     const fetchVendors = async () => {
       setLoading(true);
       try {
-        console.log('[VendorApproval] Fetching all vendors...');
-        const data = await getTemporaryTransporters(undefined);
-        setVendors(data || []);
+        console.log(`[VendorApproval] Fetching ${transporterType} transporters...`);
+
+        if (transporterType === 'temporary') {
+          const data = await getTemporaryTransporters(undefined);
+          setVendors((data || []) as VendorWithId[]);
+        } else {
+          const data = await getRegularTransporters();
+          // Map regular transporter fields to match VendorWithId interface
+          const mappedData = data.map((t: RegularTransporter) => ({
+            ...t,
+            companyName: t.companyName,
+            vendorEmailAddress: t.email,
+            vendorPhoneNumber: String(t.phone),
+            gstin: t.gstNo,
+            transportMode: t.deliveryMode || 'N/A',
+            geo: { state: t.state, city: '', pincode: t.pincode },
+          })) as VendorWithId[];
+          setVendors(mappedData);
+        }
       } catch (error) {
         console.error('[VendorApproval] Failed to fetch vendors:', error);
         toast.error('Failed to load vendors');
@@ -113,7 +135,7 @@ const VendorApprovalPage: React.FC = () => {
     };
 
     fetchVendors();
-  }, []);
+  }, [transporterType]);
 
   // Filter vendors by status and search query
   const filteredVendors = Array.isArray(vendors) ? vendors.filter((vendor) => {
@@ -123,6 +145,7 @@ const VendorApprovalPage: React.FC = () => {
     const matchesSearch = searchQuery
       ? (vendor.companyName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (vendor.vendorEmailAddress?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (vendor.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (vendor.contactPersonName?.toLowerCase() || '').includes(searchQuery.toLowerCase())
       : true;
     return matchesTab && matchesSearch;
@@ -144,22 +167,32 @@ const VendorApprovalPage: React.FC = () => {
   const handleVendorAction = async (vendorId: string, action: 'approve' | 'reject') => {
     setActionLoading(vendorId);
     try {
-      const response = await http.put(`/api/transporter/temporary/${vendorId}/status`, {
-        status: action === 'approve' ? 'approved' : 'rejected',
-      });
+      const status = action === 'approve' ? 'approved' : 'rejected';
 
-      if (response.data.success) {
-        toast.success(`Vendor ${action}d successfully`);
-        // Update local state
-        setVendors((prev) =>
-          prev.map((v) =>
-            v._id === vendorId
-              ? { ...v, approvalStatus: action === 'approve' ? 'approved' : 'rejected' }
-              : v
-          )
-        );
+      if (transporterType === 'temporary') {
+        const response = await http.put(`/api/transporter/temporary/${vendorId}/status`, { status });
+        if (response.data.success) {
+          toast.success(`Vendor ${action}d successfully`);
+          setVendors((prev) =>
+            prev.map((v) =>
+              v._id === vendorId ? { ...v, approvalStatus: status } : v
+            )
+          );
+        } else {
+          toast.error(response.data.message || `Failed to ${action} vendor`);
+        }
       } else {
-        toast.error(response.data.message || `Failed to ${action} vendor`);
+        const result = await updateTransporterStatus(vendorId, status);
+        if (result.success) {
+          toast.success(`Transporter ${action}d successfully`);
+          setVendors((prev) =>
+            prev.map((v) =>
+              v._id === vendorId ? { ...v, approvalStatus: status } : v
+            )
+          );
+        } else {
+          toast.error(result.message || `Failed to ${action} transporter`);
+        }
       }
     } catch (error: any) {
       console.error(`Failed to ${action} vendor:`, error);
@@ -174,19 +207,30 @@ const VendorApprovalPage: React.FC = () => {
     setActionLoading(vendorId);
     try {
       const newStatus = !currentStatus;
-      const response = await http.put(`/api/transporter/temporary/${vendorId}/verification`, {
-        isVerified: newStatus
-      });
 
-      if (response.data.success) {
-        toast.success(`Vendor marked as ${newStatus ? 'Verified' : 'Unverified'}`);
-        setVendors(prev => prev.map(v =>
-          v._id === vendorId
-            ? { ...v, isVerified: newStatus }
-            : v
-        ));
+      if (transporterType === 'temporary') {
+        const response = await http.put(`/api/transporter/temporary/${vendorId}/verification`, {
+          isVerified: newStatus
+        });
+
+        if (response.data.success) {
+          toast.success(`Vendor marked as ${newStatus ? 'Verified' : 'Unverified'}`);
+          setVendors(prev => prev.map(v =>
+            v._id === vendorId ? { ...v, isVerified: newStatus } : v
+          ));
+        } else {
+          toast.error(response.data.message || 'Failed to update verification status');
+        }
       } else {
-        toast.error(response.data.message || 'Failed to update verification status');
+        const result = await toggleTransporterVerification(vendorId, newStatus);
+        if (result.success) {
+          toast.success(`Transporter marked as ${newStatus ? 'Verified' : 'Unverified'}`);
+          setVendors(prev => prev.map(v =>
+            v._id === vendorId ? { ...v, isVerified: newStatus } : v
+          ));
+        } else {
+          toast.error(result.message || 'Failed to update verification status');
+        }
       }
     } catch (error: any) {
       console.error('Failed to toggle verification:', error);
@@ -209,10 +253,13 @@ const VendorApprovalPage: React.FC = () => {
     return vendors.filter((v) => v && (v.approvalStatus || 'pending') === status).length;
   };
 
-
-
+  // For regular transporters, check if vendor has prices (they won't, different schema)
   const isVendorIncomplete = (vendor: VendorWithId) => {
     if (!vendor) return true;
+    if (transporterType === 'regular') {
+      // Regular transporters don't have prices in the same format
+      return false;
+    }
     return (
       !vendor.prices ||
       !vendor.prices.priceRate ||
@@ -220,12 +267,45 @@ const VendorApprovalPage: React.FC = () => {
     );
   };
 
+  // Get display values based on transporter type
+  const getContactEmail = (vendor: VendorWithId) => vendor.vendorEmailAddress || vendor.email || 'N/A';
+  const getContactPhone = (vendor: VendorWithId) => vendor.vendorPhoneNumber || String(vendor.phone) || 'N/A';
+  const getGSTNo = (vendor: VendorWithId) => vendor.gstin || vendor.gstNo || 'N/A';
+  const getMode = (vendor: VendorWithId) => vendor.transportMode || vendor.deliveryMode || vendor.mode || 'N/A';
+
   return (
     <InlineErrorBoundary>
       <AdminLayout
         title="Vendor Approvals"
         subtitle="Review and manage vendor onboarding applications."
       >
+
+        {/* Transporter Type Toggle - NEW */}
+        <div className="flex items-center gap-4 mb-6">
+          <span className="text-sm font-medium text-slate-600">View:</span>
+          <div className="flex p-1 bg-slate-100 rounded-lg">
+            <button
+              onClick={() => setTransporterType('temporary')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${transporterType === 'temporary'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+                }`}
+            >
+              <Users size={16} />
+              <span>Temporary Transporters</span>
+            </button>
+            <button
+              onClick={() => setTransporterType('regular')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${transporterType === 'regular'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+                }`}
+            >
+              <Truck size={16} />
+              <span>Transporters</span>
+            </button>
+          </div>
+        </div>
 
         {/* Filters and Search */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
@@ -271,18 +351,18 @@ const VendorApprovalPage: React.FC = () => {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading vendor data...</p>
+              <p className="text-slate-500 font-medium">Loading {transporterType} transporters...</p>
             </div>
           ) : filteredVendors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-4">
               <div className="p-4 bg-slate-50 rounded-full mb-4">
                 <Filter className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">No {activeTab} vendors</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">No {activeTab} {transporterType} transporters</h3>
               <p className="text-slate-500 max-w-sm">
                 {searchQuery
                   ? `No results matching "${searchQuery}"`
-                  : `There are no ${activeTab} vendors at the moment.`}
+                  : `There are no ${activeTab} ${transporterType} transporters at the moment.`}
               </p>
             </div>
           ) : (
@@ -302,27 +382,36 @@ const VendorApprovalPage: React.FC = () => {
                     <tr key={vendor._id} className="hover:bg-slate-50/80 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${transporterType === 'regular'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-blue-100 text-blue-700'
+                            }`}>
                             {(vendor.companyName?.[0] || 'C').toUpperCase()}
                           </div>
                           <div>
                             <p className="font-bold text-slate-900">{vendor.companyName}</p>
-                            <p className="text-xs text-slate-500">GST: {vendor.gstin || vendor.gstNo || 'N/A'}</p>
+                            <p className="text-xs text-slate-500">GST: {getGSTNo(vendor)}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-slate-900">{vendor.contactPersonName || 'N/A'}</p>
-                          <p className="text-xs text-slate-500">{vendor.vendorEmailAddress}</p>
-                          <p className="text-xs text-slate-500">{vendor.vendorPhoneNumber}</p>
+                          <p className="text-xs text-slate-500">{getContactEmail(vendor)}</p>
+                          <p className="text-xs text-slate-500">{getContactPhone(vendor)}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-semibold uppercase border border-slate-200">
-                            {(vendor.transportMode || vendor.mode || 'N/A')}
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-semibold uppercase border ${transporterType === 'regular'
+                              ? 'bg-purple-50 text-purple-600 border-purple-200'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                            {getMode(vendor)}
                           </span>
+                          {vendor.isVerified && (
+                            <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Verified</span>
+                          )}
                           {isVendorIncomplete(vendor) && (
                             <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Incomplete</span>
                           )}
@@ -425,7 +514,9 @@ const VendorApprovalPage: React.FC = () => {
               {/* Modal Header */}
               <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-800">Vendor Details</h2>
+                  <h2 className="text-xl font-bold text-slate-800">
+                    {transporterType === 'regular' ? 'Transporter' : 'Vendor'} Details
+                  </h2>
                   <p className="text-sm text-slate-500">Reviewing application for {selectedVendor.companyName}</p>
                 </div>
                 <button
@@ -466,7 +557,7 @@ const VendorApprovalPage: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-xs text-slate-500 font-medium">GST Number</label>
-                            <p className="font-medium text-slate-900">{selectedVendor.gstin || selectedVendor.gstNo || 'N/A'}</p>
+                            <p className="font-medium text-slate-900">{getGSTNo(selectedVendor)}</p>
                           </div>
                           <div>
                             <label className="text-xs text-slate-500 font-medium">Vendor Code</label>
@@ -496,11 +587,11 @@ const VendorApprovalPage: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-xs text-slate-500 font-medium">Email</label>
-                            <p className="font-medium text-slate-900 break-words">{selectedVendor.vendorEmailAddress || 'N/A'}</p>
+                            <p className="font-medium text-slate-900 break-words">{getContactEmail(selectedVendor)}</p>
                           </div>
                           <div>
                             <label className="text-xs text-slate-500 font-medium">Phone</label>
-                            <p className="font-medium text-slate-900">{selectedVendor.vendorPhoneNumber || 'N/A'}</p>
+                            <p className="font-medium text-slate-900">{getContactPhone(selectedVendor)}</p>
                           </div>
                         </div>
                       </div>
@@ -519,7 +610,7 @@ const VendorApprovalPage: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-xs text-slate-500 font-medium">Mode</label>
-                            <p className="font-bold text-blue-600">{(selectedVendor.transportMode || selectedVendor.mode)?.toUpperCase() || 'N/A'}</p>
+                            <p className="font-bold text-blue-600">{getMode(selectedVendor).toUpperCase()}</p>
                           </div>
                           <div>
                             <label className="text-xs text-slate-500 font-medium">Service Type</label>
@@ -529,31 +620,33 @@ const VendorApprovalPage: React.FC = () => {
                       </div>
                     </section>
 
-                    <section>
-                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Pricing Snapshot</h3>
-                      {selectedVendor.prices?.priceRate ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-slate-50 p-2 rounded">
-                            <span className="text-xs text-slate-500 block">Min Weight</span>
-                            <span className="font-bold text-slate-800">{selectedVendor.prices.priceRate.minWeight || 0} kg</span>
+                    {transporterType === 'temporary' && (
+                      <section>
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Pricing Snapshot</h3>
+                        {selectedVendor.prices?.priceRate ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-50 p-2 rounded">
+                              <span className="text-xs text-slate-500 block">Min Weight</span>
+                              <span className="font-bold text-slate-800">{selectedVendor.prices.priceRate.minWeight || 0} kg</span>
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded">
+                              <span className="text-xs text-slate-500 block">Min Charge</span>
+                              <span className="font-bold text-slate-800">₹{selectedVendor.prices.priceRate.minCharges || 0}</span>
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded">
+                              <span className="text-xs text-slate-500 block">Fuel Charge</span>
+                              <span className="font-bold text-slate-800">{selectedVendor.prices.priceRate.fuel || 0}%</span>
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded">
+                              <span className="text-xs text-slate-500 block">Docket</span>
+                              <span className="font-bold text-slate-800">₹{selectedVendor.prices.priceRate.docketCharges || 0}</span>
+                            </div>
                           </div>
-                          <div className="bg-slate-50 p-2 rounded">
-                            <span className="text-xs text-slate-500 block">Min Charge</span>
-                            <span className="font-bold text-slate-800">₹{selectedVendor.prices.priceRate.minCharges || 0}</span>
-                          </div>
-                          <div className="bg-slate-50 p-2 rounded">
-                            <span className="text-xs text-slate-500 block">Fuel Charge</span>
-                            <span className="font-bold text-slate-800">{selectedVendor.prices.priceRate.fuel || 0}%</span>
-                          </div>
-                          <div className="bg-slate-50 p-2 rounded">
-                            <span className="text-xs text-slate-500 block">Docket</span>
-                            <span className="font-bold text-slate-800">₹{selectedVendor.prices.priceRate.docketCharges || 0}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-400 italic">No pricing configured</p>
-                      )}
-                    </section>
+                        ) : (
+                          <p className="text-sm text-slate-400 italic">No pricing configured</p>
+                        )}
+                      </section>
+                    )}
                   </div>
                 </div>
 
