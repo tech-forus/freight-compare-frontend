@@ -67,7 +67,7 @@ import {
 } from "../constants/specialVendors";
 
 // 🔽 Fetch vendor approval statuses from Super Admin system
-import { getTemporaryTransporters } from "../services/api";
+import { getTemporaryTransporters, getRegularTransporters } from "../services/api";
 
 // 🔽 Business News Popup (shown during slow calculations)
 import NewsPopup from "../components/NewsPopup";
@@ -532,28 +532,43 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         // Initial fetch
         const fetchVendorStatuses = async () => {
             try {
-                console.log('[Real-time Sync] Fetching all temporary transporters...');
-                const allVendors = await getTemporaryTransporters(undefined) as any[];
-                console.log('[Real-time Sync] Total vendors fetched from API:', allVendors.length);
-                console.log('[Real-time Sync] Vendor list:', allVendors.map(v => ({
-                    name: v.companyName,
-                    status: v.approvalStatus,
-                    id: v._id
-                })));
+                console.log('[Real-time Sync] Fetching all transporters...');
 
-                const statusMap = allVendors.reduce((map, vendor) => {
+                // Fetch BOTH temporary and regular transporters in parallel
+                const [tempVendors, regularVendors] = await Promise.all([
+                    getTemporaryTransporters(undefined) as Promise<any[]>,
+                    getRegularTransporters() as Promise<any[]>
+                ]);
+
+                console.log('[Real-time Sync] Temporary vendors:', tempVendors.length);
+                console.log('[Real-time Sync] Regular vendors:', regularVendors.length);
+
+                const statusMap: Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }> = {};
+
+                // Add temporary transporters to map
+                tempVendors.forEach(vendor => {
                     if (vendor.companyName && vendor.approvalStatus) {
                         const normalizedName = vendor.companyName.trim().toLowerCase();
-                        map[normalizedName] = {
+                        statusMap[normalizedName] = {
                             approvalStatus: vendor.approvalStatus as 'pending' | 'approved' | 'rejected',
-                            isVerified: vendor.isVerified === true // Only verified if DB explicitly has true
+                            isVerified: vendor.isVerified === true
                         };
                     }
-                    return map;
-                }, {} as Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }>);
+                });
+
+                // Add regular transporters to map (will override temporary if same name exists)
+                regularVendors.forEach(vendor => {
+                    if (vendor.companyName) {
+                        const normalizedName = vendor.companyName.trim().toLowerCase();
+                        statusMap[normalizedName] = {
+                            approvalStatus: vendor.approvalStatus || 'approved', // Default approved for regular
+                            isVerified: vendor.isVerified === true
+                        };
+                    }
+                });
 
                 setVendorStatusMap(statusMap);
-                console.log('[Real-time Sync] Vendor statuses updated:', Object.keys(statusMap).length);
+                console.log('[Real-time Sync] Total vendor statuses updated:', Object.keys(statusMap).length);
                 console.log('[Real-time Sync] Status map:', statusMap);
             } catch (error) {
                 console.warn('[Real-time Sync] Failed to fetch vendor statuses:', error);
