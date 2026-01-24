@@ -1051,8 +1051,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             );
 
             // ❌ Check for route not found error from backend
-            if (resp.data.error === 'NO_ROUTE_FOUND') {
-                setError(`No direct road route found between ${fromPincode} and ${toPincode}. Please verify the pincodes or contact support.`);
+            if (resp.data.error === 'NO_ROUTE_FOUND' || resp.data.error === 'NO_ROAD_ROUTE') {
+                setError(`No road route exists between ${fromPincode} and ${toPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
                 return;
             }
 
@@ -1196,8 +1196,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         } catch (e: any) {
             if (e.response?.status === 401) {
                 setError("Authentication failed. Please log out and log back in.");
-            } else if (e.response?.status === 400 && e.response?.data?.error === 'NO_ROUTE_FOUND') {
-                setError(`No direct road route found between ${fromPincode} and ${toPincode}. Please verify the pincodes or contact support.`);
+            } else if (e.response?.status === 400 && (e.response?.data?.error === 'NO_ROUTE_FOUND' || e.response?.data?.error === 'NO_ROAD_ROUTE')) {
+                setError(`No road route exists between ${fromPincode} and ${toPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
             } else if (e.response?.data?.message) {
                 setError(e.response.data.message);
             } else {
