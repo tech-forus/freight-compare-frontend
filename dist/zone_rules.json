@@ -1,0 +1,312 @@
+{
+  "meta": {
+    "version": "1.0",
+    "description": "Zone assignment rules extracted from Zones_List.xlsx"
+  },
+  "regionPrefixes": {
+    "NE": "North East",
+    "N": "North",
+    "C": "Central",
+    "E": "East",
+    "W": "West",
+    "S": "South"
+  },
+  "zonePriority": {
+    "North East": [
+      "NE1",
+      "NE2"
+    ],
+    "North": [
+      "N1",
+      "N2",
+      "N3"
+    ],
+    "Central": [
+      "C1",
+      "C2"
+    ],
+    "East": [
+      "E1",
+      "E2"
+    ],
+    "West": [
+      "W1",
+      "W2"
+    ],
+    "South": [
+      "S1",
+      "S2",
+      "S3"
+    ]
+  },
+  "limitedZones": [
+    "NE1",
+    "N1",
+    "C1",
+    "E1",
+    "W1",
+    "S1"
+  ],
+  "fullZones": [
+    "NE2",
+    "N2",
+    "N3",
+    "N4",
+    "C2",
+    "E2",
+    "W2",
+    "W3",
+    "S2",
+    "S3",
+    "S4",
+    "ROI"
+  ],
+  "stateZoneMapping": {
+    "Andhra Pradesh": [
+      "S1",
+      "S2"
+    ],
+    "Arunachal Pradesh": [
+      "NE2"
+    ],
+    "Assam": [
+      "NE1",
+      "NE2"
+    ],
+    "Bihar": [
+      "E1",
+      "E2"
+    ],
+    "Chhattisgarh": [
+      "C1",
+      "C2"
+    ],
+    "Goa": [
+      "W2",
+      "W3"
+    ],
+    "Gujarat": [
+      "W1",
+      "W2"
+    ],
+    "Haryana": [
+      "N1",
+      "N2"
+    ],
+    "Himachal Pradesh": [
+      "N3",
+      "N4"
+    ],
+    "Jharkhand": [
+      "E1",
+      "E2"
+    ],
+    "Karnataka": [
+      "S1",
+      "S2"
+    ],
+    "Kerala": [
+      "S3",
+      "S4"
+    ],
+    "Madhya Pradesh": [
+      "C1",
+      "C2"
+    ],
+    "Maharashtra": [
+      "W1",
+      "W2"
+    ],
+    "Manipur": [
+      "NE2"
+    ],
+    "Meghalaya": [
+      "NE2"
+    ],
+    "Mizoram": [
+      "NE2"
+    ],
+    "Nagaland": [
+      "NE2"
+    ],
+    "Odisha": [
+      "E1",
+      "E2"
+    ],
+    "Punjab": [
+      "N1",
+      "N2",
+      "N3"
+    ],
+    "Rajasthan": [
+      "N1",
+      "N2",
+      "N3"
+    ],
+    "Sikkim": [
+      "NE2"
+    ],
+    "Tamil Nadu": [
+      "S1",
+      "S2",
+      "S3"
+    ],
+    "Telangana": [
+      "S1",
+      "S2"
+    ],
+    "Tripura": [
+      "NE2"
+    ],
+    "Uttarakhand": [
+      "N2",
+      "N3",
+      "N4"
+    ],
+    "Uttar Pradesh": [
+      "N1",
+      "N2",
+      "N3"
+    ],
+    "West Bengal": [
+      "E1",
+      "E2",
+      "NE1"
+    ],
+    "Andaman and Nicobar": [
+      "ROI"
+    ],
+    "Chandigarh": [
+      "N1",
+      "N2"
+    ],
+    "Dadra and Nagar Haveli": [
+      "W1",
+      "W2"
+    ],
+    "Daman and Diu": [
+      "W1",
+      "W2"
+    ],
+    "Delhi": [
+      "N1"
+    ],
+    "Jammu and Kashmir": [
+      "N3",
+      "N4"
+    ],
+    "Ladakh": [
+      "ROI"
+    ],
+    "Lakshadweep": [
+      "ROI"
+    ],
+    "Puducherry": [
+      "S2",
+      "S3"
+    ]
+  },
+  "limitedCityMapping": {
+    "NE1": {
+      "Assam": [
+        "Guwahati"
+      ],
+      "West Bengal": [
+        "Siliguri"
+      ]
+    },
+    "N1": {
+      "Haryana": [
+        "Gurugram",
+        "Faridabad"
+      ],
+      "Uttar Pradesh": [
+        "Noida",
+        "Ghaziabad"
+      ],
+      "Punjab": [
+        "Mohali"
+      ],
+      "Rajasthan": [
+        "Jaipur"
+      ]
+    },
+    "C1": {
+      "Madhya Pradesh": [
+        "Indore",
+        "Bhopal"
+      ],
+      "Chhattisgarh": [
+        "Raipur"
+      ]
+    },
+    "E1": {
+      "Bihar": [
+        "Patna"
+      ],
+      "Odisha": [
+        "Bhubaneshwar"
+      ],
+      "Jharkhand": [
+        "Jamshedpur",
+        "Ranchi"
+      ],
+      "West Bengal": [
+        "Kolkata",
+        "Siliguri"
+      ]
+    },
+    "W1": {
+      "Maharashtra": [
+        "Mumbai",
+        "Pune",
+        "Thane"
+      ],
+      "Gujarat": [
+        "Ahmedabad",
+        "Surat"
+      ]
+    },
+    "S1": {
+      "Karnataka": [
+        "Bangalore"
+      ],
+      "Telangana": [
+        "Hyderabad"
+      ],
+      "Tamil Nadu": [
+        "Chennai"
+      ]
+    }
+  },
+  "specialCities": {
+    "Siliguri": {
+      "state": "West Bengal",
+      "applicableZones": [
+        "NE1",
+        "E1"
+      ],
+      "rule": "Can be assigned to either NE1 or E1"
+    }
+  },
+  "assignmentLogic": {
+    "description": "Zone assignment priority rules",
+    "rules": [
+      {
+        "order": 1,
+        "type": "limited_city_match",
+        "description": "If city matches a limited zone's city list, assign that zone first"
+      },
+      {
+        "order": 2,
+        "type": "state_primary_zone",
+        "description": "Use the state's primary (first listed) zone"
+      },
+      {
+        "order": 3,
+        "type": "state_fallback_zones",
+        "description": "Secondary zones for the state if primary doesn't fit criteria"
+      }
+    ]
+  }
+}
