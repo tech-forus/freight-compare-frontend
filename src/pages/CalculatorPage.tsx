@@ -255,7 +255,7 @@ type PresetSaveState = "idle" | "saving" | "success" | "exists" | "error";
 // Calculator Page
 // -----------------------------------------------------------------------------
 const CalculatorPage: React.FC = (): JSX.Element => {
-    const { user, isSuperAdmin } = useAuth();
+    const { user, isSuperAdmin, loading } = useAuth();
     const token = Cookies.get("authToken");
     const navigate = useNavigate();
 
@@ -638,9 +638,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     }, [openPresetDropdownIndex]);
 
     useEffect(() => {
+        if (loading) return;
         fetchSavedBoxes();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [getCustomer()?._id, token]);
+    }, [loading, user, token]);
 
     useEffect(() => {
         if (
@@ -704,18 +705,38 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     // Presets
     const fetchSavedBoxes = async () => {
+        if (!token) {
+            console.warn("[Presets] Skipping fetch: missing auth token");
+            setSavedBoxes([]);
+            return;
+        }
+
         const customerId = getCustomer()?._id;
-        if (!customerId || !token) return;
+        if (!customerId) {
+            if (!isSuperAdmin) {
+                console.warn("[Presets] Skipping fetch: missing customerId (likely admin user)");
+            }
+            setSavedBoxes([]);
+            return;
+        }
         try {
             const response = await axios.get(
-                `${API_BASE_URL}/api/transporter/getpackinglist?customerId=${customerId}`,
+                `${API_BASE_URL}/api/transporter/getpackinglist`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setSavedBoxes(
-                Array.isArray(response.data.data) ? response.data.data : []
+
+            const list = (response as any)?.data?.data;
+            setSavedBoxes(Array.isArray(list) ? list : []);
+        } catch (err: any) {
+            console.error("Failed to fetch saved boxes:", {
+                status: err?.response?.status,
+                data: err?.response?.data,
+                message: err?.message,
+            });
+            setSavedBoxes([]);
+            setError(
+                `Could not load presets: ${err.response?.data?.message || err.message}`
             );
-        } catch (err) {
-            console.error("Failed to fetch saved boxes:", err);
         }
     };
 
@@ -1292,7 +1313,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-slate-50" />
                 {/* Truck Background Image - Subtle Overlay */}
                 <div
-                    className="absolute inset-0 bg-cover bg-center bg-fixed opacity-[0.9]"
+                    className="absolute inset-0 bg-cover bg-center bg-fixed opacity-[0.7]"
                     style={{ backgroundImage: "url('/panoramic_trucks_v3.png')" }}
                 />
             </div>

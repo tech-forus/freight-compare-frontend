@@ -22,6 +22,8 @@
 // Production backend URL - used as fallback when env var not set
 const PRODUCTION_BACKEND = 'https://freight-compare-backend-production.up.railway.app';
 
+const DEV_BACKEND = 'http://localhost:8000';
+
 /**
  * Safely read environment variable (handles SSR edge cases)
  */
@@ -43,7 +45,8 @@ const getEnvVar = (key: string): string | undefined => {
  */
 export const getApiBaseUrl = (): string => {
   const envUrl = getEnvVar('VITE_API_BASE_URL');
-  const baseUrl = (envUrl || PRODUCTION_BACKEND).replace(/\/+$/, '');
+  const fallback = import.meta.env.DEV ? DEV_BACKEND : PRODUCTION_BACKEND;
+  const baseUrl = (envUrl || fallback).replace(/\/+$/, '');
   return baseUrl;
 };
 
