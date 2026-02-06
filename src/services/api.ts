@@ -689,3 +689,137 @@ export const toggleTransporterVerification = async (
     return { success: false, message: 'Network error' };
   }
 };
+
+// =============================================================================
+// BOX LIBRARY API METHODS (Sync across devices)
+// =============================================================================
+
+/** Box item within a library */
+export interface BoxLibraryItem {
+  _id?: string;
+  name: string;
+  weight: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  quantity: number;
+}
+
+/** Box library structure from backend */
+export interface BoxLibrary {
+  _id: string;
+  customerId: string;
+  name: string;
+  category: string;
+  boxes: BoxLibraryItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Fetch all box libraries for authenticated user
+ * GET /api/transporter/box-libraries
+ */
+export const getBoxLibraries = async (): Promise<BoxLibrary[]> => {
+  try {
+    const url = `${API_BASE}/api/transporter/box-libraries`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: buildHeaders(),
+    });
+
+    if (!response.ok) {
+      console.error('[API] getBoxLibraries failed:', response.status);
+      return [];
+    }
+
+    const json = await safeJson<{ success: boolean; data: BoxLibrary[] }>(response);
+    return json?.data || [];
+  } catch (error) {
+    console.error('[API] getBoxLibraries error:', error);
+    return [];
+  }
+};
+
+/**
+ * Create a new box library
+ * POST /api/transporter/box-libraries
+ */
+export const createBoxLibrary = async (
+  name: string,
+  category: string = 'general',
+  boxes: BoxLibraryItem[] = []
+): Promise<BoxLibrary | null> => {
+  try {
+    const url = `${API_BASE}/api/transporter/box-libraries`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: buildHeaders(),
+      body: JSON.stringify({ name, category, boxes }),
+    });
+
+    if (!response.ok) {
+      console.error('[API] createBoxLibrary failed:', response.status);
+      return null;
+    }
+
+    const json = await safeJson<{ success: boolean; data: BoxLibrary }>(response);
+    return json?.data || null;
+  } catch (error) {
+    console.error('[API] createBoxLibrary error:', error);
+    return null;
+  }
+};
+
+/**
+ * Update a box library
+ * PUT /api/transporter/box-libraries/:id
+ */
+export const updateBoxLibrary = async (
+  id: string,
+  updates: { name?: string; category?: string; boxes?: BoxLibraryItem[] }
+): Promise<BoxLibrary | null> => {
+  try {
+    const url = `${API_BASE}/api/transporter/box-libraries/${id}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: buildHeaders(),
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      console.error('[API] updateBoxLibrary failed:', response.status);
+      return null;
+    }
+
+    const json = await safeJson<{ success: boolean; data: BoxLibrary }>(response);
+    return json?.data || null;
+  } catch (error) {
+    console.error('[API] updateBoxLibrary error:', error);
+    return null;
+  }
+};
+
+/**
+ * Delete a box library
+ * DELETE /api/transporter/box-libraries/:id
+ */
+export const deleteBoxLibrary = async (id: string): Promise<boolean> => {
+  try {
+    const url = `${API_BASE}/api/transporter/box-libraries/${id}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: buildHeaders(),
+    });
+
+    if (!response.ok) {
+      console.error('[API] deleteBoxLibrary failed:', response.status);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[API] deleteBoxLibrary error:', error);
+    return false;
+  }
+};

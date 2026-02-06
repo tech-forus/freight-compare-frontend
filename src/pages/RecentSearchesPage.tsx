@@ -29,6 +29,12 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  getBoxLibraries,
+  createBoxLibrary,
+  updateBoxLibrary,
+  deleteBoxLibrary,
+} from "../services/api";
 
 // --- LIBRARY CATEGORIES ---
 const LIBRARY_CATEGORIES = [
@@ -55,6 +61,7 @@ type BoxItem = {
 
 type BoxLibrary = {
   id: string;
+  _id?: string; // MongoDB ID (used as primary key when available)
   name: string;
   category: string;
   boxes: BoxItem[];
@@ -140,15 +147,30 @@ const RecentSearchesPage: React.FC = () => {
   });
 
   // --- LOAD DATA ---
-  const loadLibraries = () => {
-    const stored = localStorage.getItem("boxLibraries");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setLibraries(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        setLibraries([]);
-      }
+  const loadLibraries = async () => {
+    try {
+      const apiLibraries = await getBoxLibraries();
+      // Transform API response to local format
+      const transformed: BoxLibrary[] = apiLibraries.map((lib) => ({
+        id: lib._id, // Use MongoDB _id as id
+        _id: lib._id,
+        name: lib.name,
+        category: lib.category,
+        boxes: lib.boxes.map((box) => ({
+          id: box._id || `box-${Date.now()}-${Math.random()}`,
+          name: box.name,
+          weight: box.weight,
+          length: box.length,
+          width: box.width,
+          height: box.height,
+          quantity: box.quantity,
+        })),
+        createdAt: lib.createdAt,
+      }));
+      setLibraries(transformed);
+    } catch (error) {
+      console.error("Failed to load libraries:", error);
+      setLibraries([]);
     }
   };
 
@@ -164,40 +186,44 @@ const RecentSearchesPage: React.FC = () => {
     }
   };
 
-  const saveLibraries = (libs: BoxLibrary[]) => {
-    localStorage.setItem("boxLibraries", JSON.stringify(libs));
-    setLibraries(libs);
-  };
-
   useEffect(() => {
-    setIsLoading(true);
-    loadLibraries();
-    loadRecentSearches();
-    setIsLoading(false);
+    const init = async () => {
+      setIsLoading(true);
+      await loadLibraries();
+      loadRecentSearches();
+      setIsLoading(false);
+    };
+    init();
   }, []);
 
   // --- LIBRARY HANDLERS ---
-  const handleCreateLibrary = () => {
+  const handleCreateLibrary = async () => {
     if (!newLibraryName.trim()) return;
 
-    const newLib: BoxLibrary = {
-      id: `lib-${Date.now()}`,
-      name: newLibraryName.trim(),
-      category: newLibraryCategory,
-      boxes: [],
-      createdAt: new Date().toISOString(),
-    };
-
-    saveLibraries([newLib, ...libraries]);
-    setNewLibraryName("");
-    setNewLibraryCategory("general");
-    setShowNewLibraryModal(false);
-    setExpandedLibraries(new Set([...expandedLibraries, newLib.id]));
+    const created = await createBoxLibrary(newLibraryName.trim(), newLibraryCategory, []);
+    if (created) {
+      const newLib: BoxLibrary = {
+        id: created._id,
+        _id: created._id,
+        name: created.name,
+        category: created.category,
+        boxes: [],
+        createdAt: created.createdAt,
+      };
+      setLibraries([newLib, ...libraries]);
+      setNewLibraryName("");
+      setNewLibraryCategory("general");
+      setShowNewLibraryModal(false);
+      setExpandedLibraries(new Set([...expandedLibraries, newLib.id]));
+    }
   };
 
-  const handleDeleteLibrary = (libId: string) => {
+  const handleDeleteLibrary = async (libId: string) => {
     if (window.confirm("Delete this library and all its boxes?")) {
-      saveLibraries(libraries.filter(l => l.id !== libId));
+      const success = await deleteBoxLibrary(libId);
+      if (success) {
+        setLibraries(libraries.filter(l => l.id !== libId));
+      }
     }
   };
 
@@ -212,7 +238,7 @@ const RecentSearchesPage: React.FC = () => {
   };
 
   // --- BOX HANDLERS ---
-  const handleAddBox = (libId: string) => {
+  const handleAddBox = async (libId: string) => {
     if (!newBox.name?.trim() || !newBox.weight || !newBox.length || !newBox.width || !newBox.height) return;
 
     const box: BoxItem = {
@@ -225,24 +251,50 @@ const RecentSearchesPage: React.FC = () => {
       quantity: newBox.quantity || 1,
     };
 
-    const updated = libraries.map(lib =>
-      lib.id === libId
-        ? { ...lib, boxes: [...lib.boxes, box] }
-        : lib
-    );
+    const library = libraries.find(l => l.id === libId);
+    if (!library) return;
 
-    saveLibraries(updated);
+    const updatedBoxes = [...library.boxes, box];
+    const apiBoxes = updatedBoxes.map(b => ({
+      name: b.name,
+      weight: b.weight,
+      length: b.length,
+      width: b.width,
+      height: b.height,
+      quantity: b.quantity,
+    }));
+
+    const result = await updateBoxLibrary(libId, { boxes: apiBoxes });
+    if (result) {
+      setLibraries(libraries.map(lib =>
+        lib.id === libId ? { ...lib, boxes: updatedBoxes } : lib
+      ));
+    }
+
     setNewBox({ name: "", weight: undefined, length: undefined, width: undefined, height: undefined, quantity: 1 });
     setAddingBoxToLibrary(null);
   };
 
-  const handleDeleteBox = (libId: string, boxId: string) => {
-    const updated = libraries.map(lib =>
-      lib.id === libId
-        ? { ...lib, boxes: lib.boxes.filter(b => b.id !== boxId) }
-        : lib
-    );
-    saveLibraries(updated);
+  const handleDeleteBox = async (libId: string, boxId: string) => {
+    const library = libraries.find(l => l.id === libId);
+    if (!library) return;
+
+    const updatedBoxes = library.boxes.filter(b => b.id !== boxId);
+    const apiBoxes = updatedBoxes.map(b => ({
+      name: b.name,
+      weight: b.weight,
+      length: b.length,
+      width: b.width,
+      height: b.height,
+      quantity: b.quantity,
+    }));
+
+    const result = await updateBoxLibrary(libId, { boxes: apiBoxes });
+    if (result) {
+      setLibraries(libraries.map(lib =>
+        lib.id === libId ? { ...lib, boxes: updatedBoxes } : lib
+      ));
+    }
   };
 
   // --- USE LIBRARY LOGIC ---
