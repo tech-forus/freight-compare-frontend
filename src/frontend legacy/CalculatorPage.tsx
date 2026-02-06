@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Clock,
   Edit3,
+  History,
   IndianRupee,
   Loader2,
   Lock,
@@ -34,7 +35,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -134,7 +135,7 @@ const InputField = (
       )}
       <input
         {...props}
-        className={`block w-full py-2 bg-white border border-slate-300 rounded-lg text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition read-only:bg-slate-100 read-only:cursor-not-allowed disabled:bg-slate-100 disabled:border-slate-200 disabled:cursor-not-allowed ${
+        className={`block w-full py-2 bg-white border border-slate-300 rounded-lg text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition read-only:bg-slate-100 read-only:cursor-not-allowed disabled:bg-slate-100 disabled:border-slate-200 disabled:cursor-not-allowed ${
           props.icon ? "pl-10" : "px-4"
         }`}
       />
@@ -158,7 +159,7 @@ const SortOptionButton = ({
     onClick={onClick}
     className={`flex items-center justify-center gap-2 flex-1 p-3 rounded-lg text-sm font-semibold transition-all duration-300 border-2 ${
       selected
-        ? "bg-indigo-600 border-indigo-600 text-white shadow-md"
+        ? "bg-slate-900 border-slate-900 text-white shadow-md"
         : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300"
     }`}
   >
@@ -526,6 +527,43 @@ const CalculatorPage: React.FC = () => {
       ];
       setData(all.filter((q) => q.isTiedUp));
       setHiddendata(all.filter((q) => !q.isTiedUp));
+
+      // Save to recent searches
+      const bestQuote = all.length > 0
+        ? all.reduce((prev, curr) => prev.totalCharges < curr.totalCharges ? prev : curr)
+        : null;
+
+      const recentSearch = {
+        id: `search-${Date.now()}`,
+        fromPincode,
+        toPincode,
+        modeOfTransport,
+        boxes: boxesToCalc.map(b => ({
+          count: b.count || 0,
+          length: b.length || 0,
+          width: b.width || 0,
+          height: b.height || 0,
+          weight: b.weight || 0,
+          description: b.description || "",
+        })),
+        totalWeight,
+        totalBoxes,
+        bestQuote: bestQuote ? {
+          companyName: bestQuote.companyName,
+          totalCharges: bestQuote.totalCharges,
+          estimatedTime: bestQuote.estimatedTime || 0,
+        } : undefined,
+        timestamp: new Date().toISOString(),
+      };
+
+      try {
+        const stored = localStorage.getItem("recentFreightSearches");
+        const existing = stored ? JSON.parse(stored) : [];
+        const updated = [recentSearch, ...existing.slice(0, 19)]; // Keep max 20
+        localStorage.setItem("recentFreightSearches", JSON.stringify(updated));
+      } catch (err) {
+        console.error("Failed to save recent search:", err);
+      }
     } catch (e: any) {
       if (e.response?.status === 401) {
         setError("Authentication failed. Please log out and log back in.");
@@ -593,7 +631,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen w-full bg-slate-50 font-sans">
       <div
-        className="absolute top-0 left-0 w-full h-80 bg-gradient-to-br from-indigo-50 to-purple-50"
+        className="absolute top-0 left-0 w-full h-80 bg-gradient-to-br from-blue-50 to-purple-50"
         style={{ clipPath: "polygon(0 0, 100% 0, 100% 65%, 0% 100%)" }}
       ></div>
       <div className="relative max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
@@ -615,11 +653,25 @@ useEffect(() => {
             Instantly compare quotes from multiple vendors to find the best rate
             for your shipment.
           </motion.p>
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-4"
+          >
+            <Link
+              to="/recent-searches"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <History size={18} />
+              View Saved Presets & Recent Searches
+            </Link>
+          </motion.div>
         </header>
 
         <Card>
           <h2 className="text-xl font-bold text-slate-800 mb-2 flex items-center">
-            <Navigation size={22} className="mr-3 text-indigo-500" /> Mode & Route
+            <Navigation size={22} className="mr-3 text-blue-600" /> Mode & Route
           </h2>
           <p className="text-sm text-slate-500 mb-6">
             Select your mode of transport and enter the pickup and destination
@@ -638,11 +690,11 @@ useEffect(() => {
                   onClick={() =>
                     mode.isAvailable ? setModeOfTransport(mode.name as any) : null
                   }
-                  className={`relative group w-full p-4 rounded-xl transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 focus-visible:ring-indigo-500 ${
+                  className={`relative group w-full p-4 rounded-xl transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 focus-visible:ring-blue-600 ${
                     modeOfTransport === mode.name
-                      ? "bg-indigo-600 text-white shadow-lg"
+                      ? "bg-blue-600 text-white shadow-lg"
                       : mode.isAvailable
-                      ? "bg-white text-slate-700 border border-slate-300 hover:border-indigo-500 hover:text-indigo-600"
+                      ? "bg-white text-slate-700 border border-slate-300 hover:border-blue-600 hover:text-blue-700"
                       : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                   }`}
                   disabled={!mode.isAvailable}
@@ -704,7 +756,7 @@ useEffect(() => {
     {/* Header */}
     <div className="mb-6">
     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-        <Boxes size={22} className="text-indigo-500" /> Shipment Details
+        <Boxes size={22} className="text-blue-600" /> Shipment Details
     </h2>
     <p className="text-sm text-slate-500">
         Enter dimensions and weight, or select a saved preset to auto‑fill.
@@ -779,7 +831,7 @@ useEffect(() => {
                         <li
                             key={preset._id}
                             onClick={() => handleSelectPresetForBox(index, preset)}
-                            className="group flex justify-between items-center px-3 py-2 hover:bg-indigo-50 cursor-pointer text-slate-700 text-sm transition-colors"
+                            className="group flex justify-between items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-slate-700 text-sm transition-colors"
                         >
                             <span>{preset.name}</span>
                             <button
@@ -905,7 +957,7 @@ useEffect(() => {
             <div className="mt-4 flex justify-end">
             <button
                 onClick={() => triggerSavePresetForBox(index)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-lg hover:bg-indigo-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600"
                 title="Save this box configuration as a new preset"
             >
                 <Save size={14} />
@@ -919,7 +971,7 @@ useEffect(() => {
     <div className="flex justify-between items-center pt-6 border-t border-slate-200">
         <button
         onClick={addBoxType}
-        className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-100 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-200 transition-colors"
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-100 text-blue-700 font-semibold rounded-lg hover:bg-blue-200 transition-colors"
         >
         <PlusCircle size={18} /> Add Another Box Type
         </button>
@@ -966,7 +1018,7 @@ useEffect(() => {
         disabled={isCalculating || isAnyDimensionExceeded}
         whileHover={{ scale: (isCalculating || isAnyDimensionExceeded) ? 1 : 1.05 }}
         whileTap={{ scale: (isCalculating || isAnyDimensionExceeded) ? 1 : 0.95 }}
-        className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-indigo-600 text-white text-lg font-bold rounded-full shadow-lg shadow-indigo-500/50 hover:bg-indigo-700 transition-all duration-300 disabled:opacity-60 disabled:shadow-none disabled:cursor-not-allowed"
+        className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 text-white text-lg font-bold rounded-full shadow-lg shadow-blue-600/50 hover:bg-blue-700 transition-all duration-300 disabled:opacity-60 disabled:shadow-none disabled:cursor-not-allowed"
         >
         {isCalculating ? (
             <Loader2 className="animate-spin" />
@@ -984,7 +1036,7 @@ useEffect(() => {
         {totalBoxes > 0 && (
           <Card>
             <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <Package size={22} className="mr-3 text-indigo-500" /> Shipment
+              <Package size={22} className="mr-3 text-blue-600" /> Shipment
               Summary
             </h2>
 
@@ -1037,7 +1089,7 @@ useEffect(() => {
                             <button
                               onClick={() => editBox(index)}
                               title="Edit"
-                              className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-100 rounded-full transition-colors"
+                              className="p-2 text-slate-500 hover:text-blue-700 hover:bg-blue-100 rounded-full transition-colors"
                             >
                               <Edit3 size={16} />
                             </button>
@@ -1095,7 +1147,7 @@ useEffect(() => {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-bold text-slate-800 mb-2 flex items-center">
-                    <Award size={22} className="mr-3 text-indigo-500" /> Sort &
+                    <Award size={22} className="mr-3 text-blue-600" /> Sort &
                     Filter Results
                   </h2>
                   <p className="text-sm text-slate-500 mb-6">
@@ -1216,8 +1268,8 @@ useEffect(() => {
                     <>
                       {tiedUpVendors.length > 0 && (
                         <section>
-                          <h2 className="text-2xl font-bold text-slate-800 mb-5 border-l-4 border-indigo-500 pl-4">
-                            Your Tied-Up Vendors
+                          <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-blue-600 pl-4 py-2 bg-blue-50/50 rounded-r-lg">
+                            Your tied up vendors
                           </h2>
                           <div className="space-y-4">
                             {tiedUpVendors.map((item, index) => (
@@ -1233,8 +1285,8 @@ useEffect(() => {
                       )}
                       {otherVendors.length > 0 && (
                         <section>
-                          <h2 className="text-2xl font-bold text-slate-800 mb-5 border-l-4 border-slate-400 pl-4">
-                            Our Available Vendors
+                          <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-slate-500 pl-4 py-2 bg-slate-50/50 rounded-r-lg">
+                            Our available Vendors
                           </h2>
                           <div className="space-y-4">
                             {otherVendors.map((item, index) => (
@@ -1314,36 +1366,36 @@ const FineTuneModal = ({
       <div className="space-y-2">
           <div className="flex justify-between items-center text-sm">
               <label htmlFor="maxPrice" className="font-semibold text-slate-700">Max Price</label>
-              <span className="font-bold text-indigo-600">₹ {formatPrice(filters.maxPrice)}</span>
+              <span className="font-bold text-blue-600">₹ {formatPrice(filters.maxPrice)}</span>
           </div>
           <input
               id="maxPrice" type="range" min="1000" max="10000000" step="1000"
               value={filters.maxPrice} onChange={(e) => onFilterChange.setMaxPrice(e.target.valueAsNumber)}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
       </div>
 
       <div className="space-y-2">
           <div className="flex justify-between items-center text-sm">
               <label htmlFor="maxTime" className="font-semibold text-slate-700">Max Delivery Time</label>
-              <span className="font-bold text-indigo-600">{formatTime(filters.maxTime)}</span>
+              <span className="font-bold text-blue-600">{formatTime(filters.maxTime)}</span>
           </div>
           <input
               id="maxTime" type="range" min="1" max="300" step="1"
               value={filters.maxTime} onChange={(e) => onFilterChange.setMaxTime(e.target.valueAsNumber)}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
       </div>
       
       <div className="space-y-2">
           <div className="flex justify-between items-center text-sm">
               <label htmlFor="minRating" className="font-semibold text-slate-700">Min Vendor Rating</label>
-              <span className="font-bold text-indigo-600">{filters.minRating.toFixed(1)} / 5.0</span>
+              <span className="font-bold text-blue-600">{filters.minRating.toFixed(1)} / 5.0</span>
           </div>
           <input
               id="minRating" type="range" min="0" max="5" step="0.1"
               value={filters.minRating} onChange={(e) => onFilterChange.setMinRating(e.target.valueAsNumber)}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
       </div>
     </motion.div>
@@ -1372,7 +1424,7 @@ const SavePresetModal = ({
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-slate-800 flex items-center">
-            <Save size={18} className="mr-2 text-indigo-500" /> Save Box Preset
+            <Save size={18} className="mr-2 text-blue-600" /> Save Box Preset
           </h3>
           <button
             onClick={onClose}
@@ -1406,7 +1458,7 @@ const SavePresetModal = ({
               onSave(name);
               setName("");
             }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Save Preset
           </button>
@@ -1537,7 +1589,7 @@ const VendorResultCard = ({
             </div>
             <div className="text-xs text-slate-500 -mt-1">Total Charges</div>
           </div>
-          <button className="px-5 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">
+          <button className="px-5 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30">
             Unlock to Book
           </button>
         </div>
@@ -1571,7 +1623,7 @@ const VendorResultCard = ({
             </h3>
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="mt-2 flex items-center gap-1.5 text-indigo-600 font-semibold text-sm hover:text-indigo-800 transition-colors"
+              className="mt-2 flex items-center gap-1.5 text-blue-600 font-semibold text-sm hover:text-blue-800 transition-colors"
             >
               {isExpanded ? "Hide Details" : "Show Bifurcation"}
               <ChevronRight
@@ -1600,7 +1652,7 @@ const VendorResultCard = ({
                 <span className="text-slate-300">·</span>
                 <button
                 onClick={handleMoreDetailsClick}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
                 >
                 Contact Now
                 </button>

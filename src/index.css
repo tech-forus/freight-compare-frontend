@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Global color variables */
+:root {
+  --color-primary: #2563eb; /* blue-600 - matches header Calculate button */
+  --color-primary-hover: #1d4ed8; /* blue-700 */
+  --color-primary-light: #dbeafe; /* blue-100 */
+  --color-primary-muted: #3b82f6; /* blue-500 */
+}

@@ -32,6 +32,7 @@ import VehicleInfoPage from './pages/VehicleInfoPage';
 import TestLab from './pages/TestLab';
 import MyVendors from './pages/MyVendors';
 import DashboardPage from './pages/DashboardPage';
+import RecentSearchesPage from './pages/RecentSearchesPage';
 // ⬇️ NEW: buy page (supports /buy-subscription-plan and /buy-subscription-plan/:vendorSlug)
 import BuySubscriptionPage from './pages/BuySubscriptionPage';
 import VendorDetailsPage from './pages/VendorDetailsPage';
@@ -229,6 +230,17 @@ function App() {
                 <MainLayout>
                   <PrivateRoute>
                     <CalculatorPage />
+                  </PrivateRoute>
+                </MainLayout>
+              }
+            />
+
+            <Route
+              path="/recent-searches"
+              element={
+                <MainLayout>
+                  <PrivateRoute>
+                    <RecentSearchesPage />
                   </PrivateRoute>
                 </MainLayout>
               }

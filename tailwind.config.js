@@ -6,6 +6,15 @@ export default {
   ],
   theme: {
     extend: {
+      // Primary brand color (synced with header Calculate button)
+      colors: {
+        primary: {
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+          light: 'var(--color-primary-light)',
+          muted: 'var(--color-primary-muted)',
+        },
+      },
       // Custom breakpoints for responsive 3-column layout
       screens: {
         '2xl': '1536px', // Explicitly define 2xl (Tailwind default, but making it clear)

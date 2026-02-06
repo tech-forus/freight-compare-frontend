@@ -64,7 +64,7 @@ export function useKeyboardNavigation({
     // Track backspace timing for double-backspace detection
     const lastBackspaceTime = useRef<number>(0);
     const lastBackspaceFieldId = useRef<string>('');
-    const DOUBLE_BACKSPACE_THRESHOLD = 400; // ms
+    const DOUBLE_BACKSPACE_THRESHOLD = 750; // ms
 
     // Get current field order
     const getFields = useCallback(() => {
@@ -193,8 +193,8 @@ export function useKeyboardNavigation({
         if (!fields.includes(fieldId)) return;
 
         // Check if a dropdown is open (for pincode autocomplete)
-        const isDropdownOpen = document.querySelector('[aria-expanded="true"]') !== null;
-        const activeDropdown = target.getAttribute('aria-expanded') === 'true';
+        // const isDropdownOpen = document.querySelector('[aria-expanded="true"]') !== null;
+        // const activeDropdown = target.getAttribute('aria-expanded') === 'true';
 
         switch (e.key) {
             case 'Tab':
@@ -232,10 +232,8 @@ export function useKeyboardNavigation({
                     return;
                 }
 
-                // If dropdown is open and active, let the component handle it
-                if (activeDropdown || isDropdownOpen) {
-                    return;
-                }
+                // Removed dropdown check to allow "Select & Next" flow
+                // if (activeDropdown || isDropdownOpen) { return; }
 
                 // Move to next field
                 focusNextField(fieldId);

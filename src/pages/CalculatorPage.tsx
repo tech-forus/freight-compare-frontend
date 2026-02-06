@@ -143,53 +143,61 @@ type CardProps = {
 
 const Card = ({ children, className = "" }: CardProps) => (
     <div
-        className={`bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-indigo-100 border border-slate-100/80 p-4 transition-all duration-300 ${className}`}
+        className={`bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-blue-100 border border-slate-100/80 p-4 transition-all duration-300 ${className}`}
     >
         {children}
     </div>
 );
 
 
-const InputField = (
-    props: React.InputHTMLAttributes<HTMLInputElement> & {
-        label?: string;
-        icon?: React.ReactNode;
-        error?: string | null;
-    }
-) => (
-    <div>
-        {props.label && (
-            <label
-                htmlFor={props.id}
-                className="block text-sm font-medium text-slate-600 mb-1.5"
-            >
-                {props.label}
-            </label>
-        )}
-        <div className="relative">
-            {props.icon && (
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400">
-                    {props.icon}
-                </div>
+const InputField = ({
+    label,
+    icon,
+    error,
+    className: passedClassName,
+    placeholder,
+    ...inputProps
+}: React.InputHTMLAttributes<HTMLInputElement> & {
+    label?: string;
+    icon?: React.ReactNode;
+    error?: string | null;
+}) => {
+    return (
+        <div>
+            {label && (
+                <label
+                    htmlFor={inputProps.id}
+                    className="block text-sm font-medium text-slate-600 mb-1.5"
+                >
+                    {label}
+                </label>
             )}
-            <input
-                {...props}
-                aria-invalid={props.error ? "true" : "false"}
-                className={`block w-full py-2 bg-white border rounded-lg text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-1 transition ${props.icon ? "pl-10" : "px-4"
-                    } ${props.error
-                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                        : "border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
-                    }`}
-            />
+            <div className="relative">
+                {icon && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400">
+                        {icon}
+                    </div>
+                )}
+                <input
+                    {...inputProps}
+                    placeholder={placeholder}
+                    aria-invalid={error ? "true" : "false"}
+                    className={`block w-full py-2 bg-white border rounded-lg text-sm shadow-sm placeholder:text-slate-500 focus:outline-none focus:ring-1 transition ${icon ? "pl-10" : passedClassName?.includes("px-") ? "" : "px-4"
+                        } ${error
+                            ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                            : "border-slate-300 focus:border-blue-600 focus:ring-blue-600"
+                        } ${passedClassName || ""}`}
+                />
+            </div>
+            {!!error && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {error}
+                </p>
+            )}
         </div>
-        {!!props.error && (
-            <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                <AlertCircle size={14} />
-                {props.error}
-            </p>
-        )}
-    </div>
-);
+    );
+};
 
 const SortOptionButton = ({
     label,
@@ -206,7 +214,7 @@ const SortOptionButton = ({
         type="button"
         onClick={onClick}
         className={`flex items-center justify-center gap-2 flex-1 p-3 rounded-lg text-sm font-semibold transition-all duration-300 border-2 ${selected
-            ? "bg-indigo-600 border-indigo-600 text-white shadow-md"
+            ? "bg-slate-900 border-slate-900 text-white shadow-md"
             : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300"
             }`}
     >
@@ -287,11 +295,19 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const [vendorStatusMap, setVendorStatusMap] = useState<Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }>>({});
 
     // Form state
-    const [modeOfTransport, setModeOfTransport] = useState<
-        "Road" | "Air" | "Rail" | "Ship"
-    >("Road");
-    const [fromPincode, setFromPincode] = useState("");
-    const [toPincode, setToPincode] = useState("");
+    // Form state initialized with storage data to prevent race conditions
+    const [modeOfTransport, setModeOfTransport] = useState<"Road" | "Air" | "Rail" | "Ship">(() => {
+        const form = loadFormState();
+        return form?.modeOfTransport || "Road";
+    });
+    const [fromPincode, setFromPincode] = useState(() => {
+        const form = loadFormState();
+        return form?.fromPincode || "";
+    });
+    const [toPincode, setToPincode] = useState(() => {
+        const form = loadFormState();
+        return form?.toPincode || "";
+    });
     const [invoiceValue, setInvoiceValue] = useState("");
     const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
@@ -309,19 +325,26 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const [fromPinTouched, setFromPinTouched] = useState(false);
     const [toPinTouched, setToPinTouched] = useState(false);
 
-    const [boxes, setBoxes] = useState<BoxDetails[]>([
-        {
+    const [boxes, setBoxes] = useState<BoxDetails[]>(() => {
+        const form = loadFormState();
+        if (form && Array.isArray(form.boxes) && form.boxes.length > 0) {
+            return form.boxes.map((b: any) => ({
+                ...b,
+                id: b.id || `box-${Date.now()}-${Math.random()}`,
+            }));
+        }
+        return [{
             id: `box-${Date.now()}-${Math.random()}`,
             count: undefined,
             weight: undefined,
             description: "",
-        },
-    ]);
+        }];
+    });
 
     // Track which box fields have been touched (for showing validation errors)
-    const [boxFieldsTouched, setBoxFieldsTouched] = useState<Record<string, { count?: boolean; weight?: boolean }>>({});
+    const [boxFieldsTouched, setBoxFieldsTouched] = useState<Record<string, { count?: boolean; weight?: boolean; length?: boolean; width?: boolean; height?: boolean }>>({});
 
-    const markBoxFieldTouched = (boxId: string, field: 'count' | 'weight') => {
+    const markBoxFieldTouched = (boxId: string, field: 'count' | 'weight' | 'length' | 'width' | 'height') => {
         setBoxFieldsTouched(prev => ({
             ...prev,
             [boxId]: { ...prev[boxId], [field]: true }
@@ -468,6 +491,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     // ---------------------------------------------------------------------------
     // Derived
     // ---------------------------------------------------------------------------
+
+
     const isAnyDimensionExceeded = useMemo(
         () =>
             boxes.some(
@@ -504,8 +529,17 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     // Check if any box is missing required fields (quantity or weight)
     const hasBoxValidationErrors = useMemo(
-        () => boxes.some((box) => !box.count || box.count <= 0 || !box.weight || box.weight <= 0),
-        [boxes]
+        () => boxes.some((box) => {
+            const basicInvalid = !box.count || box.count <= 0 || !box.weight || box.weight <= 0;
+            if (basicInvalid) return true;
+
+            // For Light (volumetric) shipments, dimensions are required
+            if (shipmentType === "Light") {
+                return !box.length || !box.width || !box.height;
+            }
+            return false;
+        }),
+        [boxes, shipmentType]
     );
 
     // ---------------------------------------------------------------------------
@@ -528,21 +562,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     useEffect(() => {
         clearStaleCache();
-
-        const form = loadFormState();
-        if (form) {
-            if (form.fromPincode) setFromPincode(form.fromPincode);
-            if (form.toPincode) setToPincode(form.toPincode);
-            if (form.modeOfTransport) setModeOfTransport(form.modeOfTransport);
-            if (Array.isArray(form.boxes) && form.boxes.length) {
-                setBoxes(
-                    form.boxes.map((b: any) => ({
-                        ...b,
-                        id: b.id || `box-${Date.now()}-${Math.random()}`,
-                    }))
-                );
-            }
-        }
+        // State is now hydrated in useState initializers to avoid race conditions with saveFormState
 
         const lastKey = readLastKey();
         if (lastKey) {
@@ -693,10 +713,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     };
     const removeBox = (i: number) => {
         if (boxes.length <= 1) return;
-        if (window.confirm("Are you sure you want to delete this box type?")) {
-            setBoxes(boxes.filter((_, j) => j !== i));
-            setCalculationTarget("all");
-        }
+        setBoxes(boxes.filter((_, j) => j !== i));
+        setCalculationTarget("all");
     };
     const editBox = (index: number) => {
         const el = boxFormRefs.current[index];
@@ -1310,7 +1328,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             {/* Background Layers */}
             <div className="fixed inset-0 z-0 pointer-events-none">
                 {/* Base Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-slate-50" />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50" />
                 {/* Truck Background Image - Subtle Overlay */}
                 <div
                     className="absolute inset-0 bg-cover bg-center bg-fixed opacity-[0.7]"
@@ -1322,7 +1340,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-3 pb-4">
                 {/* PAGE HEADER - Minimal */}
                 <header className="mb-3 flex items-center justify-between">
-                    <h1 className="text-lg font-bold text-indigo-950 tracking-tight">Freight Calculator</h1>
+                    <h1 className="text-3xl font-extrabold text-blue-900 tracking-tight">Freight Calculator</h1>
                 </header>
 
                 {/* TWO-COLUMN LAYOUT (68% - 32%) */}
@@ -1345,7 +1363,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                             key={mode.name}
                                             onClick={() => (mode.isAvailable ? setModeOfTransport(mode.name as any) : null)}
                                             className={`flex items-center gap-1 px-3 py-2 text-xs font-medium transition-colors ${modeOfTransport === mode.name
-                                                ? "text-indigo-700 bg-indigo-50/50 border-t-2 border-indigo-600 -mb-px font-bold shadow-sm"
+                                                ? "text-blue-700 bg-blue-50/50 border-t-2 border-blue-600 -mb-px font-bold shadow-sm"
                                                 : mode.isAvailable
                                                     ? "text-slate-500 hover:text-slate-700"
                                                     : "text-slate-300 cursor-not-allowed"
@@ -1361,7 +1379,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                 {/* Route Inputs - Dominant Visual Weight */}
                                 <div className="p-4">
                                     {/* Primary: Origin → Destination + Invoice (Single Row) */}
-                                    <div className="flex items-end gap-3">
+                                    <div className="flex items-start gap-3">
                                         <div className="flex-none w-[20%]">
                                             <PincodeAutocomplete
                                                 label="Origin Pincode"
@@ -1435,7 +1453,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         if (num > INVOICE_MAX) num = INVOICE_MAX;
                                                         setInvoiceValue(String(num));
                                                     }}
-                                                    className={`w-full py-1.5 pl-3 pr-1 text-sm bg-transparent border-b border-slate-200 focus:border-indigo-500 focus:outline-none transition-colors placeholder-slate-300 font-medium text-slate-700 ${invoiceError ? 'border-red-300' : ''}`}
+                                                    className={`w-full py-1.5 pl-3 pr-1 text-sm bg-transparent border-b border-slate-200 focus:border-blue-600 focus:outline-none transition-colors placeholder-slate-300 font-medium text-slate-700 ${invoiceError ? 'border-red-300' : ''}`}
                                                 />
                                             </div>
                                         </div>
@@ -1451,7 +1469,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         key={route.id}
                                                         type="button"
                                                         onClick={() => loadRecentRoute(route)}
-                                                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 px-2 py-1 rounded border border-slate-100 hover:border-indigo-100"
+                                                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 transition-colors bg-slate-50 hover:bg-blue-50 px-2 py-1 rounded border border-slate-100 hover:border-blue-100"
                                                         title={`${route.fromPincode} → ${route.toPincode}`}
                                                     >
                                                         <Clock size={10} />
@@ -1477,7 +1495,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 onClick={() => setShipmentType("Heavy")}
                                                 className={`px-3 py-1.5 font-semibold border transition-all duration-300 ${shipmentType === "Heavy"
                                                     ? "bg-slate-800 text-white border-slate-800 shadow-md transform scale-105 z-10"
-                                                    : "bg-white text-slate-500 border-slate-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-slate-50"
+                                                    : "bg-white text-slate-500 border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:bg-slate-50"
                                                     } rounded-l-lg`}
                                             >
                                                 Heavy (by weight)
@@ -1486,7 +1504,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 onClick={() => setShipmentType("Light")}
                                                 className={`px-3 py-1.5 font-semibold border-t border-b border-r transition-all duration-300 ${shipmentType === "Light"
                                                     ? "bg-slate-800 text-white border-slate-800 shadow-md transform scale-105 z-10"
-                                                    : "bg-white text-slate-500 border-slate-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-slate-50"
+                                                    : "bg-white text-slate-500 border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:bg-slate-50"
                                                     } rounded-r-lg`}
                                             >
                                                 Light (by volume)
@@ -1550,7 +1568,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 ref={(el) => (boxFormRefs.current[index] = el)}
                                             >
                                                 {/* Single Row Layout - 12 Columns */}
-                                                <div className="grid grid-cols-12 gap-2 items-center">
+                                                <div className="grid grid-cols-12 gap-6 items-start">
                                                     {/* 1. Box Name */}
                                                     {/* Heavy: Span 4 | Light: Span 3 */}
                                                     <div className={`col-span-12 sm:col-span-3`}>
@@ -1592,7 +1610,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                                 <li
                                                                                     key={preset._id}
                                                                                     onClick={() => handleSelectPresetForBox(index, preset)}
-                                                                                    className="group flex justify-between items-center px-3 py-1.5 hover:bg-indigo-50 cursor-pointer text-slate-700 text-xs transition-colors"
+                                                                                    className="group flex justify-between items-center px-3 py-1.5 hover:bg-blue-50 cursor-pointer text-slate-700 text-xs transition-colors"
                                                                                 >
                                                                                     <span>{preset.name}</span>
                                                                                     <button
@@ -1618,7 +1636,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                     </div>
 
                                                     {/* 2. Quantity (Span 1) */}
-                                                    <div className="col-span-12 sm:col-span-1">
+                                                    <div className="col-span-12 sm:col-span-1 w-16">
                                                         <InputField
                                                             id={`count-${index}`}
                                                             type="text"
@@ -1643,7 +1661,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                     {/* 3. DYNAMIC MIDDLE: Weight OR Dimensions */}
                                                     {shipmentType === "Heavy" ? (
                                                         /* --- HEAVY MODE: Single Weight Input (Span 2) --- */
-                                                        <div className="col-span-12 sm:col-span-2">
+                                                        <div className="col-span-12 sm:col-span-2 sm:ml-3">
                                                             <InputField
                                                                 id={`weight-${index}`}
                                                                 placeholder="Kg"
@@ -1664,7 +1682,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         /* --- LIGHT MODE: Weight + L x W x H Inputs --- */
                                                         <>
                                                             {/* Weight Input for Light Mode (after Qty) */}
-                                                            <div className="col-span-6 sm:col-span-2">
+                                                            <div className="col-span-6 sm:col-span-2 sm:ml-3">
                                                                 <InputField
                                                                     id={`weight-light-${index}`}
                                                                     placeholder="Kg"
@@ -1679,28 +1697,37 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     className="py-1.5 px-2 text-center"
                                                                 />
                                                             </div>
-                                                            {['length', 'width', 'height'].map((dim) => (
-                                                                <div key={dim} className="col-span-2 sm:col-span-1">
-                                                                    <InputField
-                                                                        id={`${dim}-${index}`}
-                                                                        placeholder={dim.charAt(0).toUpperCase()}
-                                                                        value={box[dim as keyof BoxDetails] ?? ""}
-                                                                        onKeyDown={preventNonIntegerKeys}
-                                                                        onChange={(e) => {
-                                                                            const next = sanitizeIntegerFromEvent(e.target.value);
-                                                                            updateBox(index, dim as keyof BoxDetails, next === "" ? undefined : Number(next));
-                                                                        }}
-                                                                        className="py-1.5 px-1 text-center"
-                                                                        required
-                                                                    />
-                                                                </div>
-                                                            ))}
+                                                            {/* L x W x H grouped in flex container */}
+                                                            <div className="col-span-6 sm:col-span-4 flex gap-1">
+                                                                {['length', 'width', 'height'].map((dim) => (
+                                                                    <div key={dim} className="flex-1 min-w-0">
+                                                                        <InputField
+                                                                            id={`${dim}-${index}`}
+                                                                            placeholder={dim === 'length' ? 'L' : dim === 'width' ? 'W' : 'H'}
+                                                                            value={box[dim as keyof BoxDetails] ?? ""}
+                                                                            onKeyDown={preventNonIntegerKeys}
+                                                                            onChange={(e) => {
+                                                                                const next = sanitizeIntegerFromEvent(e.target.value);
+                                                                                updateBox(index, dim as keyof BoxDetails, next === "" ? undefined : Number(next));
+                                                                            }}
+                                                                            onBlur={() => markBoxFieldTouched(box.id, dim as any)}
+                                                                            className="py-1.5 px-2 text-center placeholder:text-slate-400"
+                                                                            error={
+                                                                                boxFieldsTouched[box.id]?.[dim as 'length' | 'width' | 'height'] &&
+                                                                                    (!box[dim as keyof BoxDetails] || Number(box[dim as keyof BoxDetails]) <= 0)
+                                                                                    ? "!"
+                                                                                    : null
+                                                                            }
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </>
                                                     )}
 
                                                     {/* 4. ACTIONS (Save + Trash) */}
                                                     {/* Heavy: Span 6 | Light: Span 3 */}
-                                                    <div className={`col-span-12 ${shipmentType === "Heavy" ? "sm:col-span-6" : "sm:col-span-3"} flex items-center gap-2`}>
+                                                    <div className={`col-span-12 ${shipmentType === "Heavy" ? "sm:col-span-6" : "sm:col-span-2"} flex items-center gap-2 sm:mt-1.5`}>
                                                         {/* Actions - Subdued styling */}
                                                         <div className="flex items-center gap-1.5 justify-end">
                                                             {(() => {
@@ -1767,7 +1794,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                     <button
                                         id="add-box-button"
                                         onClick={addBoxType}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all mt-1"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all mt-1"
                                     >
                                         <PlusCircle size={14} /> Add another box
                                     </button>
@@ -1786,21 +1813,21 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                     saveRecentRoute();
                                     calculateQuotes();
                                 }}
-                                disabled={isCalculating || hasPincodeIssues || isAnyDimensionExceeded || hasBoxValidationErrors}
-                                className={`flex items-center gap-2 px-8 py-2.5 rounded-full text-sm font-bold shadow-sm transition-all ${isCalculating || hasPincodeIssues || isAnyDimensionExceeded || hasBoxValidationErrors
-                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                    : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-200 hover:shadow-md active:transform active:scale-95"
+                                disabled={isCalculating}
+                                className={`flex items-center gap-3 px-10 py-3.5 rounded-full text-base font-bold shadow-md transition-all ${isCalculating
+                                    ? "bg-slate-100 text-slate-400 cursor-wait"
+                                    : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-300 hover:shadow-lg active:transform active:scale-95"
                                     }`}
                             >
                                 {isCalculating ? (
                                     <>
-                                        <Loader2 size={16} className="animate-spin" />
+                                        <Loader2 size={20} className="animate-spin" />
                                         <span>Calculating...</span>
                                     </>
                                 ) : (
                                     <>
                                         <span>Calculate Freight Cost</span>
-                                        <ChevronRight size={16} className="opacity-60" />
+                                        <ChevronRight size={20} className="opacity-60" />
                                     </>
                                 )}
                             </button>
@@ -1812,8 +1839,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                 <Card className="p-3">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <h2 className="text-base font-bold text-slate-800 mb-0.5 flex items-center">
-                                                <Star size={18} className="mr-2 text-indigo-500" /> Sort & Filter
+                                            <h2 className="text-base font-bold text-slate-800 mb-0.5 flex items-start">
+                                                <Star size={18} className="mr-2 text-blue-600" /> Sort & Filter
                                             </h2>
                                         </div>
                                     </div>
@@ -2040,15 +2067,32 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                             let tiedUpVendorsFinal: typeof allVendorsRaw = [];
                                             let otherVendorsFinal: typeof allVendorsRaw = [];
 
+                                            // Sorting comparator that respects the sortBy state
+                                            const sortComparator = (a: any, b: any): number => {
+                                                switch (sortBy) {
+                                                    case "time":
+                                                        if (a.isHidden && !b.isHidden) return 1;
+                                                        if (!a.isHidden && b.isHidden) return -1;
+                                                        return (a.estimatedTime ?? Infinity) - (b.estimatedTime ?? Infinity);
+                                                    case "rating": {
+                                                        const ratingA = (a?.transporterData?.rating ?? a?.rating ?? a?.transporterData?.ratingAverage ?? 0) as number;
+                                                        const ratingB = (b?.transporterData?.rating ?? b?.rating ?? b?.transporterData?.ratingAverage ?? 0) as number;
+                                                        return ratingB - ratingA;
+                                                    }
+                                                    case "price":
+                                                    default:
+                                                        return getQuotePrice(a) - getQuotePrice(b);
+                                                }
+                                            };
+
                                             if (isUttamGoyal) {
                                                 // For Uttam Goyal: ONLY special 4 vendors in tied-up, ALL others in available
                                                 tiedUpVendorsFinal = allVendorsRaw.filter(q => isSpecialTiedUpVendor(q));
                                                 otherVendorsFinal = allVendorsRaw.filter(q => !isSpecialTiedUpVendor(q));
 
-                                                // FIX: Re-sort after filtering since filter() preserves concatenation order, not price order
-                                                // ROLLBACK: Remove these two sort calls
-                                                tiedUpVendorsFinal.sort((a, b) => getQuotePrice(a) - getQuotePrice(b));
-                                                otherVendorsFinal.sort((a, b) => getQuotePrice(a) - getQuotePrice(b));
+                                                // Re-sort after filtering to maintain correct order based on sortBy selection
+                                                tiedUpVendorsFinal.sort(sortComparator);
+                                                otherVendorsFinal.sort(sortComparator);
                                             } else {
                                                 // For other users: use original backend categorization
                                                 tiedUpVendorsFinal = tiedUpVendorsRaw;
@@ -2098,8 +2142,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 <>
                                                     {tiedUpVendors.length > 0 && (
                                                         <section id="first-results">
-                                                            <h2 className="text-2xl font-bold text-slate-800 mb-5 border-l-4 border-indigo-500 pl-4">
-                                                                Your Tied-Up Vendors
+                                                            <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-blue-600 pl-4 py-2 bg-blue-50/50 rounded-r-lg">
+                                                                Your Vendors
                                                             </h2>
                                                             <div className="space-y-4">
                                                                 {tiedUpVendors.map((item, index) => (
@@ -2120,8 +2164,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         const isSubscribed = getCustomer()?.isSubscribed;
                                                         return (
                                                             <section>
-                                                                <h2 className="text-2xl font-bold text-slate-800 mb-5 border-l-4 border-slate-400 pl-4">
-                                                                    Our Available Vendors
+                                                                <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-slate-500 pl-4 py-2 bg-slate-50/50 rounded-r-lg">
+                                                                    Our Vendors
                                                                 </h2>
 
                                                                 {/* No container-level blur. Each card decides what to blur. */}
@@ -2379,7 +2423,7 @@ const FineTuneModal = ({
                         <label htmlFor="maxPrice" className="font-semibold text-slate-700">
                             Max Price
                         </label>
-                        <span className="font-bold text-indigo-600">₹ {formatPrice(filters.maxPrice)}</span>
+                        <span className="font-bold text-blue-600">₹ {formatPrice(filters.maxPrice)}</span>
                     </div>
                     <input
                         id="maxPrice"
@@ -2389,7 +2433,7 @@ const FineTuneModal = ({
                         step={1000}
                         value={filters.maxPrice}
                         onChange={(e) => onFilterChange.setMaxPrice(e.currentTarget.valueAsNumber)}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     />
                 </div>
 
@@ -2398,7 +2442,7 @@ const FineTuneModal = ({
                         <label htmlFor="maxTime" className="font-semibold text-slate-700">
                             Max Delivery Time
                         </label>
-                        <span className="font-bold text-indigo-600">{formatTime(filters.maxTime)}</span>
+                        <span className="font-bold text-blue-600">{formatTime(filters.maxTime)}</span>
                     </div>
                     <input
                         id="maxTime"
@@ -2408,7 +2452,7 @@ const FineTuneModal = ({
                         step={1}
                         value={filters.maxTime}
                         onChange={(e) => onFilterChange.setMaxTime(e.currentTarget.valueAsNumber)}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     />
                 </div>
 
@@ -2417,7 +2461,7 @@ const FineTuneModal = ({
                         <label htmlFor="minRating" className="font-semibold text-slate-700">
                             Min Vendor Rating
                         </label>
-                        <span className="font-bold text-indigo-600">{filters.minRating.toFixed(1)} / 5.0</span>
+                        <span className="font-bold text-blue-600">{filters.minRating.toFixed(1)} / 5.0</span>
                     </div>
                     <input
                         id="minRating"
@@ -2427,12 +2471,12 @@ const FineTuneModal = ({
                         step={0.1}
                         value={filters.minRating}
                         onChange={(e) => onFilterChange.setMinRating(e.currentTarget.valueAsNumber)}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     />
                 </div>
 
                 <div className="flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    <button onClick={onClose} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         Done
                     </button>
                 </div>
@@ -2564,7 +2608,7 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
                     {typeof quote.invoiceValue === "number" && quote.invoiceValue > 0 && (
                         <div className="mt-4 flex justify-between text-sm">
                             <span className="text-slate-500">Invoice Value (used for charges):</span>
-                            <span className="font-semibold text-indigo-950">
+                            <span className="font-semibold text-blue-900">
                                 {new Intl.NumberFormat("en-IN", {
                                     style: "currency",
                                     currency: "INR",
@@ -3058,7 +3102,7 @@ const VendorResultCard = ({
                         {/* CTA visible with "Subscribe to Get Details" */}
                         <Link
                             to={BUY_ROUTE}
-                            className="inline-flex items-center justify-center bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
+                            className="inline-flex items-center justify-center bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors whitespace-nowrap flex-shrink-0"
                             style={{
                                 padding: 'clamp(0.5rem, 1vw, 0.625rem) clamp(0.875rem, 2vw, 1.25rem)',
                                 fontSize: 'clamp(0.8rem, 1.3vw, 1rem)'
@@ -3220,7 +3264,7 @@ const VendorResultCard = ({
                             }}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full transition-colors border ${isSpecialVendor
                                 ? "text-amber-700 hover:text-amber-900 hover:bg-amber-100 border-amber-300 hover:border-amber-400"
-                                : "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300"
+                                : "text-blue-600 hover:text-blue-800 hover:bg-blue-50 border-blue-200 hover:border-blue-300"
                                 }`}
                             title="Rate this vendor"
                         >
@@ -3262,7 +3306,7 @@ const VendorResultCard = ({
 
                         <button
                             onClick={() => setIsExpanded((v) => !v)}
-                            className="mt-1 inline-flex items-center gap-0.5 text-indigo-600 font-semibold hover:text-indigo-800 transition-colors whitespace-nowrap"
+                            className="mt-1 inline-flex items-center gap-0.5 text-blue-600 font-semibold hover:text-blue-800 transition-colors whitespace-nowrap"
                             style={{ fontSize: 'clamp(0.7rem, 1.2vw, 0.875rem)' }}
                         >
                             <span className="hidden md:inline">{isExpanded ? "Hide" : "Breakup"}</span>
@@ -3278,7 +3322,7 @@ const VendorResultCard = ({
                     {/* CTA Button - same for all vendors */}
                     <button
                         onClick={handleCtaClick}
-                        className="bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors whitespace-nowrap flex-shrink-0"
+                        className="bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors whitespace-nowrap flex-shrink-0"
                         style={{
                             padding: 'clamp(0.5rem, 1vw, 0.625rem) clamp(0.875rem, 2vw, 1.25rem)',
                             fontSize: 'clamp(0.8rem, 1.3vw, 1rem)'

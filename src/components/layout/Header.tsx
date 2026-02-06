@@ -12,6 +12,7 @@ import {
   Truck,
   PackagePlus,
   Info,
+  History,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -121,6 +122,13 @@ const UserProfileDropdown = () => {
               >
                 <Truck size={16} /> My Vendor
               </Link>
+              <Link
+                to="/recent-searches"
+                onClick={() => setIsOpen(false)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-md"
+              >
+                <History size={16} /> Box Libraries
+              </Link>
               <hr className="my-1 border-slate-100" />
               <button
                 onClick={logout}
@@ -191,6 +199,9 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
 
                   <MobileNavLink to="/my-vendors">
                     <Truck size={20} className="text-blue-600" /> My Vendor
+                  </MobileNavLink>
+                  <MobileNavLink to="/recent-searches">
+                    <History size={20} className="text-blue-600" /> Box Libraries
                   </MobileNavLink>
                   <MobileNavLink to="/profile">
                     <UserIcon size={20} className="text-blue-600" /> Profile
