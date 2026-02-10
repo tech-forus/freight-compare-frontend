@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Reusable & Styled Components (Unchanged) ---
 const BrandLogo = () => (
-  <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+  <Link to="/" className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
     <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
       <Truck className="w-5 h-5 text-white" />
     </div>
@@ -29,7 +29,7 @@ const BrandLogo = () => (
 const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
   <Link
     to={to}
-    className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
+    className="text-sm font-bold uppercase tracking-wider text-slate-800 hover:text-blue-600 transition-colors whitespace-nowrap"
   >
     {children}
   </Link>
@@ -146,6 +146,7 @@ const UserProfileDropdown = () => {
 // --- MOBILE NAVIGATION (updated) ---
 const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => void }) => {
   const { isAuthenticated, logout, isAdmin } = useAuth();
+  const { isAuthenticated, logout, isAdmin } = useAuth();
 
   const handleSignOut = () => {
     logout();
@@ -224,7 +225,9 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                 </>
               )}
               {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
+              {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
               <MobileNavLink to="/contact">Contact Us</MobileNavLink>
+              {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>}
               {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>}
               <MobileNavLink to="/vehicle-info">
                 <Info size={20} className="text-blue-600" /> Vehicle Info
@@ -258,6 +261,7 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
 // --- MAIN HEADER COMPONENT (FIXED) ---
 const Header: React.FC = () => {
   const { isAuthenticated, user, isAdmin } = useAuth();
+  const { isAuthenticated, user, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -272,6 +276,7 @@ const Header: React.FC = () => {
 
               <NavLink to="/contact">Contact</NavLink>
               {/* --- FIXED: Use NavLink here */}
+              {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>}
               {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>}
               {isAuthenticated && <NavLink to="/addvendor">Add Vendor</NavLink>}
               <NavLink to="/vehicle-info">Vehicle Info</NavLink>

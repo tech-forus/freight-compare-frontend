@@ -229,9 +229,7 @@ function App() {
               path="/compare"
               element={
                 <MainLayout>
-                  <PrivateRoute>
-                    <CalculatorPage />
-                  </PrivateRoute>
+                  <CalculatorPage />
                 </MainLayout>
               }
             />

@@ -28,16 +28,16 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!ref.current) return;
     const { left, top, width, height } = ref.current.getBoundingClientRect();
-    x.set((e.clientX - left) / width  - 0.5);
-    y.set((e.clientY - top)  / height - 0.5);
+    x.set((e.clientX - left) / width - 0.5);
+    y.set((e.clientY - top) / height - 0.5);
   };
   const handleMouseLeave = () => { x.set(0); y.set(0); };
 
   // pick Tailwind classes based on glowColor
   const isBlue = glowColor === '#6366f1';
   const border = isBlue ? 'border-indigo-500' : 'border-amber-500';
-  const text   = isBlue ? 'text-indigo-500' : 'text-amber-500';
-  const hoverBg= isBlue ? 'hover:bg-indigo-500' : 'hover:bg-amber-500';
+  const text = isBlue ? 'text-indigo-500' : 'text-amber-500';
+  const hoverBg = isBlue ? 'hover:bg-indigo-500' : 'hover:bg-amber-500';
 
   return (
     <motion.div
@@ -49,53 +49,105 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({
     >
       {/* THIS wrapper does the clipping */}
       <div className="overflow-hidden rounded-2xl shadow-xl">
-        <Link
-          to={linkTo}
-          className="group block w-full max-w-sm h-[28rem] bg-white relative"
-        >
-          {/* glowing border */}
-          <div
-            className={`absolute inset-0 border-2 ${border} transition-colors duration-300 group-hover:${border}/50 rounded-2xl`}
-            style={{ transform: 'translateZ(-1px)' }}
-          />
-
-          {/* shine (will be clipped) */}
-          <div className="absolute top-0 left-0 w-2/3 h-full opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+        {linkTo.startsWith('http') ? (
+          <a
+            href={linkTo}
+            className="group block w-full max-w-sm h-[28rem] bg-white relative"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {/* glowing border */}
             <div
-              className="absolute -top-1/4 -left-1/4 w-[150%] h-[150%] bg-white/50 -rotate-45"
-              style={{
-                backgroundImage: `linear-gradient(to right, transparent, ${glowColor}20, transparent)`,
-                animation: 'shine 2s infinite ease-out'
-              }}
+              className={`absolute inset-0 border-2 ${border} transition-colors duration-300 group-hover:${border}/50 rounded-2xl`}
+              style={{ transform: 'translateZ(-1px)' }}
             />
-          </div>
 
-          {/* content */}
-          <div className="relative z-10 p-8 flex flex-col items-center text-center h-full">
-            <motion.div whileHover={{ scale: 0.95 }}>
+            {/* shine (will be clipped) */}
+            <div className="absolute top-0 left-0 w-2/3 h-full opacity-0 group-hover:opacity-100 transition-opacity duration-500">
               <div
-                className={`transition-colors duration-300 text-gray-300 group-hover:${text}`}
-                style={{ transform: 'translateZ(50px)' }}
-              >
-                {React.cloneElement(illustration as React.ReactElement, {
-                  className: 'w-36 h-36',
-                  strokeWidth: 0.75
-                })}
-              </div>
-            </motion.div>
-            <h3 className="text-3xl font-bold text-gray-800 mt-6">{title}</h3>
-            <p className="text-gray-500 mt-2 flex-grow">{description}</p>
+                className="absolute -top-1/4 -left-1/4 w-[150%] h-[150%] bg-white/50 -rotate-45"
+                style={{
+                  backgroundImage: `linear-gradient(to right, transparent, ${glowColor}20, transparent)`,
+                  animation: 'shine 2s infinite ease-out'
+                }}
+              />
+            </div>
 
-            <div
-              className={`
+            {/* content */}
+            <div className="relative z-10 p-8 flex flex-col items-center text-center h-full">
+              <motion.div whileHover={{ scale: 0.95 }}>
+                <div
+                  className={`transition-colors duration-300 text-gray-300 group-hover:${text}`}
+                  style={{ transform: 'translateZ(50px)' }}
+                >
+                  {React.cloneElement(illustration as React.ReactElement, {
+                    className: 'w-36 h-36',
+                    strokeWidth: 0.75
+                  })}
+                </div>
+              </motion.div>
+              <h3 className="text-3xl font-bold text-gray-800 mt-6">{title}</h3>
+              <p className="text-gray-500 mt-2 flex-grow">{description}</p>
+
+              <div
+                className={`
                 mt-6 font-semibold px-6 py-2 rounded-full border-2 transition
                 ${border} ${text} ${hoverBg} hover:text-white
               `}
-            >
-              Continue →
+              >
+                Continue →
+              </div>
             </div>
-          </div>
-        </Link>
+          </a>
+        ) : (
+          <Link
+            to={linkTo}
+            className="group block w-full max-w-sm h-[28rem] bg-white relative"
+          >
+            {/* glowing border */}
+            <div
+              className={`absolute inset-0 border-2 ${border} transition-colors duration-300 group-hover:${border}/50 rounded-2xl`}
+              style={{ transform: 'translateZ(-1px)' }}
+            />
+
+            {/* shine (will be clipped) */}
+            <div className="absolute top-0 left-0 w-2/3 h-full opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              <div
+                className="absolute -top-1/4 -left-1/4 w-[150%] h-[150%] bg-white/50 -rotate-45"
+                style={{
+                  backgroundImage: `linear-gradient(to right, transparent, ${glowColor}20, transparent)`,
+                  animation: 'shine 2s infinite ease-out'
+                }}
+              />
+            </div>
+
+            {/* content */}
+            <div className="relative z-10 p-8 flex flex-col items-center text-center h-full">
+              <motion.div whileHover={{ scale: 0.95 }}>
+                <div
+                  className={`transition-colors duration-300 text-gray-300 group-hover:${text}`}
+                  style={{ transform: 'translateZ(50px)' }}
+                >
+                  {React.cloneElement(illustration as React.ReactElement, {
+                    className: 'w-36 h-36',
+                    strokeWidth: 0.75
+                  })}
+                </div>
+              </motion.div>
+              <h3 className="text-3xl font-bold text-gray-800 mt-6">{title}</h3>
+              <p className="text-gray-500 mt-2 flex-grow">{description}</p>
+
+              <div
+                className={`
+                mt-6 font-semibold px-6 py-2 rounded-full border-2 transition
+                ${border} ${text} ${hoverBg} hover:text-white
+              `}
+              >
+                Continue →
+              </div>
+            </div>
+          </Link>
+        )}
       </div>
     </motion.div>
   );
@@ -146,7 +198,7 @@ export default function UserSelect() {
             illustration={<Truck />}
             title="Transporter"
             description="Manage your fleet, access our load board, boost profits."
-            linkTo="/transporter-signin"
+            linkTo="https://transporter-signup.netlify.app/"
             glowColor="#f59e0b"
           />
         </motion.div>

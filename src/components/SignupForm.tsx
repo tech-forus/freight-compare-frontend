@@ -207,7 +207,11 @@ const customerNetworkOptions = [{ value: 'domestic', label: 'Domestic' }, { valu
 const typeOfCustomersOptions = [{ value: 'b2c', label: 'Business-to-Consumer (B2C)' }, { value: 'b2b', label: 'Business-to-Business (B2B)' }];
 
 // --- Main ---
-const SignupForm: React.FC = () => {
+interface SignupFormProps {
+  isModal?: boolean;
+}
+
+const SignupForm: React.FC<SignupFormProps> = ({ isModal = false }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -634,19 +638,21 @@ const SignupForm: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="grid grid-cols-1 lg:grid-cols-5 w-full max-w-6xl bg-white shadow-2xl rounded-2xl overflow-hidden">
-        <div className="hidden lg:flex lg:col-span-2 flex-col justify-center p-8 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white">
-          <h1 className="text-4xl font-extrabold tracking-tight">Streamline Your Logistics</h1>
-          <p className="mt-4 text-indigo-200">
-            Join us to manage your shipments, track orders, and grow your business with our powerful and intuitive platform.
-          </p>
-          <div className="mt-8 flex space-x-2">
-            <span className="w-3 h-3 rounded-full bg-indigo-400"></span>
-            <span className="w-3 h-3 rounded-full bg-indigo-300"></span>
-            <span className="w-3 h-3 rounded-full bg-indigo-200"></span>
+    <div className={isModal ? "p-0" : "min-h-screen bg-slate-50 flex items-center justify-center p-4"}>
+      <div className={isModal ? "w-full bg-white" : "grid grid-cols-1 lg:grid-cols-5 w-full max-w-6xl bg-white shadow-2xl rounded-2xl overflow-hidden"}>
+        {!isModal && (
+          <div className="hidden lg:flex lg:col-span-2 flex-col justify-center p-8 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white">
+            <h1 className="text-4xl font-extrabold tracking-tight">Streamline Your Logistics</h1>
+            <p className="mt-4 text-indigo-200">
+              Join us to manage your shipments, track orders, and grow your business with our powerful and intuitive platform.
+            </p>
+            <div className="mt-8 flex space-x-2">
+              <span className="w-3 h-3 rounded-full bg-indigo-400"></span>
+              <span className="w-3 h-3 rounded-full bg-indigo-300"></span>
+              <span className="w-3 h-3 rounded-full bg-indigo-200"></span>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="col-span-1 lg:col-span-3 p-6 md:p-10 flex flex-col">
           {isSuccess ? renderSuccess() : (
