@@ -266,8 +266,7 @@ const Header: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <BrandLogo />
-            {/* Use display: contents to let the parent flex container (justify-between) handle spacing evenly across the full width */}
-            <nav className="hidden lg:contents">
+            <nav className="hidden lg:flex items-center gap-8">
               {/* Conditional About Us */}
               {isAuthenticated && <NavLink to="/about">About Us</NavLink>}
 

@@ -45,6 +45,7 @@ import TransporterManagementPage from './pages/TransporterManagementPage';
 import FormBuilderPage from './pages/FormBuilderPage';
 import AdminManagementPage from './pages/AdminManagementPage';
 import AdminWelcomePage from './pages/AdminWelcomePage';
+import UTSFManager from './pages/UTSFManager';
 import { getFirstAvailableRoute, hasPermission } from './config/adminPermissions';
 
 export const PrivateRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -366,6 +367,16 @@ function App() {
                 <AdminRoute requiredPermission="formBuilder">
                   <FormBuilderPage />
                 </AdminRoute>
+              }
+            />
+
+            {/* UTSF Manager - SUPER ADMIN ONLY */}
+            <Route
+              path="/super-admin/utsf-manager"
+              element={
+                <SuperAdminRoute>
+                  <UTSFManager />
+                </SuperAdminRoute>
               }
             />
 

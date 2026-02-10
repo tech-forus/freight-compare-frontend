@@ -68,6 +68,9 @@ import {
   Cloud as CloudIcon,
   FileDown
 } from 'lucide-react';
+
+// UTSF encoder
+import { generateUTSF, downloadUTSF, validateUTSF } from '../services/utsfEncoder';
 // ============================================================================
 // CONFIG / HELPERS
 // ============================================================================
@@ -277,6 +280,11 @@ export const AddVendor: React.FC = () => {
   const [priceChartFile, setPriceChartFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // UTSF generation mode state
+  const [outputMode, setOutputMode] = useState<'cloud' | 'cloud+utsf' | 'utsf'>('cloud');
+  const [showUtsfPreview, setShowUtsfPreview] = useState(false);
+  const [utsfData, setUtsfData] = useState<any>(null);
 
   // Overlay + ScrollToTop state (ADDED)
   const [showSubmitOverlay, setShowSubmitOverlay] = useState(false);
@@ -1444,6 +1452,7 @@ export const AddVendor: React.FC = () => {
     e.preventDefault();
     emitDebug('SUBMIT_STARTED');
     console.debug('[SUBMIT] clicked - start');
+    console.log('[STEP 0] handleSubmit fired, outputMode =', outputMode);
 
     // Calculate priceChart first before validation
     const priceChart = (wizardData?.priceMatrix || zpm?.priceMatrix || {}) as Record<string, Record<string, number>>;
@@ -1463,16 +1472,17 @@ export const AddVendor: React.FC = () => {
 
     // Ensure we have at least serviceability OR price chart
     if (!hasServiceabilityFromCSV && !hasServiceabilityFromWizard && !hasPriceChart && !hasZPM) {
-      toast.error('⚠️ Missing data: Please upload a CSV with pincodes OR configure zones via Wizard', { duration: 5000 });
+      toast.error('[STEP 1 FAIL] Missing data: No CSV pincodes, no Wizard data, no price chart', { duration: 5000 });
       return;
     }
 
     // Validate (logs inside validateAll will tell us what failed)
+    console.log('[STEP 2] Running validateAll...');
     const ok = validateAll();
-    console.debug('[SUBMIT] validateAll result ->', ok);
+    console.log('[STEP 2] validateAll result =', ok);
     if (!ok) {
       emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
-      console.warn('[SUBMIT] Validation failed - aborting submit (no network).');
+      toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
       return;
     }
 
@@ -1482,6 +1492,7 @@ export const AddVendor: React.FC = () => {
     setSubmitOverlayStage('loading');
 
     try {
+      console.log('[STEP 3] Building payload...');
       const payloadForApi = buildPayloadForApi();
 
       // Debug: Log the fields we're tracking
@@ -1493,7 +1504,6 @@ export const AddVendor: React.FC = () => {
       });
 
       emitDebug('SUBMIT_PAYLOAD_FOR_API', payloadForApi);
-      console.debug('[SUBMIT] payloadForApi', payloadForApi);
 
       // ========== CLOUD SAVE ==========
       if (saveMode === 'cloud' || saveMode === 'cloud_utsf') {
@@ -1732,9 +1742,16 @@ export const AddVendor: React.FC = () => {
                         type="submit"
                         form="add-vendor-form"
                         disabled={isSubmitting}
-                        className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
+                        className={`px-4 py-2 rounded-lg text-white disabled:opacity-50 ${
+                          outputMode === 'cloud' ? 'bg-blue-600 hover:bg-blue-700' :
+                          outputMode === 'cloud+utsf' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                          'bg-indigo-600 hover:bg-indigo-700'
+                        }`}
                       >
-                        {isSubmitting ? 'Saving…' : 'Save Vendor'}
+                        {isSubmitting ? 'Saving…' :
+                         outputMode === 'cloud' ? 'Save to Cloud' :
+                         outputMode === 'cloud+utsf' ? 'Cloud + UTSF' :
+                         'Generate UTSF'}
                       </button>
                     </div>
                   </div>
@@ -1819,6 +1836,7 @@ export const AddVendor: React.FC = () => {
                     </div>
                   )}
                 </div>
+
                 <CompanySection
                   vendorBasics={vendorBasics}
                   pincodeLookup={pincodeLookup}
