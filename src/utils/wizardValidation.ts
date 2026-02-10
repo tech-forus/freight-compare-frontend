@@ -17,9 +17,14 @@ export interface WizardStatus {
 }
 
 /**
- * Validate price matrix structure and content
+ * Validate price matrix structure and content.
+ * Only validates prices between configured zones (if provided).
+ * Zones not in configuredZones are silently skipped.
  */
-export const validatePriceMatrix = (priceMatrix: PriceMatrix): ValidationResult => {
+export const validatePriceMatrix = (
+  priceMatrix: PriceMatrix,
+  configuredZones?: string[]
+): ValidationResult => {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -29,31 +34,35 @@ export const validatePriceMatrix = (priceMatrix: PriceMatrix): ValidationResult 
     return { isValid: false, errors, warnings };
   }
 
-  const fromZones = Object.keys(priceMatrix);
-  
-  // Check if matrix is empty
+  // Determine which zones to validate
+  const configuredSet = configuredZones
+    ? new Set(configuredZones.map((z) => z.toUpperCase()))
+    : null;
+
+  // Filter to only configured zones (or all if no filter)
+  const fromZones = Object.keys(priceMatrix).filter(
+    (z) => !configuredSet || configuredSet.has(z.toUpperCase())
+  );
+
+  // Check if matrix is empty (for configured zones)
   if (fromZones.length === 0) {
     errors.push("Price matrix is empty - no zones configured");
     return { isValid: false, errors, warnings };
   }
 
-  // Validate matrix structure
+  // Validate matrix structure - only between configured zones
   fromZones.forEach((fromZone) => {
     const toZones = priceMatrix[fromZone];
-    
+
     if (!toZones || typeof toZones !== "object") {
       errors.push(`Invalid price data for zone ${fromZone}`);
       return;
     }
 
-    // Check if all zones have prices to all other zones
-    const toZoneKeys = Object.keys(toZones);
-    if (toZoneKeys.length !== fromZones.length) {
-      warnings.push(`Zone ${fromZone} has incomplete price mappings`);
-    }
+    // Only check prices to other configured zones
+    fromZones.forEach((toZone) => {
+      const price = toZones[toZone];
 
-    // Check for invalid prices
-    Object.entries(toZones).forEach(([toZone, price]) => {
       // Convert string prices to numbers
       let numPrice: number | null = null;
       if (typeof price === "number") {
@@ -64,13 +73,14 @@ export const validatePriceMatrix = (priceMatrix: PriceMatrix): ValidationResult 
           errors.push(`Invalid price for ${fromZone} → ${toZone}: must be a number`);
           return;
         }
-      } else if (typeof price === "string" && price.trim() === "") {
-        errors.push(`Invalid price for ${fromZone} → ${toZone}: must be a number`);
+      } else if (price === undefined || price === null || (typeof price === "string" && price.trim() === "")) {
+        // Missing price between configured zones - this is an error
+        errors.push(`Missing price for ${fromZone} → ${toZone}`);
         return;
       }
 
       if (numPrice === null) {
-        errors.push(`Invalid price for ${fromZone} → ${toZone}: must be a number`);
+        errors.push(`Missing price for ${fromZone} → ${toZone}`);
         return;
       }
 
@@ -79,7 +89,7 @@ export const validatePriceMatrix = (priceMatrix: PriceMatrix): ValidationResult 
       } else if (numPrice > 999999) {
         errors.push(`Invalid price for ${fromZone} → ${toZone}: exceeds maximum (999999)`);
       }
-      
+
       // Warning for zero prices
       if (numPrice === 0) {
         warnings.push(`Price for ${fromZone} → ${toZone} is zero`);
@@ -261,8 +271,12 @@ export const validateWizardData = (wizardData: WizardDataV1 | null): ValidationR
   errors.push(...zonesValidation.errors);
   warnings.push(...zonesValidation.warnings);
 
-  // Validate price matrix (REQUIRED)
-  const matrixValidation = validatePriceMatrix(wizardData.priceMatrix);
+  // Validate price matrix (REQUIRED) - only for configured zones
+  const configuredZones = wizardData.zones?.map((z) => z.zoneCode) || [];
+  const matrixValidation = validatePriceMatrix(
+    wizardData.priceMatrix,
+    configuredZones.length > 0 ? configuredZones : undefined
+  );
   errors.push(...matrixValidation.errors);
   warnings.push(...matrixValidation.warnings);
 

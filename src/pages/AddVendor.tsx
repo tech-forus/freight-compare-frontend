@@ -64,8 +64,14 @@ import {
   Tag,
   FileSpreadsheet,
   Upload,
-  Sparkles
+  Sparkles,
+  Download,
+  Eye,
+  UploadCloud
 } from 'lucide-react';
+
+// UTSF encoder
+import { generateUTSF, downloadUTSF, validateUTSF } from '../services/utsfEncoder';
 // ============================================================================
 // CONFIG / HELPERS
 // ============================================================================
@@ -275,6 +281,11 @@ export const AddVendor: React.FC = () => {
   const [priceChartFile, setPriceChartFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // UTSF generation mode state
+  const [outputMode, setOutputMode] = useState<'cloud' | 'cloud+utsf' | 'utsf'>('cloud');
+  const [showUtsfPreview, setShowUtsfPreview] = useState(false);
+  const [utsfData, setUtsfData] = useState<any>(null);
 
   // Overlay + ScrollToTop state (ADDED)
   const [showSubmitOverlay, setShowSubmitOverlay] = useState(false);
@@ -1447,6 +1458,7 @@ export const AddVendor: React.FC = () => {
     e.preventDefault();
     emitDebug('SUBMIT_STARTED');
     console.debug('[SUBMIT] clicked - start');
+    console.log('[STEP 0] handleSubmit fired, outputMode =', outputMode);
 
     // 🔥 FIX: SOLUTION #1 - Calculate priceChart first before validation
     const priceChart = (wizardData?.priceMatrix || zpm?.priceMatrix || {}) as Record<string, Record<string, number>>;
@@ -1457,25 +1469,26 @@ export const AddVendor: React.FC = () => {
     const hasPriceChart = priceChart && typeof priceChart === 'object' && Object.keys(priceChart).length > 0;
     const hasZPM = zpm?.priceMatrix && Object.keys(zpm.priceMatrix).length > 0;
 
-    console.log('🚨 [SUBMIT] Serviceability status check:', {
-      hasServiceabilityFromCSV: hasServiceabilityFromCSV ? `✅ ${serviceabilityData.serviceability.length} pincodes` : '❌ No CSV data',
-      hasServiceabilityFromWizard: hasServiceabilityFromWizard ? `✅ ${(wizardData?.serviceability || []).length} pincodes` : '❌ No Wizard data',
-      hasPriceChart: hasPriceChart ? '✅ Yes' : '❌ No',
-      hasZPM: hasZPM ? '✅ Yes' : '❌ No',
+    console.log('[STEP 1] Data check:', {
+      hasServiceabilityFromCSV: hasServiceabilityFromCSV ? `YES (${serviceabilityData.serviceability.length})` : 'NO',
+      hasServiceabilityFromWizard: hasServiceabilityFromWizard ? `YES (${(wizardData?.serviceability || []).length})` : 'NO',
+      hasPriceChart: hasPriceChart ? `YES (${Object.keys(priceChart).length} zones)` : 'NO',
+      hasZPM: hasZPM ? 'YES' : 'NO',
     });
 
     // Ensure we have at least serviceability OR price chart
     if (!hasServiceabilityFromCSV && !hasServiceabilityFromWizard && !hasPriceChart && !hasZPM) {
-      toast.error('⚠️ Missing data: Please upload a CSV with pincodes OR configure zones via Wizard', { duration: 5000 });
+      toast.error('[STEP 1 FAIL] Missing data: No CSV pincodes, no Wizard data, no price chart', { duration: 5000 });
       return;
     }
 
     // Validate (logs inside validateAll will tell us what failed)
+    console.log('[STEP 2] Running validateAll...');
     const ok = validateAll();
-    console.debug('[SUBMIT] validateAll result ->', ok);
+    console.log('[STEP 2] validateAll result =', ok);
     if (!ok) {
       emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
-      console.warn('[SUBMIT] Validation failed - aborting submit (no network).');
+      toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
       return;
     }
 
@@ -1486,7 +1499,44 @@ export const AddVendor: React.FC = () => {
     setSubmitOverlayStage('loading');
 
     try {
+      console.log('[STEP 3] Building payload...');
       const payloadForApi = buildPayloadForApi();
+      console.log('[STEP 3] Payload built OK, companyName =', payloadForApi.companyName);
+
+      // UTSF MODE: Generate UTSF file instead of saving to cloud
+      if (outputMode === 'utsf') {
+        console.log('[STEP 4-UTSF] Generating UTSF file...');
+
+        try {
+          const utsf = await generateUTSF(payloadForApi);
+          console.log('[STEP 4-UTSF] UTSF generated OK');
+
+          // Validate
+          const { isValid, errors } = validateUTSF(utsf);
+          if (!isValid) {
+            console.warn('[STEP 4-UTSF] Validation warnings:', errors);
+            toast.error(`UTSF validation warnings: ${errors.join(', ')}`, { duration: 5000 });
+          }
+
+          // Show preview dialog
+          setUtsfData(utsf);
+          setShowUtsfPreview(true);
+          setIsSubmitting(false);
+          setShowSubmitOverlay(false);
+
+          toast.success('UTSF file generated! Review and download below.', { duration: 3000 });
+          return;
+        } catch (error: any) {
+          console.error('[STEP 4-UTSF FAIL]', error);
+          toast.error(`[STEP 4] UTSF generation failed: ${error.message}`, { duration: 5000 });
+          setIsSubmitting(false);
+          setShowSubmitOverlay(false);
+          return;
+        }
+      }
+
+      // CLOUD / CLOUD+UTSF MODE: Save to cloud first
+      console.log('[STEP 4-CLOUD] Building FormData...');
 
       // Debug: Log the 3 specific fields we're tracking
       console.log('📤 Sending Fields:', {
@@ -1496,19 +1546,12 @@ export const AddVendor: React.FC = () => {
         topayCharges: payloadForApi.prices?.priceRate?.topayCharges,
       });
 
-      console.log('🔍 INVOICE DEBUG:', {
-        invoicePercentage,
-        invoiceMinAmount,
-        invoiceUseMax,
-      });
-      // 👆 JUST THIS ONE LINE
       emitDebug('SUBMIT_PAYLOAD_FOR_API', payloadForApi);
-      console.debug('[SUBMIT] payloadForApi', payloadForApi);
 
       const fd = new FormData();
       fd.append('customerID', String(payloadForApi.customerID || ''));
       fd.append('companyName', payloadForApi.companyName);
-      fd.append('contactPersonName', payloadForApi.contactPersonName);              // ✅ NEW
+      fd.append('contactPersonName', payloadForApi.contactPersonName);
       fd.append('vendorCode', payloadForApi.vendorCode);
       fd.append('vendorPhone', String(payloadForApi.vendorPhone));
       fd.append('vendorEmail', payloadForApi.vendorEmail);
@@ -1518,29 +1561,20 @@ export const AddVendor: React.FC = () => {
       fd.append('address', payloadForApi.address);
       fd.append('state', payloadForApi.state);
       fd.append('pincode', String(payloadForApi.pincode));
-      fd.append('city', payloadForApi.city);                                // ✅ NEW
-      fd.append('rating', String(payloadForApi.rating));                    // ✅ Overall rating (calculated)
-      fd.append('vendorRatings', JSON.stringify(payloadForApi.vendorRatings)); // ✅ NEW - Individual ratings
-      fd.append('subVendor', payloadForApi.subVendor || '');                // ✅ NEW
+      fd.append('city', payloadForApi.city);
+      fd.append('rating', String(payloadForApi.rating));
+      fd.append('vendorRatings', JSON.stringify(payloadForApi.vendorRatings));
+      fd.append('subVendor', payloadForApi.subVendor || '');
 
-      // ✅ FIX: Add volumetric fields at root level (backend expects these)
       const volUnit = volumetric.state.unit || 'cm';
       fd.append('volumetricUnit', volUnit);
       fd.append('volumetricDivisor', String(volumetric.state.volumetricDivisor || ''));
       fd.append('cftFactor', String(volumetric.state.cftFactor || ''));
-      fd.append('selectedZones', JSON.stringify(payloadForApi.selectedZones)); // ✅ NEW
+      fd.append('selectedZones', JSON.stringify(payloadForApi.selectedZones));
       fd.append('zoneConfigurations', JSON.stringify(payloadForApi.zoneConfigurations));
       fd.append('priceRate', JSON.stringify(payloadForApi.prices.priceRate));
       fd.append('priceChart', JSON.stringify(payloadForApi.prices.priceChart));
       if (priceChartFile) fd.append('priceChart', priceChartFile);
-
-      // ✅ NEW: Add serviceability data (pincode-authoritative)
-      console.log('🚨 CRITICAL CHECK - Serviceability Before FormData:', {
-        exists: !!payloadForApi.serviceability,
-        isArray: Array.isArray(payloadForApi.serviceability),
-        length: payloadForApi.serviceability?.length,
-        willAppend: !!(payloadForApi.serviceability && payloadForApi.serviceability.length > 0)
-      });
 
       if (payloadForApi.serviceability && payloadForApi.serviceability.length > 0) {
         fd.append('serviceability', JSON.stringify(payloadForApi.serviceability));
@@ -1550,25 +1584,9 @@ export const AddVendor: React.FC = () => {
 
       fd.append('vendorJson', JSON.stringify(payloadForApi));
 
-      // 🔍 COMPREHENSIVE DEBUG: Show exactly what's in FormData
-      console.log('📦 FormData being sent:', {
-        customerID: payloadForApi.customerID,
-        companyName: payloadForApi.companyName,
-        contactPersonName: payloadForApi.contactPersonName || '(EMPTY)',
-        subVendor: payloadForApi.subVendor || '(EMPTY)',
-        vendorCode: payloadForApi.vendorCode,
-        serviceabilityCount: payloadForApi.serviceability?.length || 0,
-        priceRateStringified: JSON.stringify(payloadForApi.prices.priceRate).substring(0, 200) + '...',
-        priceRateContainsCOD: JSON.stringify(payloadForApi.prices.priceRate).includes('codCharges'),
-        priceRateContainsTOPAY: JSON.stringify(payloadForApi.prices.priceRate).includes('topayCharges'),
-        actualCODValue: payloadForApi.prices.priceRate.codCharges,
-        actualTOPAYValue: payloadForApi.prices.priceRate.topayCharges,
-      });
-
       const token = getAuthToken();
       const url = `${API_BASE}/api/transporter/addtiedupcompanies`;
-      emitDebug('SUBMITTING_TO_API', { url, hasToken: !!token });
-      console.debug('[SUBMIT] sending fetch to', url, { hasToken: !!token });
+      console.log('[STEP 5] Sending cloud save to', url, '| hasToken:', !!token);
 
       const res = await fetch(url, {
         method: 'POST',
@@ -1577,20 +1595,63 @@ export const AddVendor: React.FC = () => {
       });
 
       const json = await res.json().catch(() => ({} as any));
-      emitDebug('API_RESPONSE', { status: res.status, json });
-      console.debug('[SUBMIT] API_RESPONSE', res.status, json);
+      console.log('[STEP 5] Cloud response:', res.status, json?.success, json?.message);
 
       if (!res.ok || !json?.success) {
         emitDebugError('SUBMIT_ERROR', { status: res.status, json });
-        toast.error(json?.message || `Failed to create vendor (${res.status})`, {
+        toast.error(`[STEP 5 FAIL] Cloud save failed (${res.status}): ${json?.message || 'Unknown error'}`, {
           duration: 5200,
         });
         setIsSubmitting(false);
-        setShowSubmitOverlay(false); // 👈 ensure overlay hides on API error
+        setShowSubmitOverlay(false);
         return;
       }
 
       toast.success('Vendor created successfully!', { duration: 800 });
+      console.log('[STEP 5] Cloud save OK!');
+
+      // Cloud+UTSF mode: also generate and upload UTSF after successful cloud save
+      if (outputMode === 'cloud+utsf') {
+        console.log('[STEP 6] Starting UTSF generation for cloud+utsf mode...');
+        try {
+          const utsf = await generateUTSF(payloadForApi);
+          console.log('[STEP 6] UTSF generated OK, stats:', utsf.stats);
+
+          // Use the ID from the cloud response if available
+          if (json?.data?._id) {
+            utsf.meta.id = json.data._id;
+            console.log('[STEP 6] Set UTSF ID from cloud response:', json.data._id);
+          } else {
+            console.log('[STEP 6] No _id in cloud response, UTSF will get auto-ID. Response data keys:', Object.keys(json?.data || json || {}));
+          }
+
+          console.log('[STEP 7] Uploading UTSF to /api/utsf/upload-json...');
+          const utsfToken = getAuthToken();
+          const utsfRes = await fetch(`${API_BASE}/api/utsf/upload-json`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${utsfToken}`
+            },
+            body: JSON.stringify(utsf)
+          });
+
+          console.log('[STEP 7] UTSF upload response:', utsfRes.status, utsfRes.statusText);
+
+          if (utsfRes.ok) {
+            const utsfJson = await utsfRes.json().catch(() => ({}));
+            console.log('[STEP 7] UTSF upload OK:', utsfJson);
+            toast.success('UTSF file also saved to server!', { duration: 3000 });
+          } else {
+            const utsfErr = await utsfRes.json().catch(() => ({ message: utsfRes.statusText }));
+            console.error('[STEP 7 FAIL] UTSF upload failed:', utsfRes.status, utsfErr);
+            toast(`[STEP 7] UTSF upload failed (${utsfRes.status}): ${utsfErr?.message || 'Unknown'}`, { icon: '⚠️', duration: 6000 });
+          }
+        } catch (utsfError: any) {
+          console.error('[STEP 6 FAIL] UTSF error:', utsfError);
+          toast(`[STEP 6] UTSF failed: ${utsfError.message}`, { icon: '⚠️', duration: 6000 });
+        }
+      }
 
       // show success tick in overlay
       setSubmitOverlayStage('success');
@@ -1722,9 +1783,16 @@ export const AddVendor: React.FC = () => {
                         type="submit"
                         form="add-vendor-form"
                         disabled={isSubmitting}
-                        className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
+                        className={`px-4 py-2 rounded-lg text-white disabled:opacity-50 ${
+                          outputMode === 'cloud' ? 'bg-blue-600 hover:bg-blue-700' :
+                          outputMode === 'cloud+utsf' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                          'bg-indigo-600 hover:bg-indigo-700'
+                        }`}
                       >
-                        {isSubmitting ? 'Saving…' : 'Save Vendor'}
+                        {isSubmitting ? 'Saving…' :
+                         outputMode === 'cloud' ? 'Save to Cloud' :
+                         outputMode === 'cloud+utsf' ? 'Cloud + UTSF' :
+                         'Generate UTSF'}
                       </button>
                     </div>
                   </div>
@@ -1809,6 +1877,7 @@ export const AddVendor: React.FC = () => {
                     </div>
                   )}
                 </div>
+
                 <CompanySection
                   vendorBasics={vendorBasics}
                   pincodeLookup={pincodeLookup}
@@ -2307,48 +2376,92 @@ export const AddVendor: React.FC = () => {
                 />
               </div>
 
-              {/* Footer actions */}
-              <div className="p-6 md:p-8 flex items-center justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="px-5 py-3 bg-slate-200 text-slate-800 font-medium rounded-xl hover:bg-slate-300 transition-colors"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <XCircleIcon className="w-5 h-5" />
-                    Reset Form
-                  </span>
-                </button>
-                {/*
-                               <button
-                  type="button"
-                  onClick={() => setShowInvoiceSection((s) => !s)}
-                  className="px-5 py-3 bg-slate-200 text-slate-800 font-medium rounded-xl hover:bg-slate-300 transition-colors"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <EyeIcon className="w-5 h-5" />
-                    Show Invoice Value
-                  </span>
-                </button>*/}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || (wizardValidation && !wizardValidation.isValid)}
-                  className="px-5 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                        Saving…
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircleIcon className="w-5 h-5" />
-                        Save Vendor
-                      </>
-                    )}
-                  </span>
-                </button>
+              {/* Save Mode Selector + Footer actions */}
+              <div className="p-6 md:p-8 space-y-4">
+                {/* Three-way save mode selector */}
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                  <span className="text-sm font-medium text-gray-700 mr-1">Save Mode:</span>
+                  <button
+                    type="button"
+                    onClick={() => setOutputMode('cloud')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      outputMode === 'cloud'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                    }`}
+                  >
+                    <UploadCloud className="w-4 h-4 inline mr-1.5" />
+                    Save to Cloud
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOutputMode('cloud+utsf')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      outputMode === 'cloud+utsf'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4 inline mr-1.5" />
+                    Cloud + UTSF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOutputMode('utsf')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      outputMode === 'utsf'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4 inline mr-1.5" />
+                    UTSF Only
+                  </button>
+                  {outputMode !== 'cloud' && (
+                    <span className="text-xs text-indigo-700 bg-indigo-100 px-3 py-1 rounded-full ml-auto">
+                      {outputMode === 'cloud+utsf' ? 'Saves to both cloud & UTSF file' : 'Compact single-file format (90% smaller)'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center justify-between gap-4">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-5 py-3 bg-slate-200 text-slate-800 font-medium rounded-xl hover:bg-slate-300 transition-colors"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <XCircleIcon className="w-5 h-5" />
+                      Reset Form
+                    </span>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || (wizardValidation && !wizardValidation.isValid)}
+                    className={`px-5 py-3 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                      outputMode === 'cloud' ? 'bg-blue-600 hover:bg-blue-700' :
+                      outputMode === 'cloud+utsf' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                      'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isSubmitting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                          Saving…
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircleIcon className="w-5 h-5" />
+                          {outputMode === 'cloud' ? 'Save to Cloud' :
+                           outputMode === 'cloud+utsf' ? 'Save Cloud + UTSF' :
+                           'Generate UTSF'}
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2411,6 +2524,114 @@ export const AddVendor: React.FC = () => {
 
       {/* Smooth scroll helper after success */}
       <ScrollToTop targetRef={topRef} when={scrollKey} offset={80} />
+
+      {/* UTSF Preview Dialog */}
+      {showUtsfPreview && utsfData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-blue-50">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">UTSF File Preview</h2>
+                <p className="text-sm text-slate-600">
+                  {utsfData.meta.companyName} • v{utsfData.version} • {(JSON.stringify(utsfData).length / 1024).toFixed(1)} KB
+                </p>
+              </div>
+              <button
+                onClick={() => setShowUtsfPreview(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <XCircleIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Stats Summary */}
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+              <div className="grid grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-indigo-600">{utsfData.stats.totalPincodes.toLocaleString()}</div>
+                  <div className="text-xs text-slate-600">Pincodes</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{utsfData.stats.totalZones}</div>
+                  <div className="text-xs text-slate-600">Zones</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{utsfData.stats.avgCoveragePercent}%</div>
+                  <div className="text-xs text-slate-600">Avg Coverage</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">{utsfData.stats.odaCount}</div>
+                  <div className="text-xs text-slate-600">ODA Pincodes</div>
+                </div>
+              </div>
+            </div>
+
+            {/* JSON Preview */}
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <pre className="text-xs font-mono bg-slate-900 text-green-400 p-4 rounded-lg overflow-x-auto">
+                {JSON.stringify(utsfData, null, 2)}
+              </pre>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="text-xs text-slate-600">
+                Validation: {validateUTSF(utsfData).isValid ? (
+                  <span className="text-green-600 font-medium">✓ Valid</span>
+                ) : (
+                  <span className="text-red-600 font-medium">⚠ {validateUTSF(utsfData).errors.length} warnings</span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUtsfPreview(false)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => downloadUTSF(utsfData)}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download UTSF
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = getAuthToken();
+                      const response = await fetch(`${API_BASE}/api/utsf/upload-json`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(utsfData)
+                      });
+
+                      if (response.ok) {
+                        toast.success('UTSF uploaded to server successfully!', { duration: 3000 });
+                        setShowUtsfPreview(false);
+                        setRefreshTrigger(prev => prev + 1); // Refresh vendor list
+                      } else {
+                        const error = await response.json();
+                        toast.error(`Upload failed: ${error.message || response.statusText}`, { duration: 5000 });
+                      }
+                    } catch (error) {
+                      toast.error(`Upload failed: ${error.message}`, { duration: 5000 });
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  Upload to Server
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

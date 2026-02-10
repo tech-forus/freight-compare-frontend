@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  LogIn,
   User as UserIcon,
   LogOut as LogOutIcon,
   Menu,
@@ -146,8 +145,7 @@ const UserProfileDropdown = () => {
 
 // --- MOBILE NAVIGATION (updated) ---
 const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => void }) => {
-  const { isAuthenticated, logout, user, isSuperAdmin } = useAuth();
-  const isAdmin = !!user && (user.role === 'admin' || user.role === 'superadmin');
+  const { isAuthenticated, logout, isAdmin } = useAuth();
 
   const handleSignOut = () => {
     logout();
@@ -225,9 +223,9 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                   )}
                 </>
               )}
-              <MobileNavLink to="/about">About Us</MobileNavLink>
+              {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
               <MobileNavLink to="/contact">Contact Us</MobileNavLink>
-              <MobileNavLink to="/addbid">Add Bid</MobileNavLink>
+              {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>}
               <MobileNavLink to="/vehicle-info">
                 <Info size={20} className="text-blue-600" /> Vehicle Info
               </MobileNavLink>
@@ -259,11 +257,8 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
 
 // --- MAIN HEADER COMPONENT (FIXED) ---
 const Header: React.FC = () => {
-  const { isAuthenticated, user, isSuperAdmin } = useAuth();
+  const { isAuthenticated, user, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // small helper for admin visibility in the desktop nav
-  const isAdmin = !!user && (user.role === 'admin' || user.role === 'superadmin');
 
   return (
     <>
@@ -272,10 +267,12 @@ const Header: React.FC = () => {
           <div className="flex items-center justify-between h-20">
             <BrandLogo />
             <nav className="hidden lg:flex items-center gap-8">
-              <NavLink to="/about">About Us</NavLink>
+              {/* Conditional About Us */}
+              {isAuthenticated && <NavLink to="/about">About Us</NavLink>}
+
               <NavLink to="/contact">Contact</NavLink>
               {/* --- FIXED: Use NavLink here */}
-              <NavLink to="/addbid">Add Bid</NavLink>
+              {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>}
               {isAuthenticated && <NavLink to="/addvendor">Add Vendor</NavLink>}
               <NavLink to="/vehicle-info">Vehicle Info</NavLink>
             </nav>

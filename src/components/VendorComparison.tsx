@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarClock, Weight, DollarSign, Download, ArrowRight } from 'lucide-react';
+import { CalendarClock, Weight, DollarSign, Download, ArrowRight, MapPin, AlertCircle, Database, Layers } from 'lucide-react';
 import VerificationBadge, { VerificationStatus } from './VerificationBadge';
 
 // This component now expects a 'quotes' prop containing the real data from the backend.
@@ -63,18 +63,46 @@ const VendorComparison = ({ quotes = [] }) => {
                  <div className="flex items-center gap-2 mb-1">
                    <h3 className="font-bold text-lg">{quote.companyName}</h3>
                    <VerificationBadge status={getVerificationStatus(quote)} />
+                   {quote.source === 'utsf' && (
+                     <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                       <Database size={10} />
+                       UTSF
+                     </span>
+                   )}
+                   {quote.source !== 'utsf' && (
+                     <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                       <Layers size={10} />
+                       Demo
+                     </span>
+                   )}
                  </div>
-                 {/* Best value badge */}
-                 {quote.companyId === cheapestQuote.companyId && (
-                   <span className="inline-block text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
-                     Best Value
-                   </span>
-                 )}
-                 {quote.companyId === fastestQuote.companyId && quote.companyId !== cheapestQuote.companyId && (
-                   <span className="inline-block text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
-                     Fastest
-                   </span>
-                 )}
+                 <div className="flex items-center gap-2 flex-wrap">
+                   {/* Best value badge */}
+                   {quote.companyId === cheapestQuote.companyId && (
+                     <span className="inline-block text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+                       Best Value
+                     </span>
+                   )}
+                   {quote.companyId === fastestQuote.companyId && quote.companyId !== cheapestQuote.companyId && (
+                     <span className="inline-block text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                       Fastest
+                     </span>
+                   )}
+                   {/* Zone info for UTSF quotes */}
+                   {quote.zone && (
+                     <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+                       <MapPin size={10} />
+                       {quote.zone}
+                     </span>
+                   )}
+                   {/* ODA indicator */}
+                   {quote.isOda && (
+                     <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                       <AlertCircle size={10} />
+                       ODA
+                     </span>
+                   )}
+                 </div>
                </div>
             </div>
 
@@ -104,11 +132,11 @@ const VendorComparison = ({ quotes = [] }) => {
                 <div className="text-xs space-y-1">
                     <div className="flex justify-between">
                         <span>Actual Wt.</span>
-                        <span className="font-medium">{formatWeight(quote.actualWeight)}</span>
+                        <span className="font-medium">{formatWeight(quote.actualWeight || 0)}</span>
                     </div>
                     <div className="flex justify-between">
                         <span>Volumetric Wt.</span>
-                        <span className="font-medium">{formatWeight(quote.volumetricWeight)}</span>
+                        <span className="font-medium">{formatWeight(quote.volumetricWeight || 0)}</span>
                     </div>
                     <div className="flex justify-between font-bold border-t mt-1 pt-1">
                         <span>Chargeable Wt.</span>
@@ -116,6 +144,80 @@ const VendorComparison = ({ quotes = [] }) => {
                     </div>
                 </div>
               </div>
+
+              {/* Charge Breakdown - Show for UTSF quotes */}
+              {quote.breakdown && (
+                <div className="col-span-2 border-t pt-3 mt-2">
+                  <details className="group">
+                    <summary className="flex items-center justify-between cursor-pointer text-sm text-gray-600 hover:text-gray-800">
+                      <span className="font-medium">Charge Breakdown</span>
+                      <span className="text-xs group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="text-xs space-y-1 mt-2 pl-2">
+                      {quote.breakdown.baseFreight > 0 && (
+                        <div className="flex justify-between">
+                          <span>Base Freight</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.baseFreight)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.docketCharge > 0 && (
+                        <div className="flex justify-between">
+                          <span>Docket Charge</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.docketCharge)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.fuelCharges > 0 && (
+                        <div className="flex justify-between">
+                          <span>Fuel Surcharge</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.fuelCharges)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.greenTax > 0 && (
+                        <div className="flex justify-between">
+                          <span>Green Tax</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.greenTax)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.rovCharges > 0 && (
+                        <div className="flex justify-between">
+                          <span>ROV Charges</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.rovCharges)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.handlingCharges > 0 && (
+                        <div className="flex justify-between">
+                          <span>Handling Charges</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.handlingCharges)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.odaCharges > 0 && (
+                        <div className="flex justify-between text-amber-600">
+                          <span>ODA Charges</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.odaCharges)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.insuaranceCharges > 0 && (
+                        <div className="flex justify-between">
+                          <span>Insurance</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.insuaranceCharges)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.fmCharges > 0 && (
+                        <div className="flex justify-between">
+                          <span>FM Charges</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.fmCharges)}</span>
+                        </div>
+                      )}
+                      {quote.breakdown.appointmentCharges > 0 && (
+                        <div className="flex justify-between">
+                          <span>Appointment</span>
+                          <span className="font-medium">{formatCurrency(quote.breakdown.appointmentCharges)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between mt-4">
