@@ -261,7 +261,6 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
 // --- MAIN HEADER COMPONENT (FIXED) ---
 const Header: React.FC = () => {
   const { isAuthenticated, user, isAdmin } = useAuth();
-  const { isAuthenticated, user, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
