@@ -146,7 +146,6 @@ const UserProfileDropdown = () => {
 // --- MOBILE NAVIGATION (updated) ---
 const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => void }) => {
   const { isAuthenticated, logout, isAdmin } = useAuth();
-  const { isAuthenticated, logout, isAdmin } = useAuth();
 
   const handleSignOut = () => {
     logout();
@@ -225,9 +224,7 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                 </>
               )}
               {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
-              {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
               <MobileNavLink to="/contact">Contact Us</MobileNavLink>
-              {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>}
               {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>}
               <MobileNavLink to="/vehicle-info">
                 <Info size={20} className="text-blue-600" /> Vehicle Info
@@ -275,7 +272,6 @@ const Header: React.FC = () => {
 
               <NavLink to="/contact">Contact</NavLink>
               {/* --- FIXED: Use NavLink here */}
-              {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>}
               {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>}
               {isAuthenticated && <NavLink to="/addvendor">Add Vendor</NavLink>}
               <NavLink to="/vehicle-info">Vehicle Info</NavLink>
