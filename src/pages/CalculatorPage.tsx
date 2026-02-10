@@ -163,7 +163,7 @@ const InputField = ({
     error?: string | null;
 }) => {
     return (
-        <div>
+        <div className="relative">
             {label && (
                 <label
                     htmlFor={inputProps.id}
@@ -190,7 +190,7 @@ const InputField = ({
                 />
             </div>
             {!!error && (
-                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                <p className="absolute left-0 top-full mt-0.5 text-xs text-red-600 flex items-center gap-1 whitespace-nowrap">
                     <AlertCircle size={14} />
                     {error}
                 </p>
@@ -987,19 +987,20 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     weight: box.weight,
                 });
             } else {
-                // Light Mode: Check Count and Dimensions
+                // Light Mode: Check Count, Weight, and Dimensions
                 if (
                     !box.count ||
+                    !box.weight ||
                     !box.length ||
                     !box.width ||
                     !box.height
                 ) {
                     const name = box.description || `Box Type ${boxes.indexOf(box) + 1}`;
-                    setError(`Please fill in Qty and Dimensions for "${name}".`);
+                    setError(`Please fill in Qty, Weight and Dimensions for "${name}".`);
                     setIsCalculating(false);
                     return;
                 }
-                // Calculate volumetric weight for payload (if not already set in state)
+                // Convert dimensions to cm if user selected inches
                 let len = Number(box.length);
                 let wid = Number(box.width);
                 let ht = Number(box.height);
@@ -1010,13 +1011,12 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     ht = ht * 2.54;
                 }
 
-                const volWeight = (len * wid * ht) / 5000;
                 shipmentPayload.push({
                     count: box.count,
-                    length: box.length, // Keeping original input value
-                    width: box.width,
-                    height: box.height,
-                    weight: volWeight, // Use calculated volumetric weight
+                    length: len,
+                    width: wid,
+                    height: ht,
+                    weight: box.weight, // Send actual weight; backend computes max(actual, volumetric)
                 });
             }
         }
@@ -1337,10 +1337,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             </div>
 
             {/* Main Content */}
-            <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-3 pb-4">
+            <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-3 pb-4 origin-top" style={{ transform: 'scale(1.10)', transformOrigin: 'top center' }}>
                 {/* PAGE HEADER - Minimal */}
                 <header className="mb-3 flex items-center justify-between">
-                    <h1 className="text-3xl font-extrabold text-blue-900 tracking-tight">Freight Calculator</h1>
+                    <h1 className="text-3xl font-extrabold text-black tracking-tight">Freight Calculator</h1>
                 </header>
 
                 {/* TWO-COLUMN LAYOUT (68% - 32%) */}
@@ -1354,15 +1354,15 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                 {/* Transport Mode - Minimal Tab Bar */}
                                 <div className="flex items-center bg-slate-50 border-b border-slate-200 px-1">
                                     {[
-                                        { name: "Road", icon: <Truck size={14} />, isAvailable: true },
-                                        { name: "Air", icon: <Plane size={14} />, isAvailable: false },
-                                        { name: "Rail", icon: <Train size={14} />, isAvailable: false },
-                                        { name: "Ship", icon: <Ship size={14} />, isAvailable: false },
+                                        { name: "Road", icon: <Truck size={16} />, isAvailable: true },
+                                        { name: "Air", icon: <Plane size={16} />, isAvailable: false },
+                                        { name: "Rail", icon: <Train size={16} />, isAvailable: false },
+                                        { name: "Ship", icon: <Ship size={16} />, isAvailable: false },
                                     ].map((mode) => (
                                         <button
                                             key={mode.name}
                                             onClick={() => (mode.isAvailable ? setModeOfTransport(mode.name as any) : null)}
-                                            className={`flex items-center gap-1 px-3 py-2 text-xs font-medium transition-colors ${modeOfTransport === mode.name
+                                            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors ${modeOfTransport === mode.name
                                                 ? "text-blue-700 bg-blue-50/50 border-t-2 border-blue-600 -mb-px font-bold shadow-sm"
                                                 : mode.isAvailable
                                                     ? "text-slate-500 hover:text-slate-700"
@@ -1379,8 +1379,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                 {/* Route Inputs - Dominant Visual Weight */}
                                 <div className="p-4">
                                     {/* Primary: Origin → Destination + Invoice (Single Row) */}
-                                    <div className="flex items-start gap-3">
-                                        <div className="flex-none w-[20%]">
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex-1 min-w-0">
                                             <PincodeAutocomplete
                                                 label="Origin Pincode"
                                                 id="fromPincode"
@@ -1397,10 +1397,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 onValidationChange={setIsFromPincodeValid}
                                             />
                                         </div>
-                                        <div className="flex items-center justify-center w-6 h-9 text-slate-300">
+                                        <div className="flex items-center justify-center w-6 h-9 shrink-0 text-slate-300">
                                             <ChevronRight size={18} />
                                         </div>
-                                        <div className="flex-none w-[20%]">
+                                        <div className="flex-1 min-w-0">
                                             <PincodeAutocomplete
                                                 label="Destination Pincode"
                                                 id="toPincode"
@@ -1418,7 +1418,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                             />
                                         </div>
                                         {/* Invoice Value - Inline */}
-                                        <div className="flex-none w-28 ml-8">
+                                        <div className="flex-1 min-w-0">
                                             <label className="block text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5 whitespace-nowrap">Invoice Value</label>
                                             <div className="relative group">
                                                 <span className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-xs">₹</span>
@@ -1492,22 +1492,22 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                         {/* Mode Toggle - Styled as segmented control */}
                                         <div className="flex text-[11px]">
                                             <button
-                                                onClick={() => setShipmentType("Heavy")}
-                                                className={`px-3 py-1.5 font-semibold border transition-all duration-300 ${shipmentType === "Heavy"
+                                                onClick={() => setShipmentType("Light")}
+                                                className={`px-3 py-1.5 font-semibold border transition-all duration-300 ${shipmentType === "Light"
                                                     ? "bg-slate-800 text-white border-slate-800 shadow-md transform scale-105 z-10"
                                                     : "bg-white text-slate-500 border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:bg-slate-50"
                                                     } rounded-l-lg`}
                                             >
-                                                Heavy (by weight)
+                                                Light (by volume)
                                             </button>
                                             <button
-                                                onClick={() => setShipmentType("Light")}
-                                                className={`px-3 py-1.5 font-semibold border-t border-b border-r transition-all duration-300 ${shipmentType === "Light"
+                                                onClick={() => setShipmentType("Heavy")}
+                                                className={`px-3 py-1.5 font-semibold border-t border-b border-r transition-all duration-300 ${shipmentType === "Heavy"
                                                     ? "bg-slate-800 text-white border-slate-800 shadow-md transform scale-105 z-10"
                                                     : "bg-white text-slate-500 border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:bg-slate-50"
                                                     } rounded-r-lg`}
                                             >
-                                                Light (by volume)
+                                                Heavy (by weight)
                                             </button>
                                         </div>
                                     </div>
@@ -1537,24 +1537,24 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                     )}
                                 </div>
 
-                                {/* Table Header for structured feel */}
-                                <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-1.5 bg-slate-50/50 border-b border-slate-100 text-[10px] font-medium text-slate-500 uppercase tracking-wide">
-                                    <div className="col-span-3">Name / Preset</div>
-                                    <div className="col-span-1 text-center">Qty</div>
-                                    {shipmentType === "Heavy" ? (
-                                        <div className="col-span-2 text-center">Weight (kg)</div>
-                                    ) : (
-                                        <>
-                                            <div className="col-span-2 text-center">Wt (kg)</div>
-                                            <div className="col-span-1 text-center">L</div>
-                                            <div className="col-span-1 text-center">W</div>
-                                            <div className="col-span-1 text-center">H</div>
-                                        </>
-                                    )}
-                                    <div className={`${shipmentType === "Heavy" ? "col-span-6" : "col-span-3"}`}></div>
-                                </div>
+                                <div className="m-3 p-3 space-y-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                    {/* Table Header - shares exact same grid template as rows */}
+                                    <div className={`hidden sm:grid gap-2 py-1.5 text-[10px] font-medium text-slate-500 uppercase tracking-wide ${shipmentType === "Light" ? "sm:grid-cols-[3fr_1fr_1.5fr_1.2fr_1.2fr_1.2fr_1.5fr]" : "sm:grid-cols-[3fr_1fr_2fr_6fr]"}`}>
+                                        <div className="whitespace-nowrap">Name / Preset</div>
+                                        <div className="text-center whitespace-nowrap">Qty</div>
+                                        {shipmentType === "Heavy" ? (
+                                            <div className="text-center whitespace-nowrap">Weight (kg)</div>
+                                        ) : (
+                                            <>
+                                                <div className="text-center whitespace-nowrap">Wt (kg)</div>
+                                                <div className="text-center whitespace-nowrap">L ({dimensionUnit})</div>
+                                                <div className="text-center whitespace-nowrap">W ({dimensionUnit})</div>
+                                                <div className="text-center whitespace-nowrap">H ({dimensionUnit})</div>
+                                            </>
+                                        )}
+                                        <div></div>
+                                    </div>
 
-                                <div className="p-3 space-y-2">
                                     <AnimatePresence>
                                         {boxes.map((box, index) => (
                                             <motion.div
@@ -1564,14 +1564,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, x: -20 }}
                                                 transition={{ duration: 0.15 }}
-                                                className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg"
+                                                className="py-2"
                                                 ref={(el) => (boxFormRefs.current[index] = el)}
                                             >
-                                                {/* Single Row Layout - 12 Columns */}
-                                                <div className="grid grid-cols-12 gap-6 items-start">
+                                                {/* Single Row Layout - same grid template as header */}
+                                                <div className={`grid grid-cols-12 gap-2 items-start ${shipmentType === "Light" ? "sm:grid-cols-[3fr_1fr_1.5fr_1.2fr_1.2fr_1.2fr_1.5fr]" : "sm:grid-cols-[3fr_1fr_2fr_6fr]"}`}>
                                                     {/* 1. Box Name */}
-                                                    {/* Heavy: Span 4 | Light: Span 3 */}
-                                                    <div className={`col-span-12 sm:col-span-3`}>
+                                                    <div className="col-span-12 sm:col-span-1">
                                                         <div
                                                             className="relative text-sm"
                                                             ref={(el) => {
@@ -1592,6 +1591,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                 onFocus={() => {
                                                                     setOpenPresetDropdownIndex(index);
                                                                     setSearchTerm("");
+                                                                }}
+                                                                onBlur={() => {
+                                                                    // Delay so dropdown item clicks register before close
+                                                                    setTimeout(() => setOpenPresetDropdownIndex(null), 150);
                                                                 }}
                                                                 icon={<PackageSearch size={14} />}
                                                                 className="text-sm py-1.5"
@@ -1635,8 +1638,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         </div>
                                                     </div>
 
-                                                    {/* 2. Quantity (Span 1) */}
-                                                    <div className="col-span-12 sm:col-span-1 w-16">
+                                                    {/* 2. Quantity */}
+                                                    <div className="col-span-6 sm:col-span-1">
                                                         <InputField
                                                             id={`count-${index}`}
                                                             type="text"
@@ -1660,8 +1663,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
                                                     {/* 3. DYNAMIC MIDDLE: Weight OR Dimensions */}
                                                     {shipmentType === "Heavy" ? (
-                                                        /* --- HEAVY MODE: Single Weight Input (Span 2) --- */
-                                                        <div className="col-span-12 sm:col-span-2 sm:ml-3">
+                                                        /* --- HEAVY MODE: Single Weight Input --- */
+                                                        <div className="col-span-6 sm:col-span-1">
                                                             <InputField
                                                                 id={`weight-${index}`}
                                                                 placeholder="Kg"
@@ -1682,7 +1685,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         /* --- LIGHT MODE: Weight + L x W x H Inputs --- */
                                                         <>
                                                             {/* Weight Input for Light Mode (after Qty) */}
-                                                            <div className="col-span-6 sm:col-span-2 sm:ml-3">
+                                                            <div className="col-span-6 sm:col-span-1">
                                                                 <InputField
                                                                     id={`weight-light-${index}`}
                                                                     placeholder="Kg"
@@ -1697,37 +1700,39 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     className="py-1.5 px-2 text-center"
                                                                 />
                                                             </div>
-                                                            {/* L x W x H grouped in flex container */}
-                                                            <div className="col-span-6 sm:col-span-4 flex gap-1">
-                                                                {['length', 'width', 'height'].map((dim) => (
-                                                                    <div key={dim} className="flex-1 min-w-0">
-                                                                        <InputField
-                                                                            id={`${dim}-${index}`}
-                                                                            placeholder={dim === 'length' ? 'L' : dim === 'width' ? 'W' : 'H'}
-                                                                            value={box[dim as keyof BoxDetails] ?? ""}
-                                                                            onKeyDown={preventNonIntegerKeys}
-                                                                            onChange={(e) => {
-                                                                                const next = sanitizeIntegerFromEvent(e.target.value);
-                                                                                updateBox(index, dim as keyof BoxDetails, next === "" ? undefined : Number(next));
-                                                                            }}
-                                                                            onBlur={() => markBoxFieldTouched(box.id, dim as any)}
-                                                                            className="py-1.5 px-2 text-center placeholder:text-slate-400"
-                                                                            error={
-                                                                                boxFieldsTouched[box.id]?.[dim as 'length' | 'width' | 'height'] &&
-                                                                                    (!box[dim as keyof BoxDetails] || Number(box[dim as keyof BoxDetails]) <= 0)
-                                                                                    ? "!"
-                                                                                    : null
+                                                            {/* L, W, H as individual grid cells matching header col-span-1 */}
+                                                            {(['length', 'width', 'height'] as const).map((dim) => (
+                                                                <div key={dim} className="col-span-4 sm:col-auto">
+                                                                    <InputField
+                                                                        id={`${dim}-${index}`}
+                                                                        placeholder={dim === 'length' ? 'L' : dim === 'width' ? 'W' : 'H'}
+                                                                        value={box[dim as keyof BoxDetails] ?? ""}
+                                                                        onKeyDown={preventNonIntegerKeys}
+                                                                        onChange={(e) => {
+                                                                            const next = sanitizeIntegerFromEvent(e.target.value);
+                                                                            if (next === "") {
+                                                                                updateBox(index, dim as keyof BoxDetails, undefined);
+                                                                            } else {
+                                                                                const maxVal = dim === 'length' ? MAX_DIMENSION_LENGTH : dim === 'width' ? MAX_DIMENSION_WIDTH : MAX_DIMENSION_HEIGHT;
+                                                                                if (Number(next) <= maxVal) updateBox(index, dim as keyof BoxDetails, Number(next));
                                                                             }
-                                                                        />
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                                                                        }}
+                                                                        onBlur={() => markBoxFieldTouched(box.id, dim as any)}
+                                                                        className="py-1.5 px-2 text-center placeholder:text-slate-400"
+                                                                        error={
+                                                                            boxFieldsTouched[box.id]?.[dim as 'length' | 'width' | 'height'] &&
+                                                                                (!box[dim as keyof BoxDetails] || Number(box[dim as keyof BoxDetails]) <= 0)
+                                                                                ? "!"
+                                                                                : null
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            ))}
                                                         </>
                                                     )}
 
                                                     {/* 4. ACTIONS (Save + Trash) */}
-                                                    {/* Heavy: Span 6 | Light: Span 3 */}
-                                                    <div className={`col-span-12 ${shipmentType === "Heavy" ? "sm:col-span-6" : "sm:col-span-2"} flex items-center gap-2 sm:mt-1.5`}>
+                                                    <div className="col-span-12 sm:col-span-1 flex items-center gap-2 sm:mt-1.5">
                                                         {/* Actions - Subdued styling */}
                                                         <div className="flex items-center gap-1.5 justify-end">
                                                             {(() => {

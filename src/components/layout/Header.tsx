@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  LogIn,
   User as UserIcon,
   LogOut as LogOutIcon,
   Menu,
@@ -19,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Reusable & Styled Components (Unchanged) ---
 const BrandLogo = () => (
-  <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+  <Link to="/" className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
     <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
       <Truck className="w-5 h-5 text-white" />
     </div>
@@ -30,7 +29,7 @@ const BrandLogo = () => (
 const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
   <Link
     to={to}
-    className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors"
+    className="text-sm font-bold uppercase tracking-wider text-slate-800 hover:text-blue-600 transition-colors whitespace-nowrap"
   >
     {children}
   </Link>
@@ -146,8 +145,7 @@ const UserProfileDropdown = () => {
 
 // --- MOBILE NAVIGATION (updated) ---
 const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => void }) => {
-  const { isAuthenticated, logout, user, isSuperAdmin } = useAuth();
-  const isAdmin = !!user && (user.role === 'admin' || user.role === 'superadmin');
+  const { isAuthenticated, logout, isAdmin } = useAuth();
 
   const handleSignOut = () => {
     logout();
@@ -225,9 +223,9 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                   )}
                 </>
               )}
-              <MobileNavLink to="/about">About Us</MobileNavLink>
+              {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
               <MobileNavLink to="/contact">Contact Us</MobileNavLink>
-              <MobileNavLink to="/addbid">Add Bid</MobileNavLink>
+              {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>}
               <MobileNavLink to="/vehicle-info">
                 <Info size={20} className="text-blue-600" /> Vehicle Info
               </MobileNavLink>
@@ -259,11 +257,8 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
 
 // --- MAIN HEADER COMPONENT (FIXED) ---
 const Header: React.FC = () => {
-  const { isAuthenticated, user, isSuperAdmin } = useAuth();
+  const { isAuthenticated, user, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // small helper for admin visibility in the desktop nav
-  const isAdmin = !!user && (user.role === 'admin' || user.role === 'superadmin');
 
   return (
     <>
@@ -271,11 +266,14 @@ const Header: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <BrandLogo />
-            <nav className="hidden lg:flex items-center gap-8">
-              <NavLink to="/about">About Us</NavLink>
+            {/* Use display: contents to let the parent flex container (justify-between) handle spacing evenly across the full width */}
+            <nav className="hidden lg:contents">
+              {/* Conditional About Us */}
+              {isAuthenticated && <NavLink to="/about">About Us</NavLink>}
+
               <NavLink to="/contact">Contact</NavLink>
               {/* --- FIXED: Use NavLink here */}
-              <NavLink to="/addbid">Add Bid</NavLink>
+              {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>}
               {isAuthenticated && <NavLink to="/addvendor">Add Vendor</NavLink>}
               <NavLink to="/vehicle-info">Vehicle Info</NavLink>
             </nav>
