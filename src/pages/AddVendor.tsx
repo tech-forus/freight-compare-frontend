@@ -22,7 +22,7 @@ import { ChargesSection } from '../components/ChargesSection';
 import { PriceChartUpload } from '../components/PriceChartUpload';
 import { SavedVendorsTable } from '../components/SavedVendorsTable';
 import ZoneMappingUpload from '../components/ZoneMappingUpload';
-import { VendorRating, calculateOverallRating } from '../components/VendorRating';
+// import { VendorRating, calculateOverallRating } from '../components/VendorRating';
 import ZoneSelectionWizard from '../components/ZoneSelectionWizard';
 import ServiceabilityUpload from '../components/ServiceabilityUpload';
 import type { ServiceabilityEntry, ZoneSummary } from '../components/ServiceabilityUpload';
@@ -64,7 +64,9 @@ import {
   Tag,
   FileSpreadsheet,
   Upload,
-  Sparkles
+  Sparkles,
+  Cloud as CloudIcon,
+  FileDown
 } from 'lucide-react';
 // ============================================================================
 // CONFIG / HELPERS
@@ -290,6 +292,9 @@ export const AddVendor: React.FC = () => {
   const [invoiceUseMax, setInvoiceUseMax] = useState<boolean>(false);
   const [invoiceManualOverride, setInvoiceManualOverride] = useState<boolean>(false);
   const [showInvoiceSection, setShowInvoiceSection] = useState<boolean>(false);
+
+  // Save Mode: 'cloud' | 'cloud_utsf' | 'utsf'
+  const [saveMode, setSaveMode] = useState<'cloud' | 'cloud_utsf' | 'utsf'>('cloud_utsf');
 
   // Zone Price Matrix (from wizard/localStorage)
   const [zpm, setZpm] = useState<ZonePriceMatrixLS | null>(null);
@@ -733,6 +738,9 @@ export const AddVendor: React.FC = () => {
     setIsAutoFilled(true);
     setAutoFilledFromName('Pincode Upload');
 
+    // ✅ Set default save mode to "Cloud + UTSF" as recommended
+    setSaveMode('cloud_utsf');
+
     toast.success(
       `Serviceability loaded: ${data.serviceability.length} pincodes across ${data.zoneSummary.length} zones`,
       { duration: 5000 }
@@ -984,17 +992,8 @@ export const AddVendor: React.FC = () => {
       errs.push('Please select a service mode.');
     }
 
-    // Validate individual vendor ratings (all 5 must be provided)
-    const vendorRatings = (b as any).vendorRatings;
-    if (!vendorRatings) {
-      errs.push('Please provide vendor ratings.');
-    } else {
-      const ratingFields = ['priceSupport', 'deliveryTime', 'tracking', 'salesSupport', 'damageLoss'];
-      const missingRatings = ratingFields.filter(field => !vendorRatings[field] || vendorRatings[field] < 1);
-      if (missingRatings.length > 0) {
-        errs.push(`Please rate all 5 vendor parameters (missing: ${missingRatings.join(', ')}).`);
-      }
-    }
+    // Vendor rating validation removed
+
 
     return { ok: errs.length === 0, errs };
   };
@@ -1151,9 +1150,7 @@ export const AddVendor: React.FC = () => {
 
     // ✅ FIX 3: Extract rating from basics (calculated from vendorRatings)
     // Use companyRating which is auto-calculated from the 5 individual ratings
-    const rating = Number(basics.companyRating) || calculateOverallRating(basics.vendorRatings || {
-      priceSupport: 0, deliveryTime: 0, tracking: 0, salesSupport: 0, damageLoss: 0
-    }) || 4;
+    const rating = Number(basics.companyRating) || 4;
 
     // ✅ FIX 4: Extract service mode (FTL/LTL)
     const serviceMode = safeGetField(basics, 'serviceMode', 'service_mode') || 'FTL';
@@ -1448,17 +1445,17 @@ export const AddVendor: React.FC = () => {
     emitDebug('SUBMIT_STARTED');
     console.debug('[SUBMIT] clicked - start');
 
-    // 🔥 FIX: SOLUTION #1 - Calculate priceChart first before validation
+    // Calculate priceChart first before validation
     const priceChart = (wizardData?.priceMatrix || zpm?.priceMatrix || {}) as Record<string, Record<string, number>>;
 
-    // 🔥 FIX: SOLUTION #1 - Validate serviceability is loaded BEFORE building payload
+    // Validate serviceability is loaded BEFORE building payload
     const hasServiceabilityFromCSV = serviceabilityData?.serviceability && Array.isArray(serviceabilityData.serviceability) && serviceabilityData.serviceability.length > 0;
     const hasServiceabilityFromWizard = wizardData?.serviceability && Array.isArray(wizardData.serviceability) && wizardData.serviceability.length > 0;
     const hasPriceChart = priceChart && typeof priceChart === 'object' && Object.keys(priceChart).length > 0;
     const hasZPM = zpm?.priceMatrix && Object.keys(zpm.priceMatrix).length > 0;
 
-    console.log('🚨 [SUBMIT] Serviceability status check:', {
-      hasServiceabilityFromCSV: hasServiceabilityFromCSV ? `✅ ${serviceabilityData.serviceability.length} pincodes` : '❌ No CSV data',
+    console.log('[SUBMIT] Serviceability status check:', {
+      hasServiceabilityFromCSV: hasServiceabilityFromCSV ? `✅ ${serviceabilityData!.serviceability.length} pincodes` : '❌ No CSV data',
       hasServiceabilityFromWizard: hasServiceabilityFromWizard ? `✅ ${(wizardData?.serviceability || []).length} pincodes` : '❌ No Wizard data',
       hasPriceChart: hasPriceChart ? '✅ Yes' : '❌ No',
       hasZPM: hasZPM ? '✅ Yes' : '❌ No',
@@ -1479,16 +1476,15 @@ export const AddVendor: React.FC = () => {
       return;
     }
 
-    setIsSubmitting(true);
-
     // Show full-screen overlay loading immediately
+    setIsSubmitting(true);
     setShowSubmitOverlay(true);
     setSubmitOverlayStage('loading');
 
     try {
       const payloadForApi = buildPayloadForApi();
 
-      // Debug: Log the 3 specific fields we're tracking
+      // Debug: Log the fields we're tracking
       console.log('📤 Sending Fields:', {
         contactPersonName: payloadForApi.contactPersonName || '(empty)',
         subVendor: payloadForApi.subVendor || '(empty)',
@@ -1496,106 +1492,122 @@ export const AddVendor: React.FC = () => {
         topayCharges: payloadForApi.prices?.priceRate?.topayCharges,
       });
 
-      console.log('🔍 INVOICE DEBUG:', {
-        invoicePercentage,
-        invoiceMinAmount,
-        invoiceUseMax,
-      });
-      // 👆 JUST THIS ONE LINE
       emitDebug('SUBMIT_PAYLOAD_FOR_API', payloadForApi);
       console.debug('[SUBMIT] payloadForApi', payloadForApi);
 
-      const fd = new FormData();
-      fd.append('customerID', String(payloadForApi.customerID || ''));
-      fd.append('companyName', payloadForApi.companyName);
-      fd.append('contactPersonName', payloadForApi.contactPersonName);              // ✅ NEW
-      fd.append('vendorCode', payloadForApi.vendorCode);
-      fd.append('vendorPhone', String(payloadForApi.vendorPhone));
-      fd.append('vendorEmail', payloadForApi.vendorEmail);
-      fd.append('gstNo', payloadForApi.gstNo);
-      fd.append('transportMode', payloadForApi.transportMode);
-      fd.append('serviceMode', payloadForApi.serviceMode || '');
-      fd.append('address', payloadForApi.address);
-      fd.append('state', payloadForApi.state);
-      fd.append('pincode', String(payloadForApi.pincode));
-      fd.append('city', payloadForApi.city);                                // ✅ NEW
-      fd.append('rating', String(payloadForApi.rating));                    // ✅ Overall rating (calculated)
-      fd.append('vendorRatings', JSON.stringify(payloadForApi.vendorRatings)); // ✅ NEW - Individual ratings
-      fd.append('subVendor', payloadForApi.subVendor || '');                // ✅ NEW
+      // ========== CLOUD SAVE ==========
+      if (saveMode === 'cloud' || saveMode === 'cloud_utsf') {
+        const fd = new FormData();
+        fd.append('customerID', String(payloadForApi.customerID || ''));
+        fd.append('companyName', payloadForApi.companyName);
+        fd.append('contactPersonName', payloadForApi.contactPersonName);
+        fd.append('vendorCode', payloadForApi.vendorCode);
+        fd.append('vendorPhone', String(payloadForApi.vendorPhone));
+        fd.append('vendorEmail', payloadForApi.vendorEmail);
+        fd.append('gstNo', payloadForApi.gstNo);
+        fd.append('transportMode', payloadForApi.transportMode);
+        fd.append('serviceMode', payloadForApi.serviceMode || '');
+        fd.append('address', payloadForApi.address);
+        fd.append('state', payloadForApi.state);
+        fd.append('pincode', String(payloadForApi.pincode));
+        fd.append('city', payloadForApi.city);
+        fd.append('rating', String(payloadForApi.rating));
+        fd.append('vendorRatings', JSON.stringify(payloadForApi.vendorRatings));
+        fd.append('subVendor', payloadForApi.subVendor || '');
 
-      // ✅ FIX: Add volumetric fields at root level (backend expects these)
-      const volUnit = volumetric.state.unit || 'cm';
-      fd.append('volumetricUnit', volUnit);
-      fd.append('volumetricDivisor', String(volumetric.state.volumetricDivisor || ''));
-      fd.append('cftFactor', String(volumetric.state.cftFactor || ''));
-      fd.append('selectedZones', JSON.stringify(payloadForApi.selectedZones)); // ✅ NEW
-      fd.append('zoneConfigurations', JSON.stringify(payloadForApi.zoneConfigurations));
-      fd.append('priceRate', JSON.stringify(payloadForApi.prices.priceRate));
-      fd.append('priceChart', JSON.stringify(payloadForApi.prices.priceChart));
-      if (priceChartFile) fd.append('priceChart', priceChartFile);
+        // Volumetric fields
+        const volUnit = volumetric.state.unit || 'cm';
+        fd.append('volumetricUnit', volUnit);
+        fd.append('volumetricDivisor', String(volumetric.state.volumetricDivisor || ''));
+        fd.append('cftFactor', String(volumetric.state.cftFactor || ''));
+        fd.append('selectedZones', JSON.stringify(payloadForApi.selectedZones));
+        fd.append('zoneConfigurations', JSON.stringify(payloadForApi.zoneConfigurations));
+        fd.append('priceRate', JSON.stringify(payloadForApi.prices.priceRate));
+        fd.append('priceChart', JSON.stringify(payloadForApi.prices.priceChart));
+        if (priceChartFile) fd.append('priceChart', priceChartFile);
 
-      // ✅ NEW: Add serviceability data (pincode-authoritative)
-      console.log('🚨 CRITICAL CHECK - Serviceability Before FormData:', {
-        exists: !!payloadForApi.serviceability,
-        isArray: Array.isArray(payloadForApi.serviceability),
-        length: payloadForApi.serviceability?.length,
-        willAppend: !!(payloadForApi.serviceability && payloadForApi.serviceability.length > 0)
-      });
+        if (payloadForApi.serviceability && payloadForApi.serviceability.length > 0) {
+          fd.append('serviceability', JSON.stringify(payloadForApi.serviceability));
+          fd.append('serviceabilityChecksum', payloadForApi.serviceabilityChecksum || '');
+          fd.append('serviceabilitySource', payloadForApi.serviceabilitySource || 'excel');
+        }
 
-      if (payloadForApi.serviceability && payloadForApi.serviceability.length > 0) {
-        fd.append('serviceability', JSON.stringify(payloadForApi.serviceability));
-        fd.append('serviceabilityChecksum', payloadForApi.serviceabilityChecksum || '');
-        fd.append('serviceabilitySource', payloadForApi.serviceabilitySource || 'excel');
-      }
+        fd.append('vendorJson', JSON.stringify(payloadForApi));
 
-      fd.append('vendorJson', JSON.stringify(payloadForApi));
+        const token = getAuthToken();
+        const url = `${API_BASE}/api/transporter/addtiedupcompanies`;
+        emitDebug('SUBMITTING_TO_API', { url, hasToken: !!token });
+        console.log(`[SUBMIT] Saving to Cloud (Mode: ${saveMode})`);
 
-      // 🔍 COMPREHENSIVE DEBUG: Show exactly what's in FormData
-      console.log('📦 FormData being sent:', {
-        customerID: payloadForApi.customerID,
-        companyName: payloadForApi.companyName,
-        contactPersonName: payloadForApi.contactPersonName || '(EMPTY)',
-        subVendor: payloadForApi.subVendor || '(EMPTY)',
-        vendorCode: payloadForApi.vendorCode,
-        serviceabilityCount: payloadForApi.serviceability?.length || 0,
-        priceRateStringified: JSON.stringify(payloadForApi.prices.priceRate).substring(0, 200) + '...',
-        priceRateContainsCOD: JSON.stringify(payloadForApi.prices.priceRate).includes('codCharges'),
-        priceRateContainsTOPAY: JSON.stringify(payloadForApi.prices.priceRate).includes('topayCharges'),
-        actualCODValue: payloadForApi.prices.priceRate.codCharges,
-        actualTOPAYValue: payloadForApi.prices.priceRate.topayCharges,
-      });
-
-      const token = getAuthToken();
-      const url = `${API_BASE}/api/transporter/addtiedupcompanies`;
-      emitDebug('SUBMITTING_TO_API', { url, hasToken: !!token });
-      console.debug('[SUBMIT] sending fetch to', url, { hasToken: !!token });
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
-
-      const json = await res.json().catch(() => ({} as any));
-      emitDebug('API_RESPONSE', { status: res.status, json });
-      console.debug('[SUBMIT] API_RESPONSE', res.status, json);
-
-      if (!res.ok || !json?.success) {
-        emitDebugError('SUBMIT_ERROR', { status: res.status, json });
-        toast.error(json?.message || `Failed to create vendor (${res.status})`, {
-          duration: 5200,
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
         });
-        setIsSubmitting(false);
-        setShowSubmitOverlay(false); // 👈 ensure overlay hides on API error
-        return;
+
+        const json = await res.json().catch(() => ({} as any));
+        emitDebug('API_RESPONSE', { status: res.status, json });
+
+        if (!res.ok || !json?.success) {
+          emitDebugError('SUBMIT_ERROR', { status: res.status, json });
+          throw new Error(json?.message || `Cloud save failed (${res.status})`);
+        }
+        console.log('[SUBMIT] Cloud save successful');
       }
 
-      toast.success('Vendor created successfully!', { duration: 800 });
+      // ========== UTSF SAVE ==========
+      if (saveMode === 'utsf' || saveMode === 'cloud_utsf') {
+        console.log(`[SUBMIT] Saving to UTSF (Mode: ${saveMode})`);
 
-      // show success tick in overlay
+        const utsfPayload = {
+          version: '1.0',
+          meta: {
+            id: payloadForApi.vendorCode,
+            name: payloadForApi.companyName,
+            contact: {
+              person: payloadForApi.contactPersonName,
+              phone: payloadForApi.vendorPhone,
+              email: payloadForApi.vendorEmail,
+            },
+            gst: payloadForApi.gstNo,
+            address: {
+              street: payloadForApi.address,
+              city: payloadForApi.city,
+              state: payloadForApi.state,
+              pincode: payloadForApi.pincode,
+            },
+            transportMode: payloadForApi.transportMode,
+          },
+          pricing: payloadForApi.prices,
+          serviceability: payloadForApi.serviceability || [],
+          raw: payloadForApi,
+        };
+
+        const token = getAuthToken();
+        const utsfUrl = `${API_BASE}/api/utsf/upload-json`;
+
+        const utsfRes = await fetch(utsfUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(utsfPayload),
+        });
+
+        const utsfJson = await utsfRes.json().catch(() => ({} as any));
+        if (!utsfRes.ok || !utsfJson?.success) {
+          console.error('[SUBMIT] UTSF save failed', utsfJson);
+          throw new Error(utsfJson?.message || 'UTSF save failed');
+        }
+        console.log('[SUBMIT] UTSF save successful');
+      }
+
+      // ========== SUCCESS ==========
+      toast.success('Vendor created successfully!', { duration: 800 });
       setSubmitOverlayStage('success');
 
-      // reset the form as you already do
+      // Reset the form
       clearDraft();
       clearWizard();
       localStorage.removeItem(ZPM_KEY);
@@ -1622,19 +1634,17 @@ export const AddVendor: React.FC = () => {
       setAutoFilledFromName(null);
       setAutoFilledFromId(null);
       setSuggestions([]);
-      setServiceabilityData(null);  // ✅ NEW: Reset serviceability data
-      // trigger smooth scroll to top (ScrollToTop listens on this)
+      setServiceabilityData(null);
       setScrollKey(Date.now());
     } catch (err) {
       emitDebugError('SUBMIT_EXCEPTION', {
         error: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
       });
-      toast.error('Unexpected error. Please try again.', { duration: 5200 });
-      setShowSubmitOverlay(false); // 👈 hide overlay on unexpected exception
+      toast.error(err instanceof Error ? err.message : 'Unexpected error. Please try again.', { duration: 5200 });
+      setShowSubmitOverlay(false);
     } finally {
       setIsSubmitting(false);
-      // NOTE: Do not auto-hide overlay here — success state should show until user clicks action.
     }
   };
 
@@ -1816,19 +1826,7 @@ export const AddVendor: React.FC = () => {
               </div>
 
               {/* Vendor Rating Section */}
-              <div className="p-6 md:p-8 bg-slate-50/60">
-                <VendorRating
-                  ratings={vendorBasics.basics.vendorRatings || {
-                    priceSupport: 0,
-                    deliveryTime: 0,
-                    tracking: 0,
-                    salesSupport: 0,
-                    damageLoss: 0,
-                  }}
-                  onChange={(field, value) => vendorBasics.setVendorRating(field, value)}
-                  errors={{}}
-                />
-              </div>
+              {/* Vendor Rating Section Removed */}
 
               <div className="p-6 md:p-8">
                 <TransportSection
@@ -2051,8 +2049,8 @@ export const AddVendor: React.FC = () => {
                           type="button"
                           onClick={() => navigate('/zone-price-matrix')}
                           className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${isAutoFilled && wizardStatus?.hasPriceMatrix
-                              ? 'bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 shadow-lg animate-pulse ring-2 ring-green-400 ring-offset-2'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                            ? 'bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 shadow-lg animate-pulse ring-2 ring-green-400 ring-offset-2'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
                             }`}
                         >
                           {wizardStatus?.hasPriceMatrix ? 'Edit Wizard' : 'Open Wizard'}
@@ -2307,6 +2305,44 @@ export const AddVendor: React.FC = () => {
                 />
               </div>
 
+
+
+              {/* Save Mode Selector */}
+              <div className="flex items-center justify-between p-4 bg-blue-50/50 border-t border-blue-100 mb-6 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-semibold text-slate-700">Save Mode:</span>
+                  <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setSaveMode('cloud')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${saveMode === 'cloud' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <CloudIcon size={14} />
+                      Save to Cloud
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSaveMode('cloud_utsf')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${saveMode === 'cloud_utsf' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <Sparkles size={14} />
+                      Cloud + UTSF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSaveMode('utsf')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${saveMode === 'utsf' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <FileDown size={14} />
+                      UTSF Only
+                    </button>
+                  </div>
+                </div>
+                <div className="text-xs font-medium text-slate-500 px-3 py-1.5 bg-blue-100/50 rounded-md">
+                  {saveMode === 'cloud_utsf' ? 'Saves to both cloud & UTSF file' : saveMode === 'cloud' ? 'Saves to cloud database only' : 'Saves to UTSF file only'}
+                </div>
+              </div>
+
               {/* Footer actions */}
               <div className="p-6 md:p-8 flex items-center justify-between gap-4">
                 <button
@@ -2333,7 +2369,10 @@ export const AddVendor: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting || (wizardValidation && !wizardValidation.isValid)}
-                  className="px-5 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+                  className={`px-5 py-3 text-white font-semibold rounded-xl transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed ${saveMode === 'cloud_utsf'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                 >
                   <span className="inline-flex items-center gap-2">
                     {isSubmitting ? (
@@ -2344,7 +2383,7 @@ export const AddVendor: React.FC = () => {
                     ) : (
                       <>
                         <CheckCircleIcon className="w-5 h-5" />
-                        Save Vendor
+                        {saveMode === 'cloud_utsf' ? 'Save Cloud + UTSF' : saveMode === 'cloud' ? 'Save Vendor' : 'Save UTSF File'}
                       </>
                     )}
                   </span>
@@ -2355,63 +2394,65 @@ export const AddVendor: React.FC = () => {
         </form>
 
 
-      </div>
+      </div >
 
       {/* Full-screen submit overlay */}
-      {showSubmitOverlay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl px-10 py-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm w-[90%]">
-            {submitOverlayStage === 'loading' ? (
-              <>
-                <div className="w-16 h-16 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin" />
-                <p className="text-sm text-slate-700 font-medium">
-                  Creating vendor, please wait…
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircleIcon className="w-10 h-10 text-green-600" />
-                </div>
-                <p className="text-sm text-slate-800 font-semibold">
-                  Vendor added successfully!
-                </p>
-                <p className="text-xs text-slate-500">
-                  Add another vendor?
-                </p>
-                <div className="flex gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // overlay is already on success, form already reset
-                      setShowSubmitOverlay(false);
-                      // ensure we’re at the top
-                      setScrollKey(Date.now());
-                    }}
-                    className="mt-1 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-                  >
-                    Add another vendor
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowSubmitOverlay(false);
-                      navigate('/my-vendors');
-                    }}
-                    className="mt-1 px-4 py-2 rounded-lg bg-white border border-slate-200 text-sm font-medium hover:bg-slate-50"
-                  >
-                    Go to Vendor list
-                  </button>
-                </div>
-              </>
-            )}
+      {
+        showSubmitOverlay && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl px-10 py-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm w-[90%]">
+              {submitOverlayStage === 'loading' ? (
+                <>
+                  <div className="w-16 h-16 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin" />
+                  <p className="text-sm text-slate-700 font-medium">
+                    Creating vendor, please wait…
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircleIcon className="w-10 h-10 text-green-600" />
+                  </div>
+                  <p className="text-sm text-slate-800 font-semibold">
+                    Vendor added successfully!
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Add another vendor?
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // overlay is already on success, form already reset
+                        setShowSubmitOverlay(false);
+                        // ensure we’re at the top
+                        setScrollKey(Date.now());
+                      }}
+                      className="mt-1 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                    >
+                      Add another vendor
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSubmitOverlay(false);
+                        navigate('/my-vendors');
+                      }}
+                      className="mt-1 px-4 py-2 rounded-lg bg-white border border-slate-200 text-sm font-medium hover:bg-slate-50"
+                    >
+                      Go to Vendor list
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Smooth scroll helper after success */}
       <ScrollToTop targetRef={topRef} when={scrollKey} offset={80} />
-    </div>
+    </div >
   );
 };
 

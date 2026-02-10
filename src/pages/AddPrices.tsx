@@ -14,7 +14,7 @@ import {
   BotMessageSquare,
   Save,
   Loader2,
-  Scale // New icon for threshold weight
+  Scale, // New icon for threshold weight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Cookies from "js-cookie";
@@ -86,7 +86,10 @@ export default function AddPrices() {
   const [manualFrom, setManualFrom] = useState("");
   const [manualTo, setManualTo] = useState("");
   const [manualPrice, setManualPrice] = useState<number | undefined>(undefined);
+
   const [loading, setLoading] = useState(false);
+
+
 
   // Robust handler function now supports VariableFixed and VariableFixedThreshold
   const handleRateChange = (
@@ -118,8 +121,7 @@ export default function AddPrices() {
     try {
       console.log(payload);
       await axios.post(`${API_BASE_URL}/api/transporter/auth/addprice`, payload, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success("Price configuration saved successfully!");
-      navigate("/compare");
+      toast.success("Price configuration saved successfully!"); navigate("/compare");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Save failed."); console.error(err);
     } finally { setLoading(false); }
@@ -164,7 +166,9 @@ export default function AddPrices() {
 
           {/* Zone-to-Zone Rates Card and Save button remain unchanged */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}><Card><div className="flex items-center gap-3"><SlidersHorizontal size={22} className="text-blue-600" /><h2 className="text-xl font-bold text-slate-800">Zone-to-Zone Rates</h2></div><p className="text-sm text-slate-500 mt-1 mb-6">Enter the per-kilogram rate for shipping between each zone. Use the fields below to quickly add/update rates.</p><div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6"><div><label className="block mb-1 text-sm font-medium">From</label><select className="w-full px-3 py-2.5 border border-slate-300 rounded-lg" value={manualFrom} onChange={e => setManualFrom(e.target.value)}><option value="">--</option>{zoneLabels.map(z => <option key={`f-${z}`} value={z}>{z}</option>)}</select></div><div><label className="block mb-1 text-sm font-medium">To</label><select className="w-full px-3 py-2.5 border border-slate-300 rounded-lg" value={manualTo} onChange={e => setManualTo(e.target.value)}><option value="">--</option>{zoneLabels.map(z => <option key={`t-${z}`} value={z}>{z}</option>)}</select></div><div><label className="block mb-1 text-sm font-medium">Unit Price</label><InputField type="number" placeholder='e.g., 25' value={manualPrice === undefined ? '' : manualPrice} onChange={e => setManualPrice(e.target.valueAsNumber)} /></div><div className="flex items-end"><button type="button" className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700" onClick={handleAddUnitPrice}>Add Rate</button></div></div>{zoneLabels.length > 0 && (<div className="overflow-x-auto border border-slate-200 rounded-lg"><table className="min-w-full text-sm"><thead className="bg-slate-100"><tr><th className="p-3 font-semibold text-slate-600 text-left">From \ To</th>{zoneLabels.map(l => <th key={l} className="p-3 text-center font-semibold text-slate-600">{l}</th>)}</tr></thead><tbody className='bg-white divide-y divide-slate-200'>{zoneRates.map((row, i) => <tr key={i}><td className="p-3 font-semibold text-slate-700 bg-slate-50 sticky left-0">{zoneLabels[i]}</td>{row.map((v, j) => <td key={j} className="p-1"><input type="number" step="0.01" className="w-full p-2 text-center rounded-md border border-transparent hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={v || ''} onChange={e => handleCellChange(i, j, e.target.valueAsNumber || 0)} /></td>)}</tr>)}</tbody></table></div>)}</Card></motion.div>
-          <div className="pt-4 text-center"><button type="submit" disabled={loading} className="w-full max-w-xs inline-flex items-center justify-center gap-2 py-3 px-6 bg-blue-600 text-white text-base font-semibold rounded-lg shadow-lg shadow-blue-500/50 hover:bg-blue-700 disabled:opacity-50">{loading ? <><Loader2 className="animate-spin" size={20} />Saving...</> : <><Save size={20} /> Save Configuration</>}</button></div>
+          <div className="pt-4 flex flex-col items-center gap-4">
+            <button type="submit" disabled={loading} className="w-full max-w-xs inline-flex items-center justify-center gap-2 py-3 px-6 bg-blue-600 text-white text-base font-semibold rounded-lg shadow-lg shadow-blue-500/50 hover:bg-blue-700 disabled:opacity-50">{loading ? <><Loader2 className="animate-spin" size={20} />Saving...</> : <><Save size={20} /> Save Configuration</>}</button>
+          </div>
         </form>
       </div>
     </div>

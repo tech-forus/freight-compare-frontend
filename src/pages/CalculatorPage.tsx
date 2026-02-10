@@ -22,6 +22,7 @@ import {
     Plane,
     Train,
     Ship,
+
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -310,6 +311,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     });
     const [invoiceValue, setInvoiceValue] = useState("");
     const [invoiceError, setInvoiceError] = useState<string | null>(null);
+
+
 
     // Field errors + validity (frontend-only)
     const [fromPinError, setFromPinError] = useState<string | null>(null);
@@ -1810,7 +1813,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                         {/* END OF VERTICALLY STACKED SECTIONS */}
 
                         {/* Action Row - Calculate Button */}
-                        <div className="flex items-center justify-center pt-1 px-1">
+                        <div className="flex flex-col items-center justify-center pt-2 px-1 gap-3">
+
                             <button
                                 id="calculate-button"
                                 type="button"
