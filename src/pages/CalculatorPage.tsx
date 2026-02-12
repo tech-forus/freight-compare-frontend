@@ -1,4 +1,5 @@
 // frontend/src/pages/CalculatorPage.tsx
+import toast from 'react-hot-toast';
 import CoverageCounter from "../components/CoverageCounter";
 import NetworkCoverageMap from "../components/NetworkCoverageMap";
 
@@ -66,7 +67,7 @@ import {
 } from "../constants/specialVendors";
 
 // 🔽 Fetch vendor approval statuses from Super Admin system
-import { getTemporaryTransporters, getRegularTransporters } from "../services/api";
+import { getTemporaryTransporters, getRegularTransporters, saveSearchHistory, apiGetPincode } from "../services/api";
 
 // 🔽 Business News Popup (shown during slow calculations)
 // import NewsPopup from "../components/NewsPopup";
@@ -283,6 +284,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const [isCalculating, setIsCalculating] = useState(false);
     const [calculationProgress, setCalculationProgress] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     // Results
     const [data, setData] = useState<QuoteAny[] | null>(null);
@@ -1267,6 +1269,53 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     form: { fromPincode, toPincode, modeOfTransport, boxes },
                 });
             }, 0);
+
+            // Save search history to backend (fire-and-forget)
+            (async () => {
+                try {
+                    const allQuotes = [...tied, ...others]
+                        .filter((q: any) => Number.isFinite(q.totalCharges) && q.totalCharges > 0)
+                        .sort((a: any, b: any) => a.totalCharges - b.totalCharges)
+                        .slice(0, 5)
+                        .map((q: any) => ({
+                            companyName: q.companyName || "Unknown",
+                            totalCharges: q.totalCharges,
+                            estimatedTime: q.estimatedTime || 0,
+                            chargeableWeight: q.chargeableWeight || 0,
+                            isTiedUp: !!q.isTiedUp,
+                        }));
+
+                    const [fromGeo, toGeo] = await Promise.all([
+                        apiGetPincode(fromPincode),
+                        apiGetPincode(toPincode),
+                    ]);
+
+                    await saveSearchHistory({
+                        fromPincode,
+                        fromCity: fromGeo?.city || "",
+                        fromState: fromGeo?.state || "",
+                        toPincode,
+                        toCity: toGeo?.city || "",
+                        toState: toGeo?.state || "",
+                        modeOfTransport,
+                        distanceKm: distanceKmOverride || 0,
+                        boxes: boxes.map((b) => ({
+                            count: b.count || 1,
+                            length: b.length || 0,
+                            width: b.width || 0,
+                            height: b.height || 0,
+                            weight: b.weight || 0,
+                            description: b.description || "",
+                        })),
+                        totalBoxes: boxes.reduce((sum, b) => sum + (b.count || 1), 0),
+                        totalWeight,
+                        invoiceValue: inv,
+                        topQuotes: allQuotes,
+                    });
+                } catch (err) {
+                    console.error("[SearchHistory] Failed to save:", err);
+                }
+            })();
         } catch (e: any) {
             if (e.response?.status === 401) {
                 setError("Authentication failed. Please log out and log back in.");
@@ -1869,6 +1918,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                 id="calculate-button"
                                 type="button"
                                 onClick={() => {
+                                    // Auth gate: if not logged in, show sign-in modal
+                                    if (!user) {
+                                        setShowAuthModal(true);
+                                        return;
+                                    }
                                     saveRecentRoute();
                                     calculateQuotes();
                                 }}
@@ -1892,8 +1946,71 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                             </button>
                         </div>
 
-                        {/* Controls + Results */}
-                        {(data || hiddendata) && (
+                        {/* Auth Gate Modal - Non-dismissable */}
+                        <AnimatePresence>
+                            {showAuthModal && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+                                >
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                        className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center relative"
+                                    >
+                                        {/* Close button */}
+                                        <button
+                                            onClick={() => setShowAuthModal(false)}
+                                            className="absolute top-3 right-3 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                            aria-label="Close"
+                                        >
+                                            <X size={20} />
+                                        </button>
+
+                                        {/* Icon */}
+                                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+                                            <Package size={32} className="text-blue-600" />
+                                        </div>
+
+                                        <h3 className="text-xl font-bold text-slate-800 mb-2">
+                                            Sign in to Continue
+                                        </h3>
+                                        <p className="text-sm text-slate-500 mb-6">
+                                            Create an account or sign in to compare freight rates from multiple vendors instantly.
+                                        </p>
+
+                                        {/* CTA Buttons */}
+                                        <div className="space-y-3">
+                                            <button
+                                                onClick={() => {
+                                                    setShowAuthModal(false);
+                                                    navigate('/signin');
+                                                }}
+                                                className="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+                                            >
+                                                Sign In
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowAuthModal(false);
+                                                    navigate('/userselect');
+                                                }}
+                                                className="w-full py-3 px-6 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors border border-slate-200"
+                                            >
+                                                Get Started — Create Account
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Controls + Results - only shown to logged-in users */}
+                        {user && (data || hiddendata) && (
                             <>
                                 <Card className="p-3">
                                     <div className="flex justify-between items-start">
@@ -3008,7 +3125,13 @@ const VendorResultCard = ({
         return u.customer || u;
     };
 
-    const isSubscribed = Boolean(getCustomerData()?.isSubscribed);
+    // Owner check: only 'Uttam Goyal' sees full vendor details
+    const customerData = getCustomerData();
+    const isOwner = (customerData?.name || '').toLowerCase().trim() === 'uttam goyal';
+
+    // --- Subscription logic commented out per requirement ---
+    // const isSubscribed = Boolean(getCustomerData()?.isSubscribed);
+    const isSubscribed = true; // Treat everyone as subscribed for now
     const isSpecialVendor =
         quote.companyName === "LOCAL FTL" || quote.companyName === "Wheelseye FTL";
 
@@ -3022,159 +3145,85 @@ const VendorResultCard = ({
     if (!Number.isFinite(cardPrice) || cardPrice <= 0) return null;
 
     // Dynamic CTA label + click logic
-    const ctaLabel = isSubscribed ? "Contact Now" : "Subscribe to Get Details";
+    // --- Subscription CTA logic commented out ---
+    // const ctaLabel = isSubscribed ? "Contact Now" : "Subscribe to Get Details";
+    const ctaLabel = isOwner ? "Contact Now" : "View Details";
     const handleCtaClick = () => {
-        if (isSubscribed) {
-            // Debug: Log the entire quote object to see its structure
-            console.log("=== QUOTE DATA DEBUG ===");
-            console.log("Full quote object:", quote);
-            console.log("companyName:", quote.companyName);
-            console.log("companyId:", quote.companyId);  // Backend uses companyId
-            console.log("isTemporaryTransporter:", quote.isTemporaryTransporter);
-            console.log("isTiedUp:", quote.isTiedUp);
+        // Non-owner users get "Coming Soon" popup
+        if (!isOwner) {
+            toast('🚀 Coming Soon! Contact details will be available shortly.', { duration: 2500 });
+            return;
+        }
 
-            const companyName = quote.companyName || quote.transporterName;
+        // Owner flow (Uttam Goyal)
+        // Debug: Log the entire quote object to see its structure
+        console.log("=== QUOTE DATA DEBUG ===");
+        console.log("Full quote object:", quote);
+        console.log("companyName:", quote.companyName);
+        console.log("companyId:", quote.companyId);
+        console.log("isTemporaryTransporter:", quote.isTemporaryTransporter);
+        console.log("isTiedUp:", quote.isTiedUp);
 
-            // ============================================================
-            // SPECIAL VENDORS: Wheelseye FTL and LOCAL FTL are client-side
-            // injected vendors with hardcoded contact info - no DB lookup
-            // ============================================================
-            if (companyName === "Wheelseye FTL" || companyName === "LOCAL FTL") {
-                console.log("Special vendor detected:", companyName);
-                // Navigate to vendor details with special vendor flag and pre-filled contact
-                navigate(`/vendor/special`, {
-                    state: {
-                        quoteData: quote,
-                        isSpecialVendor: true,
-                        vendorInfo: {
-                            companyName: companyName,
-                            vendorPhoneNumber: companyName === "Wheelseye FTL"
-                                ? "+91 9876543210" // Wheelseye contact
-                                : "+91 8800123456", // Forus/LOCAL FTL contact
-                            vendorEmail: companyName === "Wheelseye FTL"
-                                ? "support@wheelseye.com"
-                                : "ftl@freightcompare.ai",
-                            contactPerson: companyName === "Wheelseye FTL"
-                                ? "Wheelseye Support"
-                                : "FreightCompare FTL Team",
-                            description: companyName === "Wheelseye FTL"
-                                ? "Our trusted FTL partner for pan-India full truck load services"
-                                : "Local FTL services with competitive pricing",
-                            rating: 4.6,
-                            approvalStatus: "approved",
-                        }
+        const companyName = quote.companyName || quote.transporterName;
+
+        // SPECIAL VENDORS: Wheelseye FTL and LOCAL FTL
+        if (companyName === "Wheelseye FTL" || companyName === "LOCAL FTL") {
+            console.log("Special vendor detected:", companyName);
+            navigate(`/vendor/special`, {
+                state: {
+                    quoteData: quote,
+                    isSpecialVendor: true,
+                    vendorInfo: {
+                        companyName: companyName,
+                        vendorPhoneNumber: companyName === "Wheelseye FTL"
+                            ? "+91 9876543210"
+                            : "+91 8800123456",
+                        vendorEmail: companyName === "Wheelseye FTL"
+                            ? "support@wheelseye.com"
+                            : "ftl@freightcompare.ai",
+                        contactPerson: companyName === "Wheelseye FTL"
+                            ? "Wheelseye Support"
+                            : "FreightCompare FTL Team",
+                        description: companyName === "Wheelseye FTL"
+                            ? "Our trusted FTL partner for pan-India full truck load services"
+                            : "Local FTL services with competitive pricing",
+                        rating: 4.6,
+                        approvalStatus: "approved",
                     }
-                });
-                return;
-            }
-
-            // Backend sends companyId, not transporterData._id or transporterID
-            const transporterId = quote.companyId || quote.transporterData?._id || quote.transporterID || quote._id;
-
-            // Determine if this is a temporary transporter (customer's tied-up vendor)
-            // Backend sets isTemporaryTransporter=true for both tied-up and public vendors
-            // isTiedUp=true means it's the current customer's own vendor
-            const isTemporaryVendor = quote.isTiedUp === true;
-
-            if (!transporterId) {
-                console.error("No transporter ID found in quote:", quote);
-                alert("Sorry, the transporter details could not be retrieved.");
-                return;
-            }
-
-            if (companyName) {
-                console.log("Navigating with companyName:", companyName, "and ID:", transporterId);
-                console.log("Vendor Type:", isTemporaryVendor ? "Temporary (Tied-up)" : "Public (Available)");
-
-                // Route to correct page based on vendor type
-                if (isTemporaryVendor) {
-                    // Temporary transporter - customer's tied-up vendor
-                    navigate(`/vendor/${transporterId}`, {
-                        state: { quoteData: quote }
-                    });
-                } else {
-                    // Regular transporter - from transporters collection
-                    navigate(`/transporter/${transporterId}`, {
-                        state: { quoteData: quote }
-                    });
                 }
+            });
+            return;
+        }
+
+        const transporterId = quote.companyId || quote.transporterData?._id || quote.transporterID || quote._id;
+        const isTemporaryVendor = quote.isTiedUp === true;
+
+        if (!transporterId) {
+            console.error("No transporter ID found in quote:", quote);
+            alert("Sorry, the transporter details could not be retrieved.");
+            return;
+        }
+
+        if (companyName) {
+            console.log("Navigating with companyName:", companyName, "and ID:", transporterId);
+            if (isTemporaryVendor) {
+                navigate(`/vendor/${transporterId}`, {
+                    state: { quoteData: quote }
+                });
             } else {
-                console.error("Company name missing. Quote data:", quote);
-                alert("Sorry, the transporter details could not be retrieved.");
+                navigate(`/transporter/${transporterId}`, {
+                    state: { quoteData: quote }
+                });
             }
         } else {
-            navigate(BUY_ROUTE);
+            console.error("Company name missing. Quote data:", quote);
+            alert("Sorry, the transporter details could not be retrieved.");
         }
     };
 
-    // Hidden card (LEFT side blurred; price + CTA visible)
-    // Hidden card (LEFT side blurred; price + CTA visible) - ALL vendors get yellow styling
-    // ⬇️ Replace your current hidden-card return with this one
-    if (quote.isHidden && !isSubscribed) {
-        return (
-            <div
-                className={`relative p-5 rounded-2xl border-2 transition-all duration-300 shadow-lg ${isSpecialVendor ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-slate-200'}`}
-            >
-                {/* Best Value badge stays visible (not blurred) */}
-                {isBestValue && (
-                    <div className="absolute -top-2 -left-2">
-                        <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                            Best Value
-                        </span>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-3 lg:gap-4">
-                    {/* LEFT: blurred / anonymized vendor info */}
-                    <div className="md:col-span-5 select-none">
-                        <div className="h-6 w-52 rounded bg-slate-200/70 blur-[2px]" />
-                        <p className="mt-2 text-sm text-slate-400 line-clamp-1 select-none">
-                            ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░ ▓▒░
-                        </p>
-                    </div>
-
-                    {/* ETA placeholder stays blurred */}
-                    <div className="md:col-span-2 min-w-0">
-                        <div className="h-5 w-24 rounded bg-slate-200/70 blur-[2px]" />
-                        <div className="text-xs text-slate-400 mt-1 select-none truncate">▓ ▒ ░</div>
-                    </div>
-
-                    {/* Price and CTA - now in same flex container, right-aligned */}
-                    <div className="md:col-span-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-end min-w-0" style={{ gap: 'clamp(0.5rem, 1vw, 0.75rem)' }}>
-                        {/* RIGHT: price visible */}
-                        <div className="text-right min-w-0 flex-shrink-0">
-                            <div className="flex items-center justify-end gap-1 font-bold text-slate-900 min-w-0">
-                                <IndianRupee size={18} className="text-slate-600 flex-shrink-0" />
-                                <span
-                                    className="truncate"
-                                    style={{
-                                        maxWidth: 'clamp(120px, 12vw, 200px)',
-                                        fontSize: formatINR0(cardPrice).length > 7 ? 'clamp(1.25rem, 2vw, 1.5rem)' : 'clamp(1.5rem, 2.5vw, 1.875rem)'
-                                    }}
-                                    title={`₹${formatINR0(cardPrice)}`}
-                                >
-                                    {formatINR0(cardPrice)}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* CTA visible with "Subscribe to Get Details" */}
-                        <Link
-                            to={BUY_ROUTE}
-                            className="inline-flex items-center justify-center bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors whitespace-nowrap flex-shrink-0"
-                            style={{
-                                padding: 'clamp(0.5rem, 1vw, 0.625rem) clamp(0.875rem, 2vw, 1.25rem)',
-                                fontSize: 'clamp(0.8rem, 1.3vw, 1rem)'
-                            }}
-                            aria-label="Subscribe to Get Details"
-                        >
-                            Subscribe to Get Details
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    // --- Hidden card subscription logic commented out ---
+    // if (quote.isHidden && !isSubscribed) { ... }
+    // All cards now show normally; vendor names are blurred for non-owners instead
 
     // Check if this is Wheelseye FTL for the partner ribbon
     const isWheelseyePartner = quote.companyName === "Wheelseye FTL";
@@ -3378,7 +3427,7 @@ const VendorResultCard = ({
                         </button>
                     </div>
 
-                    {/* CTA Button - same for all vendors */}
+                    {/* CTA Button */}
                     <button
                         onClick={handleCtaClick}
                         className="bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors whitespace-nowrap flex-shrink-0"

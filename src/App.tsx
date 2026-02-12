@@ -46,6 +46,7 @@ import FormBuilderPage from './pages/FormBuilderPage';
 import AdminManagementPage from './pages/AdminManagementPage';
 import AdminWelcomePage from './pages/AdminWelcomePage';
 import UTSFManager from './pages/UTSFManager';
+import TransporterSignupPage from './pages/TransporterSignupPage';
 import { getFirstAvailableRoute, hasPermission } from './config/adminPermissions';
 
 export const PrivateRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -431,6 +432,17 @@ function App() {
                 <MainLayout>
                   <PublicRoute>
                     <ForgotPasswordPage />
+                  </PublicRoute>
+                </MainLayout>
+              }
+            />
+
+            <Route
+              path="/signup-transporter"
+              element={
+                <MainLayout>
+                  <PublicRoute>
+                    <TransporterSignupPage />
                   </PublicRoute>
                 </MainLayout>
               }

@@ -41,8 +41,16 @@ export function usePincodeLookup() {
 
   const validateGeo = useCallback(() => Boolean(geo.pincode && geo.pincode.length === 6 && geo.state && geo.city), [geo]);
 
+
+  const setState = useCallback((state: string) => setGeo((prev) => ({ ...prev, state })), []);
+  const setCity = useCallback((city: string) => setGeo((prev) => ({ ...prev, city })), []);
+  const [isManual, setIsManual] = useState(false);
+
   return {
     geo, loading, error, ready, setPincode, reset, loadFromDraft, validateGeo,
-    suggestCities, suggestDistricts, suggestStates
+    suggestCities, suggestDistricts, suggestStates,
+    setState, setCity, isManual, setIsManual
   };
 }
+
+export type UsePincodeLookupReturn = ReturnType<typeof usePincodeLookup>;

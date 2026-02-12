@@ -70,7 +70,7 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
   // Selection state
   const [regionSelections, setRegionSelections] = useState<RegionSelection[]>([]);
   const [selectedZones, setSelectedZones] = useState<Set<string>>(new Set(initialSelectedZones));
-  
+
   // Validation state
   const [validation, setValidation] = useState<{
     isValid: boolean;
@@ -82,18 +82,26 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [previewConfigs, setPreviewConfigs] = useState<ZoneConfig[]>([]);
 
+  // Stable ref to prevent infinite re-init when initialSelectedZones is a new [] each render
+  const initRanRef = React.useRef(false);
+  const initialZonesKey = JSON.stringify(initialSelectedZones);
+
   // =========================================================================
   // INITIALIZATION
   // =========================================================================
 
   useEffect(() => {
+    // Guard: only run once per unique set of initial zones
+    if (initRanRef.current) return;
+    initRanRef.current = true;
+
     const init = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
         await zoneAssignmentService.initialize();
-        
+
         const regions = zoneAssignmentService.getRegions();
         const selections: RegionSelection[] = [];
 
@@ -109,7 +117,7 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
         }
 
         setRegionSelections(selections);
-        
+
         // Initialize selected zones from initial props
         if (initialSelectedZones.length > 0) {
           setSelectedZones(new Set(initialSelectedZones));
@@ -124,7 +132,8 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
     };
 
     init();
-  }, [initialSelectedZones]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialZonesKey]);
 
   // =========================================================================
   // HANDLERS
@@ -215,7 +224,7 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
     // Build empty price matrix
     const zoneCodes = previewConfigs.map(c => c.zoneCode);
     const priceMatrix: Record<string, Record<string, string | number>> = {};
-    
+
     for (const fromZone of zoneCodes) {
       priceMatrix[fromZone] = {};
       for (const toZone of zoneCodes) {
@@ -498,7 +507,7 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
                     {config.selectedStates.length} states, {config.selectedCities.length} cities
                   </span>
                 </div>
-                
+
                 <div className="text-xs text-slate-600">
                   <span className="font-medium">States: </span>
                   {config.selectedStates.slice(0, 5).join(', ')}
