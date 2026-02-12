@@ -22,7 +22,7 @@ import {
     Plane,
     Train,
     Ship,
-
+    Download,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -545,6 +545,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         [boxes, shipmentType]
     );
 
+    // 🔧 Clear error when user fills in required fields
+    useEffect(() => {
+        if (error && !hasBoxValidationErrors && !hasPincodeIssues) {
+            setError("");
+        }
+    }, [boxes, hasBoxValidationErrors, hasPincodeIssues]);
+
     // ---------------------------------------------------------------------------
     // Effects
     // ---------------------------------------------------------------------------
@@ -794,6 +801,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             height: boxPreset.height,
             weight: boxPreset.weight,
             description: boxPreset.name,
+            count: 0, // 🔧 Set to 0 so placeholder shows instead of "1"
         };
         setBoxes(updated);
 
@@ -1320,6 +1328,34 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         },
     });
 
+    // -------------------- Excel Download Helper --------------------
+    const downloadPackingListAsExcel = () => {
+        if (boxes.length === 0) return;
+
+        // Create CSV content (simple Excel-compatible format)
+        const headers = ['Box Name', 'Quantity', 'Weight (kg)', 'Length (cm)', 'Width (cm)', 'Height (cm)'];
+        const rows = boxes.map(box => [
+            box.description || 'Unnamed Box',
+            box.count || 0,
+            box.weight || 0,
+            box.length || '-',
+            box.width || '-',
+            box.height || '-',
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        // Download as CSV (opens in Excel)
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `packing-list-${fromPincode}-to-${toPincode}-${Date.now()}.csv`;
+        link.click();
+    };
+
     // -------------------- Render --------------------
     const equalityError =
         isSamePincode && isFromPincodeValid && isToPincodeValid
@@ -1798,14 +1834,28 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                         </motion.div>
                                     )}
 
-                                    {/* Add Box Button - Inside Card */}
-                                    <button
-                                        id="add-box-button"
-                                        onClick={addBoxType}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all mt-1"
-                                    >
-                                        <PlusCircle size={14} /> Add another box
-                                    </button>
+                                    {/* Add Box Button + Download - Inside Card */}
+                                    <div className="flex items-center justify-between mt-1">
+                                        <button
+                                            id="add-box-button"
+                                            onClick={addBoxType}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
+                                        >
+                                            <PlusCircle size={14} /> Add another box
+                                        </button>
+
+                                        <button
+                                            onClick={downloadPackingListAsExcel}
+                                            disabled={boxes.length === 0 || !boxes.some(b => b.count && b.weight)}
+                                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${boxes.length === 0 || !boxes.some(b => b.count && b.weight)
+                                                ? 'text-slate-300 cursor-not-allowed bg-slate-50'
+                                                : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                                }`}
+                                            title={boxes.length === 0 || !boxes.some(b => b.count && b.weight) ? "Add boxes with quantity and weight to download" : "Download packing list as Excel"}
+                                        >
+                                            <Download size={16} /> Download Packing List
+                                        </button>
+                                    </div>
 
                                 </div>
                             </Card>
