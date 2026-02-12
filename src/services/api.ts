@@ -823,3 +823,130 @@ export const deleteBoxLibrary = async (id: string): Promise<boolean> => {
     return false;
   }
 };
+
+// =============================================================================
+// SEARCH HISTORY
+// =============================================================================
+
+export interface SearchHistoryBox {
+  count: number;
+  length: number;
+  width: number;
+  height: number;
+  weight: number;
+  description: string;
+}
+
+export interface SearchHistoryQuote {
+  companyName: string;
+  totalCharges: number;
+  estimatedTime: number;
+  chargeableWeight: number;
+  isTiedUp: boolean;
+}
+
+export interface SearchHistoryEntry {
+  _id: string;
+  fromPincode: string;
+  fromCity: string;
+  fromState: string;
+  toPincode: string;
+  toCity: string;
+  toState: string;
+  modeOfTransport: "Road" | "Rail" | "Air" | "Ship";
+  distanceKm: number;
+  boxes: SearchHistoryBox[];
+  totalBoxes: number;
+  totalWeight: number;
+  invoiceValue: number;
+  topQuotes: SearchHistoryQuote[];
+  isBooked: boolean;
+  bookedQuote?: { companyName: string; totalCharges: number; estimatedTime: number };
+  createdAt: string;
+}
+
+export interface SaveSearchHistoryPayload {
+  fromPincode: string;
+  fromCity: string;
+  fromState: string;
+  toPincode: string;
+  toCity: string;
+  toState: string;
+  modeOfTransport: string;
+  distanceKm: number;
+  boxes: SearchHistoryBox[];
+  totalBoxes: number;
+  totalWeight: number;
+  invoiceValue: number;
+  topQuotes: SearchHistoryQuote[];
+}
+
+/**
+ * Save a search to history
+ * POST /api/search-history
+ */
+export const saveSearchHistory = async (data: SaveSearchHistoryPayload): Promise<void> => {
+  try {
+    const url = `${API_BASE}/api/search-history`;
+    await fetch(url, {
+      method: 'POST',
+      headers: buildHeaders(),
+      body: JSON.stringify(data),
+    });
+  } catch (error) {
+    console.error('[API] saveSearchHistory error:', error);
+  }
+};
+
+/**
+ * Get user's search history (last 7 days)
+ * GET /api/search-history
+ */
+export const getSearchHistory = async (): Promise<SearchHistoryEntry[]> => {
+  try {
+    const url = `${API_BASE}/api/search-history`;
+    const response = await fetch(url, { headers: buildHeaders() });
+    if (!response.ok) return [];
+    const json = await safeJson<{ success: boolean; data: SearchHistoryEntry[] }>(response);
+    return json?.data || [];
+  } catch (error) {
+    console.error('[API] getSearchHistory error:', error);
+    return [];
+  }
+};
+
+/**
+ * Delete a single search history entry
+ * DELETE /api/search-history/:id
+ */
+export const deleteSearchHistoryEntry = async (id: string): Promise<boolean> => {
+  try {
+    const url = `${API_BASE}/api/search-history/${id}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: buildHeaders(),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('[API] deleteSearchHistoryEntry error:', error);
+    return false;
+  }
+};
+
+/**
+ * Clear all search history for user
+ * DELETE /api/search-history/clear
+ */
+export const clearAllSearchHistory = async (): Promise<boolean> => {
+  try {
+    const url = `${API_BASE}/api/search-history/clear`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: buildHeaders(),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('[API] clearAllSearchHistory error:', error);
+    return false;
+  }
+};

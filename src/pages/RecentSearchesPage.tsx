@@ -18,6 +18,7 @@ import {
   Check,
   X,
   ChevronRight,
+  ChevronDown,
   Laptop,
   Shirt,
   FileText,
@@ -26,14 +27,22 @@ import {
   Wine,
   ShoppingBag,
   Layers,
+  CheckCircle,
+  Star,
+  Route,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getBoxLibraries,
   createBoxLibrary,
   updateBoxLibrary,
   deleteBoxLibrary,
+  getSearchHistory,
+  deleteSearchHistoryEntry,
+  clearAllSearchHistory,
+  type SearchHistoryEntry,
 } from "../services/api";
 
 // --- LIBRARY CATEGORIES ---
@@ -61,34 +70,11 @@ type BoxItem = {
 
 type BoxLibrary = {
   id: string;
-  _id?: string; // MongoDB ID (used as primary key when available)
+  _id?: string;
   name: string;
   category: string;
   boxes: BoxItem[];
   createdAt: string;
-};
-
-type RecentSearch = {
-  id: string;
-  fromPincode: string;
-  toPincode: string;
-  modeOfTransport: "Road" | "Rail" | "Air" | "Ship";
-  boxes: {
-    count: number;
-    length: number;
-    width: number;
-    height: number;
-    weight: number;
-    description: string;
-  }[];
-  totalWeight: number;
-  totalBoxes: number;
-  bestQuote?: {
-    companyName: string;
-    totalCharges: number;
-    estimatedTime: number;
-  };
-  timestamp: string;
 };
 
 // --- STYLED HELPER COMPONENTS ---
@@ -109,14 +95,14 @@ const Card = ({
   </motion.div>
 );
 
-const TransportIcon = ({ mode }: { mode: string }) => {
+const TransportIcon = ({ mode, size = 18 }: { mode: string; size?: number }) => {
   const iconMap: Record<string, React.ReactNode> = {
-    Road: <Truck size={18} />,
-    Rail: <Train size={18} />,
-    Air: <Plane size={18} />,
-    Ship: <Ship size={18} />,
+    Road: <Truck size={size} />,
+    Rail: <Train size={size} />,
+    Air: <Plane size={size} />,
+    Ship: <Ship size={size} />,
   };
-  return <>{iconMap[mode] || <Truck size={18} />}</>;
+  return <>{iconMap[mode] || <Truck size={size} />}</>;
 };
 
 const RecentSearchesPage: React.FC = () => {
@@ -124,11 +110,12 @@ const RecentSearchesPage: React.FC = () => {
 
   // --- STATE ---
   const [libraries, setLibraries] = useState<BoxLibrary[]>([]);
-  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"libraries" | "recent">("libraries");
+  const [activeTab, setActiveTab] = useState<"libraries" | "recent" | "completed">("libraries");
   const [isLoading, setIsLoading] = useState(true);
   const [expandedLibraries, setExpandedLibraries] = useState<Set<string>>(new Set());
+  const [expandedSearches, setExpandedSearches] = useState<Set<string>>(new Set());
 
   // New library modal state
   const [showNewLibraryModal, setShowNewLibraryModal] = useState(false);
@@ -150,9 +137,8 @@ const RecentSearchesPage: React.FC = () => {
   const loadLibraries = async () => {
     try {
       const apiLibraries = await getBoxLibraries();
-      // Transform API response to local format
       const transformed: BoxLibrary[] = apiLibraries.map((lib) => ({
-        id: lib._id, // Use MongoDB _id as id
+        id: lib._id,
         _id: lib._id,
         name: lib.name,
         category: lib.category,
@@ -174,23 +160,20 @@ const RecentSearchesPage: React.FC = () => {
     }
   };
 
-  const loadRecentSearches = () => {
-    const stored = localStorage.getItem("recentFreightSearches");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setRecentSearches(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        setRecentSearches([]);
-      }
+  const loadSearchHistory = async () => {
+    try {
+      const entries = await getSearchHistory();
+      setSearchHistory(entries);
+    } catch (error) {
+      console.error("Failed to load search history:", error);
+      setSearchHistory([]);
     }
   };
 
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      await loadLibraries();
-      loadRecentSearches();
+      await Promise.all([loadLibraries(), loadSearchHistory()]);
       setIsLoading(false);
     };
     init();
@@ -301,7 +284,6 @@ const RecentSearchesPage: React.FC = () => {
   const [libraryToUse, setLibraryToUse] = useState<BoxLibrary | null>(null);
   const [selectedBoxIdsForUse, setSelectedBoxIdsForUse] = useState<Set<string>>(new Set());
 
-  // Helper from compareCache
   const saveFormStateToStorage = (state: any) => {
     try {
       const prevStr = sessionStorage.getItem("fc:form");
@@ -315,9 +297,7 @@ const RecentSearchesPage: React.FC = () => {
 
   const handleUseLibrary = (library: BoxLibrary) => {
     if (library.boxes.length === 0) return;
-    // Open modal instead of redirecting immediately
     setLibraryToUse(library);
-    // Default select all
     setSelectedBoxIdsForUse(new Set(library.boxes.map(b => b.id)));
   };
 
@@ -340,7 +320,7 @@ const RecentSearchesPage: React.FC = () => {
       if (!window.confirm("No boxes selected. Proceed anyway?")) return;
     }
 
-    const startIdx = 1; // start naming from 1
+    const startIdx = 1;
     const mappedBoxes = boxesToUse.map((b, i) => ({
       id: `box-${Date.now()}-${i}`,
       count: b.quantity || 1,
@@ -351,19 +331,8 @@ const RecentSearchesPage: React.FC = () => {
       description: b.name || `Box ${startIdx + i}`,
     }));
 
-    // Save to the key that CalculatorPage actually reads ("fc:form")
-    saveFormStateToStorage({
-      boxes: mappedBoxes
-    });
-
-    // Also support legacy key just in case
-    sessionStorage.setItem(
-      "prefilledSearch",
-      JSON.stringify({
-        boxes: mappedBoxes
-      })
-    );
-
+    saveFormStateToStorage({ boxes: mappedBoxes });
+    sessionStorage.setItem("prefilledSearch", JSON.stringify({ boxes: mappedBoxes }));
     navigate("/compare");
   };
 
@@ -372,31 +341,48 @@ const RecentSearchesPage: React.FC = () => {
     setSelectedBoxIdsForUse(new Set());
   };
 
-  // --- RECENT SEARCH HANDLERS ---
-  const handleDeleteRecentSearch = (searchId: string) => {
-    const updated = recentSearches.filter((s) => s.id !== searchId);
-    setRecentSearches(updated);
-    localStorage.setItem("recentFreightSearches", JSON.stringify(updated));
-  };
-
-  const handleClearAllRecent = () => {
-    if (window.confirm("Clear all recent searches?")) {
-      setRecentSearches([]);
-      localStorage.removeItem("recentFreightSearches");
+  // --- SEARCH HISTORY HANDLERS ---
+  const handleDeleteSearch = async (id: string) => {
+    const success = await deleteSearchHistoryEntry(id);
+    if (success) {
+      setSearchHistory(searchHistory.filter(s => s._id !== id));
     }
   };
 
-  const handleRepeatSearch = (search: RecentSearch) => {
-    sessionStorage.setItem(
-      "prefilledSearch",
-      JSON.stringify({
-        fromPincode: search.fromPincode,
-        toPincode: search.toPincode,
-        modeOfTransport: search.modeOfTransport,
-        boxes: search.boxes,
-      })
-    );
+  const handleClearAllHistory = async () => {
+    if (window.confirm("Clear all recent searches?")) {
+      const success = await clearAllSearchHistory();
+      if (success) {
+        setSearchHistory([]);
+      }
+    }
+  };
+
+  const handleSearchAgain = (search: SearchHistoryEntry) => {
+    const formData = {
+      fromPincode: search.fromPincode,
+      toPincode: search.toPincode,
+      modeOfTransport: search.modeOfTransport,
+      boxes: search.boxes.map((b, i) => ({
+        id: `box-${Date.now()}-${i}`,
+        count: b.count || 1,
+        length: b.length || 0,
+        width: b.width || 0,
+        height: b.height || 0,
+        weight: b.weight || 0,
+        description: b.description || `Box ${i + 1}`,
+      })),
+    };
+    saveFormStateToStorage(formData);
+    sessionStorage.setItem("prefilledSearch", JSON.stringify(formData));
     navigate("/compare");
+  };
+
+  const toggleSearchExpand = (id: string) => {
+    const newSet = new Set(expandedSearches);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setExpandedSearches(newSet);
   };
 
   // --- FILTERED DATA ---
@@ -405,17 +391,40 @@ const RecentSearchesPage: React.FC = () => {
     lib.boxes.some(b => b.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const filteredSearches = recentSearches.filter(
-    (s) =>
+  const filteredSearches = searchHistory.filter((s) =>
+    !s.isBooked && (
       s.fromPincode.includes(searchTerm) ||
       s.toPincode.includes(searchTerm) ||
-      s.boxes.some((b) =>
-        b.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      (s.fromCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.toCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.boxes.some((b) => b.description?.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
   );
+
+  const completedTransactions = searchHistory.filter((s) => s.isBooked);
 
   const getCategoryInfo = (categoryId: string) => {
     return LIBRARY_CATEGORIES.find(c => c.id === categoryId) || LIBRARY_CATEGORIES[7];
+  };
+
+  const formatLocation = (pincode: string, city: string, state: string) => {
+    if (city && state) return `${city}, ${state} (${pincode})`;
+    if (city) return `${city} (${pincode})`;
+    return pincode;
+  };
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   };
 
   // --- RENDER ---
@@ -457,7 +466,7 @@ const RecentSearchesPage: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder="Search libraries or boxes..."
+                placeholder={activeTab === "libraries" ? "Search libraries or boxes..." : "Search by pincode, city, or description..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
@@ -468,23 +477,33 @@ const RecentSearchesPage: React.FC = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab("libraries")}
-                className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === "libraries"
+                className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === "libraries"
                   ? "bg-slate-900 text-white shadow-md"
                   : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
                   }`}
               >
-                <Package size={16} className="inline mr-2" />
+                <Package size={16} className="inline mr-1.5" />
                 Libraries ({libraries.length})
               </button>
               <button
                 onClick={() => setActiveTab("recent")}
-                className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === "recent"
+                className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === "recent"
                   ? "bg-slate-900 text-white shadow-md"
                   : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
                   }`}
               >
-                <Clock size={16} className="inline mr-2" />
-                Recent ({recentSearches.length})
+                <Clock size={16} className="inline mr-1.5" />
+                Recent ({filteredSearches.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("completed")}
+                className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === "completed"
+                  ? "bg-slate-900 text-white shadow-md"
+                  : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+                  }`}
+              >
+                <CheckCircle size={16} className="inline mr-1.5" />
+                Completed ({completedTransactions.length})
               </button>
             </div>
           </div>
@@ -497,9 +516,10 @@ const RecentSearchesPage: React.FC = () => {
             <p className="mt-4 text-slate-600">Loading...</p>
           </Card>
         ) : activeTab === "libraries" ? (
-          /* Box Libraries Tab */
+          /* ============================================================ */
+          /* Box Libraries Tab (unchanged)                                */
+          /* ============================================================ */
           <div className="space-y-6">
-            {/* Create New Library Button */}
             <Card>
               <button
                 onClick={() => setShowNewLibraryModal(true)}
@@ -510,16 +530,11 @@ const RecentSearchesPage: React.FC = () => {
               </button>
             </Card>
 
-            {/* Libraries List */}
             {filteredLibraries.length === 0 ? (
               <Card className="text-center py-12">
                 <Package className="mx-auto h-12 w-12 text-slate-300" />
-                <h3 className="mt-4 text-lg font-semibold text-slate-700">
-                  No Libraries Yet
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Create your first library to organize your box presets.
-                </p>
+                <h3 className="mt-4 text-lg font-semibold text-slate-700">No Libraries Yet</h3>
+                <p className="mt-1 text-sm text-slate-500">Create your first library to organize your box presets.</p>
               </Card>
             ) : (
               <div className="space-y-4">
@@ -530,7 +545,6 @@ const RecentSearchesPage: React.FC = () => {
 
                   return (
                     <Card key={library.id} className="!p-0 overflow-hidden">
-                      {/* Library Header */}
                       <div
                         className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                         onClick={() => toggleLibraryExpand(library.id)}
@@ -549,20 +563,14 @@ const RecentSearchesPage: React.FC = () => {
                         <div className="flex items-center gap-2">
                           {library.boxes.length > 0 && (
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUseLibrary(library);
-                              }}
+                              onClick={(e) => { e.stopPropagation(); handleUseLibrary(library); }}
                               className="px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                             >
                               Use <ArrowRight size={14} className="inline ml-1" />
                             </button>
                           )}
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteLibrary(library.id);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteLibrary(library.id); }}
                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           >
                             <Trash2 size={16} />
@@ -574,7 +582,6 @@ const RecentSearchesPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Expanded Content */}
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div
@@ -585,12 +592,8 @@ const RecentSearchesPage: React.FC = () => {
                             className="border-t border-slate-200"
                           >
                             <div className="p-4 bg-slate-50/50 space-y-3">
-                              {/* Existing Boxes */}
                               {library.boxes.map((box) => (
-                                <div
-                                  key={box.id}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
-                                >
+                                <div key={box.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
                                   <div className="flex-1">
                                     <p className="font-medium text-slate-800">{box.name}</p>
                                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
@@ -610,80 +613,26 @@ const RecentSearchesPage: React.FC = () => {
                                 </div>
                               ))}
 
-                              {/* Add Box Form */}
                               {addingBoxToLibrary === library.id ? (
                                 <div className="p-4 bg-white rounded-lg border-2 border-blue-200 space-y-3">
                                   <div className="grid grid-cols-2 gap-3">
-                                    <input
-                                      type="text"
-                                      placeholder="Box name *"
-                                      value={newBox.name || ""}
-                                      onChange={(e) => setNewBox({ ...newBox, name: e.target.value })}
-                                      className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                      type="number"
-                                      placeholder="Weight (kg) *"
-                                      value={newBox.weight || ""}
-                                      onChange={(e) => setNewBox({ ...newBox, weight: parseFloat(e.target.value) || undefined })}
-                                      className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                      type="number"
-                                      placeholder="Quantity"
-                                      value={newBox.quantity || ""}
-                                      onChange={(e) => setNewBox({ ...newBox, quantity: parseInt(e.target.value) || 1 })}
-                                      className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                    />
+                                    <input type="text" placeholder="Box name *" value={newBox.name || ""} onChange={(e) => setNewBox({ ...newBox, name: e.target.value })} className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+                                    <input type="number" placeholder="Weight (kg) *" value={newBox.weight || ""} onChange={(e) => setNewBox({ ...newBox, weight: parseFloat(e.target.value) || undefined })} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+                                    <input type="number" placeholder="Quantity" value={newBox.quantity || ""} onChange={(e) => setNewBox({ ...newBox, quantity: parseInt(e.target.value) || 1 })} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
                                   </div>
                                   <p className="text-xs text-slate-500">Volumetric dimensions (required):</p>
                                   <div className="grid grid-cols-3 gap-3">
-                                    <input
-                                      type="number"
-                                      placeholder="L (cm) *"
-                                      value={newBox.length || ""}
-                                      onChange={(e) => setNewBox({ ...newBox, length: parseFloat(e.target.value) || undefined })}
-                                      className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                      type="number"
-                                      placeholder="W (cm) *"
-                                      value={newBox.width || ""}
-                                      onChange={(e) => setNewBox({ ...newBox, width: parseFloat(e.target.value) || undefined })}
-                                      className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                      type="number"
-                                      placeholder="H (cm) *"
-                                      value={newBox.height || ""}
-                                      onChange={(e) => setNewBox({ ...newBox, height: parseFloat(e.target.value) || undefined })}
-                                      className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                    />
+                                    <input type="number" placeholder="L (cm) *" value={newBox.length || ""} onChange={(e) => setNewBox({ ...newBox, length: parseFloat(e.target.value) || undefined })} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+                                    <input type="number" placeholder="W (cm) *" value={newBox.width || ""} onChange={(e) => setNewBox({ ...newBox, width: parseFloat(e.target.value) || undefined })} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+                                    <input type="number" placeholder="H (cm) *" value={newBox.height || ""} onChange={(e) => setNewBox({ ...newBox, height: parseFloat(e.target.value) || undefined })} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
                                   </div>
                                   <div className="flex gap-2 justify-end">
-                                    <button
-                                      onClick={() => {
-                                        setAddingBoxToLibrary(null);
-                                        setNewBox({ name: "", weight: undefined, length: undefined, width: undefined, height: undefined, quantity: 1 });
-                                      }}
-                                      className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      onClick={() => handleAddBox(library.id)}
-                                      disabled={!newBox.name?.trim() || !newBox.weight || !newBox.length || !newBox.width || !newBox.height}
-                                      className="px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      Add Box
-                                    </button>
+                                    <button onClick={() => { setAddingBoxToLibrary(null); setNewBox({ name: "", weight: undefined, length: undefined, width: undefined, height: undefined, quantity: 1 }); }} className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                                    <button onClick={() => handleAddBox(library.id)} disabled={!newBox.name?.trim() || !newBox.weight || !newBox.length || !newBox.width || !newBox.height} className="px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Add Box</button>
                                   </div>
                                 </div>
                               ) : (
-                                <button
-                                  onClick={() => setAddingBoxToLibrary(library.id)}
-                                  className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all text-sm"
-                                >
+                                <button onClick={() => setAddingBoxToLibrary(library.id)} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all text-sm">
                                   <Plus size={16} />
                                   Add Box to Library
                                 </button>
@@ -698,17 +647,20 @@ const RecentSearchesPage: React.FC = () => {
               </div>
             )}
           </div>
-        ) : (
-          /* Recent Searches Tab */
+        ) : activeTab === "recent" ? (
+          /* ============================================================ */
+          /* Recent Searches Tab (Enhanced)                               */
+          /* ============================================================ */
           <Card>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
                 <Clock size={22} className="text-blue-600" />
                 Recent Searches
+                <span className="text-sm font-normal text-slate-400 ml-2">(Last 7 days)</span>
               </h2>
-              {recentSearches.length > 0 && (
+              {filteredSearches.length > 0 && (
                 <button
-                  onClick={handleClearAllRecent}
+                  onClick={handleClearAllHistory}
                   className="text-sm text-slate-500 hover:text-red-600 transition-colors"
                 >
                   Clear All
@@ -719,12 +671,8 @@ const RecentSearchesPage: React.FC = () => {
             {filteredSearches.length === 0 ? (
               <div className="text-center py-12">
                 <Clock className="mx-auto h-12 w-12 text-slate-300" />
-                <h3 className="mt-4 text-lg font-semibold text-slate-700">
-                  No Recent Searches
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Your freight calculations will appear here.
-                </p>
+                <h3 className="mt-4 text-lg font-semibold text-slate-700">No Recent Searches</h3>
+                <p className="mt-1 text-sm text-slate-500">Your freight calculations from the last 7 days will appear here.</p>
                 <button
                   onClick={() => navigate("/compare")}
                   className="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
@@ -734,73 +682,259 @@ const RecentSearchesPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredSearches.map((search) => (
-                  <motion.div
-                    key={search.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all group"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                            <MapPin size={18} className="text-blue-600" />
-                            {search.fromPincode}
-                            <ArrowRight size={16} className="text-slate-400" />
-                            {search.toPincode}
-                          </div>
-                          <span className="px-2 py-1 bg-slate-200 text-slate-600 text-xs font-semibold rounded-full flex items-center gap-1">
-                            <TransportIcon mode={search.modeOfTransport} />
-                            {search.modeOfTransport}
-                          </span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-slate-600">
-                          <span className="flex items-center gap-1">
-                            <Package size={14} />
-                            {search.totalBoxes} boxes
-                          </span>
-                          <span>{search.totalWeight.toFixed(2)} kg total</span>
-                          <span className="flex items-center gap-1 text-slate-400">
-                            <Calendar size={14} />
-                            {new Date(search.timestamp).toLocaleDateString()}
-                          </span>
-                        </div>
-
-                        {search.bestQuote && (
-                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <span className="text-sm text-green-800">
-                              Best: <strong>{search.bestQuote.companyName}</strong> -
-                              <span className="font-bold ml-1">
-                                <IndianRupee size={12} className="inline" />
-                                {search.bestQuote.totalCharges.toLocaleString()}
+                {filteredSearches.map((search) => {
+                  const isExpanded = expandedSearches.has(search._id);
+                  return (
+                    <motion.div
+                      key={search._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all group"
+                    >
+                      {/* Collapsed Header */}
+                      <div
+                        className="p-4 cursor-pointer"
+                        onClick={() => toggleSearchExpand(search._id)}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          <div className="flex-1">
+                            {/* Route */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <MapPin size={16} className="text-blue-600 flex-shrink-0" />
+                              <span className="font-bold text-slate-800">
+                                {formatLocation(search.fromPincode, search.fromCity, search.fromState)}
                               </span>
-                              <span className="text-green-600 ml-2">
-                                ({search.bestQuote.estimatedTime} days)
+                              <ArrowRight size={14} className="text-slate-400 flex-shrink-0" />
+                              <span className="font-bold text-slate-800">
+                                {formatLocation(search.toPincode, search.toCity, search.toState)}
                               </span>
-                            </span>
+                            </div>
+
+                            {/* Meta row */}
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-slate-500">
+                              <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-200 text-slate-600 text-xs font-semibold rounded-full">
+                                <TransportIcon mode={search.modeOfTransport} size={14} />
+                                {search.modeOfTransport}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Package size={14} />
+                                {search.totalBoxes} boxes
+                              </span>
+                              <span>{search.totalWeight?.toFixed(1)} kg</span>
+                              {search.distanceKm > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Route size={14} />
+                                  {Math.round(search.distanceKm).toLocaleString("en-IN")} km
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1 text-slate-400">
+                                <Calendar size={14} />
+                                {formatDate(search.createdAt)}
+                              </span>
+                            </div>
+
+                            {/* Best quote preview */}
+                            {search.topQuotes && search.topQuotes.length > 0 && (
+                              <div className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+                                <Star size={14} className="text-green-600 fill-green-600" />
+                                Best: <strong>{search.topQuotes[0].companyName}</strong>
+                                <span className="font-bold ml-1">
+                                  <IndianRupee size={12} className="inline" />
+                                  {search.topQuotes[0].totalCharges.toLocaleString("en-IN")}
+                                </span>
+                                <span className="text-green-500 ml-1">
+                                  ({search.topQuotes[0].estimatedTime} days)
+                                </span>
+                              </div>
+                            )}
                           </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleSearchAgain(search); }}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                              <RefreshCw size={14} />
+                              Search Again
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteSearch(search._id); }}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                            <ChevronDown
+                              size={20}
+                              className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Details */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="border-t border-slate-200"
+                          >
+                            <div className="p-4 space-y-4">
+                              {/* Packing Details */}
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                                  <Package size={15} className="text-slate-500" />
+                                  Packing Details
+                                </h4>
+                                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="bg-slate-100 text-slate-600 text-xs uppercase">
+                                        <th className="text-left px-3 py-2 font-semibold">#</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Description</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Qty</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Dimensions (cm)</th>
+                                        <th className="text-right px-3 py-2 font-semibold">Weight</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {search.boxes.map((box, idx) => (
+                                        <tr key={idx} className="border-t border-slate-100">
+                                          <td className="px-3 py-2 text-slate-400">{idx + 1}</td>
+                                          <td className="px-3 py-2 text-slate-700 font-medium">{box.description || `Box ${idx + 1}`}</td>
+                                          <td className="px-3 py-2 text-center text-slate-600">{box.count}</td>
+                                          <td className="px-3 py-2 text-center text-slate-500 font-mono text-xs">
+                                            {box.length > 0 ? `${box.length} x ${box.width} x ${box.height}` : "-"}
+                                          </td>
+                                          <td className="px-3 py-2 text-right text-slate-600">{box.weight} kg</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+
+                              {/* Top Quotes */}
+                              {search.topQuotes && search.topQuotes.length > 0 && (
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                                    <IndianRupee size={15} className="text-slate-500" />
+                                    Top {search.topQuotes.length} Vendor Quotes
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {search.topQuotes.map((quote, idx) => (
+                                      <div
+                                        key={idx}
+                                        className={`flex items-center justify-between px-4 py-3 rounded-lg border ${idx === 0
+                                          ? "bg-green-50 border-green-200"
+                                          : "bg-white border-slate-200"
+                                          }`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${idx === 0
+                                            ? "bg-green-600 text-white"
+                                            : "bg-slate-200 text-slate-600"
+                                            }`}>
+                                            {idx + 1}
+                                          </span>
+                                          <div>
+                                            <span className={`font-semibold ${idx === 0 ? "text-green-800" : "text-slate-800"}`}>
+                                              {quote.companyName}
+                                            </span>
+                                            {quote.isTiedUp && (
+                                              <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase">
+                                                Tied
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                          <span className="text-sm text-slate-500">
+                                            {quote.estimatedTime} {quote.estimatedTime === 1 ? "day" : "days"}
+                                          </span>
+                                          <span className={`font-bold text-lg ${idx === 0 ? "text-green-700" : "text-slate-800"}`}>
+                                            <IndianRupee size={14} className="inline" />
+                                            {quote.totalCharges.toLocaleString("en-IN")}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
                         )}
-                      </div>
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        ) : (
+          /* ============================================================ */
+          /* Completed Transactions Tab (UI Shell)                        */
+          /* ============================================================ */
+          <Card>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                <CheckCircle size={22} className="text-green-600" />
+                Completed Transactions
+              </h2>
+            </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleRepeatSearch(search)}
-                          className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                        >
-                          <RefreshCw size={14} />
-                          Repeat
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRecentSearch(search.id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+            {completedTransactions.length === 0 ? (
+              <div className="text-center py-16">
+                <CheckCircle className="mx-auto h-16 w-16 text-slate-200" />
+                <h3 className="mt-6 text-xl font-semibold text-slate-700">
+                  No Completed Transactions
+                </h3>
+                <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+                  Your booked and completed shipments will appear here. Start by calculating freight and booking a vendor.
+                </p>
+                <button
+                  onClick={() => navigate("/compare")}
+                  className="mt-8 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
+                >
+                  Calculate Freight
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {completedTransactions.map((tx) => (
+                  <div
+                    key={tx._id}
+                    className="p-4 bg-green-50 border border-green-200 rounded-xl"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <MapPin size={16} className="text-green-600" />
+                      <span className="font-bold text-slate-800">
+                        {formatLocation(tx.fromPincode, tx.fromCity, tx.fromState)}
+                      </span>
+                      <ArrowRight size={14} className="text-slate-400" />
+                      <span className="font-bold text-slate-800">
+                        {formatLocation(tx.toPincode, tx.toCity, tx.toState)}
+                      </span>
                     </div>
-                  </motion.div>
+                    {tx.bookedQuote && (
+                      <div className="text-sm text-green-800">
+                        Booked with <strong>{tx.bookedQuote.companyName}</strong> -
+                        <span className="font-bold ml-1">
+                          <IndianRupee size={12} className="inline" />
+                          {tx.bookedQuote.totalCharges.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                      <span>{tx.totalBoxes} boxes</span>
+                      <span>{tx.totalWeight?.toFixed(1)} kg</span>
+                      <span>{formatDate(tx.createdAt)}</span>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -820,19 +954,14 @@ const RecentSearchesPage: React.FC = () => {
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-slate-800">Create New Library</h3>
-                <button
-                  onClick={() => setShowNewLibraryModal(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600"
-                >
+                <button onClick={() => setShowNewLibraryModal(false)} className="p-1 text-slate-400 hover:text-slate-600">
                   <X size={24} />
                 </button>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Library Name
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Library Name</label>
                   <input
                     type="text"
                     placeholder="e.g., Monthly Electronics Shipment"
@@ -844,9 +973,7 @@ const RecentSearchesPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Category
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
                   <div className="grid grid-cols-2 gap-2">
                     {LIBRARY_CATEGORIES.map((cat) => {
                       const Icon = cat.icon;
@@ -871,19 +998,8 @@ const RecentSearchesPage: React.FC = () => {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowNewLibraryModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateLibrary}
-                  disabled={!newLibraryName.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Create Library
-                </button>
+                <button onClick={() => setShowNewLibraryModal(false)} className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">Cancel</button>
+                <button onClick={handleCreateLibrary} disabled={!newLibraryName.trim()} className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">Create Library</button>
               </div>
             </motion.div>
           </div>
@@ -903,10 +1019,7 @@ const RecentSearchesPage: React.FC = () => {
                   <h3 className="text-xl font-bold text-slate-800">Select Boxes to Use</h3>
                   <p className="text-xs text-slate-500 mt-1">From library: <span className="font-semibold text-blue-600">{libraryToUse.name}</span></p>
                 </div>
-                <button
-                  onClick={cancelUseLibrary}
-                  className="p-2 bg-white rounded-full text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm transition-colors"
-                >
+                <button onClick={cancelUseLibrary} className="p-2 bg-white rounded-full text-slate-400 hover:text-slate-600 border border-slate-200 shadow-sm transition-colors">
                   <X size={20} />
                 </button>
               </div>
@@ -934,21 +1047,14 @@ const RecentSearchesPage: React.FC = () => {
                     <div
                       key={box.id}
                       onClick={() => toggleBoxSelectionForUse(box.id)}
-                      className={`
-                          flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer group
-                          ${isSelected
-                          ? 'border-blue-500 bg-blue-50/30 ring-1 ring-blue-500/20'
-                          : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'
-                        }
-                        `}
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer group ${isSelected
+                        ? 'border-blue-500 bg-blue-50/30 ring-1 ring-blue-500/20'
+                        : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'
+                        }`}
                     >
-                      <div className={`
-                          flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors
-                          ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-slate-300 bg-white text-transparent group-hover:border-blue-300'}
-                        `}>
+                      <div className={`flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-slate-300 bg-white text-transparent group-hover:border-blue-300'}`}>
                         <Check size={14} strokeWidth={3} />
                       </div>
-
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
                           <h4 className={`font-semibold text-sm ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>{box.name}</h4>
@@ -957,9 +1063,7 @@ const RecentSearchesPage: React.FC = () => {
                         <div className="text-xs text-slate-500 mt-1 flex gap-3">
                           <span className="flex items-center gap-1"><span className="font-medium">{box.weight}</span> kg</span>
                           {(box.length && box.width && box.height) ? (
-                            <span className="text-slate-400 border-l border-slate-200 pl-3">
-                              {box.length} × {box.width} × {box.height} cm
-                            </span>
+                            <span className="text-slate-400 border-l border-slate-200 pl-3">{box.length} x {box.width} x {box.height} cm</span>
                           ) : <span className="text-slate-400 italic">No dims</span>}
                         </div>
                       </div>
@@ -969,15 +1073,9 @@ const RecentSearchesPage: React.FC = () => {
               </div>
 
               <div className="p-5 border-t border-slate-100 bg-slate-50 flex gap-3">
-                <button
-                  onClick={cancelUseLibrary}
-                  className="flex-1 px-4 py-3 border border-slate-200 bg-white text-slate-600 font-semibold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
-                >
-                  Cancel
-                </button>
+                <button onClick={cancelUseLibrary} className="flex-1 px-4 py-3 border border-slate-200 bg-white text-slate-600 font-semibold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">Cancel</button>
                 <button
                   onClick={confirmUseLibrary}
-                  // disabled={selectedBoxIdsForUse.size === 0}
                   className="flex-[2] px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:shadow-none disabled:transform-none flex items-center justify-center gap-2"
                 >
                   <span>Use {selectedBoxIdsForUse.size} Boxes</span>
