@@ -29,7 +29,6 @@ import {
   Layers,
   Download,
   Upload,
-  FileSpreadsheet,
   Loader2,
   CheckCircle,
   Route,
@@ -237,6 +236,16 @@ const RecentSearchesPage: React.FC = () => {
       newExpanded.add(libId);
     }
     setExpandedLibraries(newExpanded);
+  };
+
+  const toggleSearchExpand = (searchId: string) => {
+    const newExpanded = new Set(expandedSearches);
+    if (newExpanded.has(searchId)) {
+      newExpanded.delete(searchId);
+    } else {
+      newExpanded.add(searchId);
+    }
+    setExpandedSearches(newExpanded);
   };
 
   // --- BOX HANDLERS ---
@@ -509,14 +518,14 @@ const RecentSearchesPage: React.FC = () => {
 
   // --- FILTERED DATA ---
   const filteredLibraries = libraries.filter((lib) =>
-    lib.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lib.boxes.some(b => b.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (lib.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (lib.boxes || []).some(b => (b.name || "").toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const filteredSearches = searchHistory.filter((s) =>
     !s.isBooked && (
-      s.fromPincode.includes(searchTerm) ||
-      s.toPincode.includes(searchTerm) ||
+      (s.fromPincode || "").includes(searchTerm) ||
+      (s.toPincode || "").includes(searchTerm) ||
       (s.fromCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.toCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.boxes || []).some((b) => b.description?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -536,7 +545,9 @@ const RecentSearchesPage: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -1257,6 +1268,12 @@ const RecentSearchesPage: React.FC = () => {
                 <br />
                 Give your library a name to continue.
               </p>
+
+              {uploadError && (
+                <div className="mt-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200">
+                  {uploadError}
+                </div>
+              )}
 
               <div className="mt-4">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
