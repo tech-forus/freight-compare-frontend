@@ -31,6 +31,9 @@ import {
   Upload,
   FileSpreadsheet,
   Loader2,
+  CheckCircle,
+  Route,
+  Star,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -158,7 +161,7 @@ const RecentSearchesPage: React.FC = () => {
         _id: lib._id,
         name: lib.name,
         category: lib.category,
-        boxes: lib.boxes.map((box) => ({
+        boxes: (lib.boxes || []).map((box) => ({
           id: box._id || `box-${Date.now()}-${Math.random()}`,
           name: box.name,
           weight: box.weight,
@@ -516,7 +519,7 @@ const RecentSearchesPage: React.FC = () => {
       s.toPincode.includes(searchTerm) ||
       (s.fromCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.toCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.boxes.some((b) => b.description?.toLowerCase().includes(searchTerm.toLowerCase()))
+      (s.boxes || []).some((b) => b.description?.toLowerCase().includes(searchTerm.toLowerCase()))
     )
   );
 
@@ -955,7 +958,7 @@ const RecentSearchesPage: React.FC = () => {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {search.boxes.map((box, idx) => (
+                                      {(search.boxes || []).map((box, idx) => (
                                         <tr key={idx} className="border-t border-slate-100">
                                           <td className="px-3 py-2 text-slate-400">{idx + 1}</td>
                                           <td className="px-3 py-2 text-slate-700 font-medium">{box.description || `Box ${idx + 1}`}</td>
