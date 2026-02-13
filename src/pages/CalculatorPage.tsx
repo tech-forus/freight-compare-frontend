@@ -1426,34 +1426,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         link.click();
     };
 
-    // -------------------- Excel Download Helper --------------------
-    const downloadPackingListAsExcel = () => {
-        if (boxes.length === 0) return;
-
-        // Create CSV content (simple Excel-compatible format)
-        const headers = ['Box Name', 'Quantity', 'Weight (kg)', 'Length (cm)', 'Width (cm)', 'Height (cm)'];
-        const rows = boxes.map(box => [
-            box.description || 'Unnamed Box',
-            box.count || 0,
-            box.weight || 0,
-            box.length || '-',
-            box.width || '-',
-            box.height || '-',
-        ]);
-
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
-
-        // Download as CSV (opens in Excel)
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `packing-list-${fromPincode}-to-${toPincode}-${Date.now()}.csv`;
-        link.click();
-    };
-
     // -------------------- Render --------------------
     const equalityError =
         isSamePincode && isFromPincodeValid && isToPincodeValid
