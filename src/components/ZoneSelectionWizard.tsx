@@ -359,21 +359,6 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
         </div>
       </div>
 
-      {/* Info box about limited zones */}
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-        <div className="flex items-start gap-2">
-          <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-amber-900">
-            <p className="font-medium">Understanding Zone Types:</p>
-            <ul className="mt-1 space-y-0.5 text-amber-800">
-              <li>• <strong>Limited (X1)</strong>: Only specific cities (metros) in each state</li>
-              <li>• <strong>Full (X2, X3...)</strong>: All cities in the listed states</li>
-              <li>• <strong>Siliguri</strong> is special: can be in both NE1 and E1</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
       {/* Region sections */}
       <div className="space-y-4">
         {regionSelections.map(rs => (

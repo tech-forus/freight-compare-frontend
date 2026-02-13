@@ -1846,704 +1846,664 @@ export const AddVendor: React.FC = () => {
       ref={topRef}
       className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200"
     >
-      {/* ═══ STICKY STEP BAR ═══ */}
-      <div className="mt-4">
-        <VendorStepBar
-          currentStep={currentStep}
-          onStepChange={goToStep}
-          vendorName={sidePanelProps.vendorName}
-          transportMode={transportMode}
-          zonesCount={matrixSize.rows}
-          pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
-          onReset={handleReset}
-        />
-      </div>
-
-      {/* ═══ UNIFIED WHITE CARD: Content + Side Panel ═══ */}
+      {/* ═══ UNIFIED WHITE CARD: Stepper + Content + Side Panel ═══ */}
       <div className="mx-4 md:mx-6 mt-4 mb-6 bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
         <div className="flex gap-0 min-h-[calc(100vh-140px)]">
-          {/* LEFT: Main Content */}
-          <div className="flex-1 min-w-0 p-6">
-            <form id="add-vendor-form" onSubmit={handleSubmit} className="space-y-3">
+          {/* LEFT column: Stepper + Main Content */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* Stepper inside left column */}
+            <VendorStepBar
+              currentStep={currentStep}
+              onStepChange={goToStep}
+              vendorName={sidePanelProps.vendorName}
+              transportMode={transportMode}
+              zonesCount={matrixSize.rows}
+              pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
+              onReset={handleReset}
+            />
+            {/* Main Content */}
+            <div className="flex-1 min-w-0 p-6">
+              <form id="add-vendor-form" onSubmit={handleSubmit} className="space-y-3">
 
-              {/* ════════════════════════════════════════════════ */}
-              {/* STEP 1: FIND VENDOR (REDESIGNED)                */}
-              {/* ════════════════════════════════════════════════ */}
-              <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="max-w-3xl mx-auto pt-10"
-                >
+                {/* ════════════════════════════════════════════════ */}
+                {/* STEP 1: FIND VENDOR (REDESIGNED)                */}
+                {/* ════════════════════════════════════════════════ */}
+                <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="max-w-3xl mx-auto pt-4"
+                  >
 
-                  {/* HERO HEADING */}
-                  <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-slate-800 mb-2">Find Your Vendor</h2>
-                    <p className="text-slate-500">Search for an existing partner or create a new profile.</p>
-                  </div>
-
-                  {/* SEARCH CONTAINER */}
-                  <div ref={dropdownRef} className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative z-10">
-                    <div className="p-1">
-                      <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          {isSearching ? <Loader2 className="h-6 w-6 text-blue-500 animate-spin" /> : <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-500 transition-colors" />}
-                        </div>
-                        <input
-                          type="text"
-                          className="block w-full pl-12 pr-4 py-4 text-lg border-none focus:ring-0 focus:outline-none placeholder:text-slate-300 transition-all bg-transparent"
-                          placeholder="Type vendor name..."
-                          value={legalCompanyNameInput}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setLegalCompanyNameInput(value);
-                            setIsAutoFilled(false);
-                            if (value.length >= 2) setIsSearching(true);
-                            searchTransporters(value);
-                          }}
-                          onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-                          onKeyDown={(e) => {
-                            if (!showDropdown || !suggestions.length) return;
-                            if (e.key === 'ArrowDown') {
-                              e.preventDefault();
-                              setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
-                            } else if (e.key === 'ArrowUp') {
-                              e.preventDefault();
-                              setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
-                            } else if (e.key === 'Enter' && highlightedIndex >= 0) {
-                              e.preventDefault();
-                              handleVendorAutoSelect(suggestions[highlightedIndex]);
-                            } else if (e.key === 'Escape') {
-                              setShowDropdown(false);
-                            }
-                          }}
-                        />
-                        {/* Clear Button */}
-                        {legalCompanyNameInput.length > 0 && !isAutoFilled && (
-                          <button
-                            type="button"
-                            onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
-                            className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                          >
-                            <XCircleIcon className="h-5 w-5 text-slate-300 hover:text-slate-500 transition-colors" />
-                          </button>
-                        )}
-                      </div>
+                    {/* HERO HEADING */}
+                    <div className="text-center mb-8">
+                      <h2 className="text-3xl font-bold text-slate-800 mb-2">Find Your Vendor</h2>
+                      <p className="text-slate-500">Search for an existing partner or create a new profile.</p>
                     </div>
 
-                    {/* DROPDOWN RESULTS */}
-                    <AnimatePresence>
-                      {showDropdown && suggestions.length > 0 && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="border-t border-slate-100 bg-slate-50/50 max-h-60 overflow-y-auto"
-                        >
-                          {suggestions.map((v, i) => (
-                            <div
-                              key={v.id}
-                              onClick={() => handleVendorAutoSelect(v)}
-                              onMouseEnter={() => setHighlightedIndex(i)}
-                              className={`px-4 py-3 cursor-pointer flex items-center gap-3 transition-colors ${highlightedIndex === i ? 'bg-blue-50' : 'hover:bg-white'}`}
+                    {/* SEARCH CONTAINER */}
+                    <div ref={dropdownRef} className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative z-10">
+                      <div className="p-1">
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            {isSearching ? <Loader2 className="h-6 w-6 text-blue-500 animate-spin" /> : <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-500 transition-colors" />}
+                          </div>
+                          <input
+                            type="text"
+                            className="block w-full pl-12 pr-4 py-4 text-lg border-none focus:ring-0 focus:outline-none placeholder:text-slate-300 transition-all bg-transparent"
+                            placeholder="Type vendor name..."
+                            value={legalCompanyNameInput}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setLegalCompanyNameInput(value);
+                              setIsAutoFilled(false);
+                              if (value.length >= 2) setIsSearching(true);
+                              searchTransporters(value);
+                            }}
+                            onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+                            onKeyDown={(e) => {
+                              if (!showDropdown || !suggestions.length) return;
+                              if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
+                              } else if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
+                              } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+                                e.preventDefault();
+                                handleVendorAutoSelect(suggestions[highlightedIndex]);
+                              } else if (e.key === 'Escape') {
+                                setShowDropdown(false);
+                              }
+                            }}
+                          />
+                          {/* Clear Button */}
+                          {legalCompanyNameInput.length > 0 && !isAutoFilled && (
+                            <button
+                              type="button"
+                              onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
+                              className="absolute inset-y-0 right-0 pr-4 flex items-center"
                             >
-                              <div className={`p-2 rounded-lg ${v.isTemporary ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                                <Building2 className="w-5 h-5" />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-slate-800 text-sm">{v.legalCompanyName || v.companyName}</h4>
-                                <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
-                                  {v.vendorCode && <span className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">{v.vendorCode}</span>}
-                                  {v.zones?.length > 0 && <span>• {v.zones.length} zones active</span>}
+                              <XCircleIcon className="h-5 w-5 text-slate-300 hover:text-slate-500 transition-colors" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* DROPDOWN RESULTS */}
+                      <AnimatePresence>
+                        {showDropdown && suggestions.length > 0 && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="border-t border-slate-100 bg-slate-50/50 max-h-60 overflow-y-auto"
+                          >
+                            {suggestions.map((v, i) => (
+                              <div
+                                key={v.id}
+                                onClick={() => handleVendorAutoSelect(v)}
+                                onMouseEnter={() => setHighlightedIndex(i)}
+                                className={`px-4 py-3 cursor-pointer flex items-center gap-3 transition-colors ${highlightedIndex === i ? 'bg-blue-50' : 'hover:bg-white'}`}
+                              >
+                                <div className={`p-2 rounded-lg ${v.isTemporary ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                                  <Building2 className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-slate-800 text-sm">{v.legalCompanyName || v.companyName}</h4>
+                                  <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
+                                    {v.vendorCode && <span className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">{v.vendorCode}</span>}
+                                    {v.zones?.length > 0 && <span>• {v.zones.length} zones active</span>}
+                                  </div>
+                                </div>
+                                <div className="text-slate-400">
+                                  <CheckCircleIcon className="w-5 h-5 text-slate-300 hover:text-blue-500" />
                                 </div>
                               </div>
-                              <div className="text-slate-400">
-                                <CheckCircleIcon className="w-5 h-5 text-slate-300 hover:text-blue-500" />
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* ══ CASE 1: VENDOR AUTO-FILLED (SUCCESS) ══ */}
+                    <AnimatePresence>
+                      {isAutoFilled && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mt-6 bg-emerald-50 border border-emerald-100 rounded-xl p-5 shadow-sm"
+                        >
+                          <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
+                            <div className="flex items-center gap-4">
+                              <div className="bg-emerald-100 p-2 rounded-full">
+                                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-emerald-900">Vendor Loaded</h4>
+                                <p className="text-sm text-emerald-700">
+                                  Data auto-filled from <strong>{autoFilledFromName}</strong>
+                                </p>
                               </div>
                             </div>
-                          ))}
+                            <div className="flex gap-3 w-full md:w-auto">
+                              <button
+                                type="button"
+                                onClick={clearAutoFill}
+                                className="flex-1 md:flex-none px-4 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-50"
+                              >
+                                Clear
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setVendorMode('existing'); goNext(); }}
+                                className="flex-1 md:flex-none px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center justify-center gap-2"
+                              >
+                                Continue <ChevronDown className="w-4 h-4 -rotate-90" />
+                              </button>
+                            </div>
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </div>
 
-                  {/* ══ CASE 1: VENDOR AUTO-FILLED (SUCCESS) ══ */}
-                  <AnimatePresence>
-                    {isAutoFilled && (
+                    {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
+                    {/* Show this if: Not auto-filled AND (Search is empty OR No results found) */}
+                    {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mt-6 bg-emerald-50 border border-emerald-100 rounded-xl p-5 shadow-sm"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="mt-12"
                       >
-                        <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
-                          <div className="flex items-center gap-4">
-                            <div className="bg-emerald-100 p-2 rounded-full">
-                              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or Create New</span>
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                        </div>
+
+                        <p className="text-center text-slate-600 mb-6 font-medium">Do you have a pincode serviceability list?</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          {/* OPTION A: HAS PINCODES (EXCEL) */}
+                          <button
+                            type="button"
+                            onClick={() => { setVendorMode('new_with_pincodes'); setZoneConfigMode('pincode'); goNext(); }}
+                            className="group relative bg-white border-2 border-slate-100 hover:border-green-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
+                          >
+                            <div className="absolute top-4 right-4 text-slate-300 group-hover:text-green-500 transition-colors">
+                              <CheckCircle2 className="w-6 h-6" />
                             </div>
-                            <div>
-                              <h4 className="font-bold text-emerald-900">Vendor Loaded</h4>
-                              <p className="text-sm text-emerald-700">
-                                Data auto-filled from <strong>{autoFilledFromName}</strong>
-                              </p>
+                            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                              <FileSpreadsheet className="w-6 h-6" />
                             </div>
-                          </div>
-                          <div className="flex gap-3 w-full md:w-auto">
-                            <button
-                              type="button"
-                              onClick={clearAutoFill}
-                              className="flex-1 md:flex-none px-4 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-50"
-                            >
-                              Clear
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setVendorMode('existing'); goNext(); }}
-                              className="flex-1 md:flex-none px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center justify-center gap-2"
-                            >
-                              Continue <ChevronDown className="w-4 h-4 -rotate-90" />
-                            </button>
-                          </div>
+                            <h3 className="font-bold text-slate-800 text-lg group-hover:text-green-700">Yes, I have an Excel file</h3>
+                            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                              Upload your pincode list (Excel/CSV). We will maximize coverage automatically.
+                            </p>
+                          </button>
+
+                          {/* OPTION B: MANUAL (WIZARD) */}
+                          <button
+                            type="button"
+                            onClick={() => { setVendorMode('new_without_pincodes'); setZoneConfigMode('wizard'); goNext(); }}
+                            className="group relative bg-white border-2 border-slate-100 hover:border-blue-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
+                          >
+                            <div className="absolute top-4 right-4 text-slate-300 group-hover:text-blue-500 transition-colors">
+                              <MapPin className="w-6 h-6" />
+                            </div>
+                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                              <Sparkles className="w-6 h-6" />
+                            </div>
+                            <h3 className="font-bold text-slate-800 text-lg group-hover:text-blue-700">No, select manually</h3>
+                            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                              Use the Zone Wizard to select states, cities, and regions manually.
+                            </p>
+                          </button>
                         </div>
                       </motion.div>
                     )}
-                  </AnimatePresence>
 
-                  {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
-                  {/* Show this if: Not auto-filled AND (Search is empty OR No results found) */}
-                  {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="mt-12"
-                    >
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="h-px bg-slate-200 flex-1"></div>
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or Create New</span>
-                        <div className="h-px bg-slate-200 flex-1"></div>
-                      </div>
+                  </motion.div>
+                </div>{/* close rounded-xl */}
+                {/* END STEP 1 */}
 
-                      <p className="text-center text-slate-600 mb-6 font-medium">Do you have a pincode serviceability list?</p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        {/* OPTION A: HAS PINCODES (EXCEL) */}
-                        <button
-                          type="button"
-                          onClick={() => { setVendorMode('new_with_pincodes'); setZoneConfigMode('pincode'); goNext(); }}
-                          className="group relative bg-white border-2 border-slate-100 hover:border-green-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
-                        >
-                          <div className="absolute top-4 right-4 text-slate-300 group-hover:text-green-500 transition-colors">
-                            <CheckCircle2 className="w-6 h-6" />
-                          </div>
-                          <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <FileSpreadsheet className="w-6 h-6" />
-                          </div>
-                          <h3 className="font-bold text-slate-800 text-lg group-hover:text-green-700">Yes, I have an Excel file</h3>
-                          <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                            Upload your pincode list (Excel/CSV). We will maximize coverage automatically.
-                          </p>
-                        </button>
-
-                        {/* OPTION B: MANUAL (WIZARD) */}
-                        <button
-                          type="button"
-                          onClick={() => { setVendorMode('new_without_pincodes'); setZoneConfigMode('wizard'); goNext(); }}
-                          className="group relative bg-white border-2 border-slate-100 hover:border-blue-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
-                        >
-                          <div className="absolute top-4 right-4 text-slate-300 group-hover:text-blue-500 transition-colors">
-                            <MapPin className="w-6 h-6" />
-                          </div>
-                          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <Sparkles className="w-6 h-6" />
-                          </div>
-                          <h3 className="font-bold text-slate-800 text-lg group-hover:text-blue-700">No, select manually</h3>
-                          <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                            Use the Zone Wizard to select states, cities, and regions manually.
-                          </p>
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                </motion.div>
-              </div>{/* close rounded-xl */}
-              {/* END STEP 1 */}
-
-              {/* ════════════════════════════════════════════════ */}
-              {/* STEP 3: COMPANY DETAILS                         */}
-              {/* ════════════════════════════════════════════════ */}
-              <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
-                  <div className="p-5">
-                    <CompanySection
-                      vendorBasics={vendorBasics}
-                      pincodeLookup={pincodeLookup}
-                    />
-                  </div>
-                  <div className="p-5">
-                    <TransportSection
-                      volumetric={volumetric}
-                      transportMode={transportMode}
-                      onTransportModeChange={(m) => setTransportMode(m)}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <button type="button" onClick={goBack} className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
-                    ← Back to Pricing
-                  </button>
-                  <button type="button" onClick={goNext} className="px-5 py-2.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
-                    Next: Charges & Save →
-                  </button>
-                </div>
-              </div>{/* END STEP 3 */}
-
-              {/* ════════════════════════════════════════════════ */}
-              {/* STEP 4: CHARGES & SAVE                          */}
-              {/* ════════════════════════════════════════════════ */}
-              <div style={{ display: currentStep === 4 ? 'block' : 'none' }}>
-                <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
-                  <div className="p-5">
-                    <ChargesSection charges={charges} />
-                  </div>
-
-                  {/* Invoice Value Charges Section */}
-                  {showInvoiceSection && (
-                    <div className="p-6 md:p-8 bg-slate-50/60 border-t border-slate-200">
-                      <div className="w-full">
-                        <div className="flex items-center gap-2 mb-4">
-                          <FileText className="w-5 h-5 text-blue-600" />
-                          <h3 className="text-lg font-semibold text-slate-900">
-                            Invoice Value Configuration
-                          </h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Percentage Input */}
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                              Invoice Value Percentage (%)
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={invoicePercentage}
-                                onChange={(e) => {
-                                  // Allow numbers and one dot
-                                  const val = e.target.value.replace(/[^0-9.]/g, '');
-                                  if ((val.match(/\./g) || []).length <= 1) {
-                                    setInvoicePercentage(val);
-                                    setInvoiceManualOverride(true);
-                                  }
-                                }}
-                                placeholder="0.00"
-                                className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
-                              />
-                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <span className="text-slate-400 text-sm">%</span>
-                              </div>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
-                          </div>
-
-                          {/* Min Amount Input */}
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                              Minimum Amount (₹)
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={invoiceMinAmount}
-                                onChange={(e) => {
-                                  const val = sanitizeDigitsOnly(e.target.value);
-                                  setInvoiceMinAmount(val);
-                                  setInvoiceManualOverride(true);
-                                }}
-                                placeholder="0"
-                                className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
-                              />
-                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <span className="text-slate-400 text-sm">₹</span>
-                              </div>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
-                          </div>
-                        </div>
-
-                        {/* UI Matching Toggle */}
-                        <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-                          <div className="flex-1">
-                            <span className="text-sm font-semibold text-slate-900">Calculation Method</span>
-                            <p className="text-xs text-slate-500 mt-1">
-                              Use the maximum of the percentage value and the minimum amount?
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() => setInvoiceUseMax(true)}
-                              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${invoiceUseMax ? 'bg-white text-blue-600 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
-                                }`}
-                            >
-                              Yes, Use Max
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setInvoiceUseMax(false)}
-                              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${!invoiceUseMax ? 'bg-white text-slate-900 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
-                                }`}
-                            >
-                              No
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                {/* ════════════════════════════════════════════════ */}
+                {/* STEP 3: COMPANY DETAILS                         */}
+                {/* ════════════════════════════════════════════════ */}
+                <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
+                  <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
+                    <div className="p-5">
+                      <CompanySection
+                        vendorBasics={vendorBasics}
+                        pincodeLookup={pincodeLookup}
+                      />
                     </div>
-                  )}
-
-
-                </div>{/* close Step 4 charges card */}
-              </div>{/* close Step 4 first block (charges+invoice) */}
-
-              {/* ════════════════════════════════════════════════ */}
-              {/* STEP 2: PRICING SETUP (REDESIGNED)              */}
-              {/* ════════════════════════════════════════════════ */}
-              <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="w-full mx-auto"
-                >
-
-                  {/* Header & Tabs */}
-                  <div className="flex flex-col items-center mb-4">
-                    <h3 className="text-lg font-bold text-slate-800 mb-1">
-                      {vendorMode === 'existing' ? 'Zone Price Matrix' : 'Serviceability & Pricing'}
-                    </h3>
-                    {vendorMode === 'existing' && autoFilledFromName && (
-                      <p className="text-slate-500 mb-2 text-xs">
-                        Fill in prices for <strong>{autoFilledFromName}</strong>'s zones
-                      </p>
-                    )}
-
-                    {/* Segmented Control — hidden when existing vendor (goes directly to matrix) */}
-                    {vendorMode !== 'existing' && (
-                      <div className="bg-slate-100 p-1.5 rounded-xl flex items-center shadow-inner">
-                        {[
-                          { id: 'pincode', label: 'Pincode Upload', icon: FileSpreadsheet },
-                          { id: 'wizard', label: 'Zone Wizard', icon: MapPin },
-                          { id: 'auto', label: 'Auto Assign', icon: Sparkles },
-                          //     { id: 'upload', label: 'Zone CSV', icon: Upload }, // Hidden as per user preference likely, or keep it? Keeping for now.
-                        ].map((m) => {
-                          const isActive = zoneConfigMode === m.id;
-                          const Icon = m.icon;
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setZoneConfigMode(m.id as any)}
-                              className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${isActive
-                                ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                                : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                            >
-                              {isActive && (
-                                <motion.div
-                                  layoutId="activeTab"
-                                  className="absolute inset-0 bg-white rounded-lg shadow-sm ring-1 ring-black/5"
-                                  initial={false}
-                                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                />
-                              )}
-                              <span className="relative z-10 flex items-center gap-2">
-                                <Icon className="w-4 h-4" />
-                                {m.label}
-                              </span>
-                            </button>
-                          );
-                        })}
-                        <button
-                          type="button"
-                          onClick={() => setZoneConfigMode('upload')}
-                          className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${zoneConfigMode === 'upload'
-                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                            : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                        >
-                          <span className="relative z-10 flex items-center gap-2">
-                            <Upload className="w-4 h-4" />
-                            CSV
-                          </span>
-                        </button>
-                      </div>
-                    )}
+                    <div className="p-5">
+                      <TransportSection
+                        volumetric={volumetric}
+                        transportMode={transportMode}
+                        onTransportModeChange={(m) => setTransportMode(m)}
+                      />
+                    </div>
                   </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <button type="button" onClick={goBack} className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
+                      ← Back to Pricing
+                    </button>
+                    <button type="button" onClick={goNext} className="px-5 py-2.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
+                      Next: Charges & Save →
+                    </button>
+                  </div>
+                </div>{/* END STEP 3 */}
 
-                  <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px] ${zoneConfigMode === 'matrix' ? 'p-2' : 'p-6'}`}>
-                    <AnimatePresence mode="wait">
+                {/* ════════════════════════════════════════════════ */}
+                {/* STEP 4: CHARGES & SAVE                          */}
+                {/* ════════════════════════════════════════════════ */}
+                <div style={{ display: currentStep === 4 ? 'block' : 'none' }}>
+                  <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
+                    <div className="p-5">
+                      <ChargesSection charges={charges} />
+                    </div>
 
-                      {/* MODE: PINCODE UPLOAD */}
-                      {zoneConfigMode === 'pincode' && (
-                        <motion.div
-                          key="pincode"
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 10 }}
-                          className="space-y-6"
-                        >
-                          <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-4">
-                            <div className="p-2 bg-emerald-100 rounded-full shrink-0">
-                              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                            </div>
+                    {/* Invoice Value Charges Section */}
+                    {showInvoiceSection && (
+                      <div className="p-6 md:p-8 bg-slate-50/60 border-t border-slate-200">
+                        <div className="w-full">
+                          <div className="flex items-center gap-2 mb-4">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                            <h3 className="text-lg font-semibold text-slate-900">
+                              Invoice Value Configuration
+                            </h3>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Percentage Input */}
                             <div>
-                              <h4 className="font-bold text-emerald-900 text-lg">Recommended Method</h4>
-                              <p className="text-emerald-700 mt-1 leading-relaxed text-sm">
-                                Upload your pincode serviceability list. We will automatically map them to zones
-                                and generate the price matrix structure for you. <strong>This is the source of truth.</strong>
+                              <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Invoice Value Percentage (%)
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={invoicePercentage}
+                                  onChange={(e) => {
+                                    // Allow numbers and one dot
+                                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                                    if ((val.match(/\./g) || []).length <= 1) {
+                                      setInvoicePercentage(val);
+                                      setInvoiceManualOverride(true);
+                                    }
+                                  }}
+                                  placeholder="0.00"
+                                  className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
+                                />
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                  <span className="text-slate-400 text-sm">%</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
+                            </div>
+
+                            {/* Min Amount Input */}
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Minimum Amount (₹)
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={invoiceMinAmount}
+                                  onChange={(e) => {
+                                    const val = sanitizeDigitsOnly(e.target.value);
+                                    setInvoiceMinAmount(val);
+                                    setInvoiceManualOverride(true);
+                                  }}
+                                  placeholder="0"
+                                  className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
+                                />
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                  <span className="text-slate-400 text-sm">₹</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
+                            </div>
+                          </div>
+
+                          {/* UI Matching Toggle */}
+                          <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                            <div className="flex-1">
+                              <span className="text-sm font-semibold text-slate-900">Calculation Method</span>
+                              <p className="text-xs text-slate-500 mt-1">
+                                Use the maximum of the percentage value and the minimum amount?
                               </p>
                             </div>
-                          </div>
-
-                          <ServiceabilityUpload
-                            onServiceabilityReady={handleServiceabilityReady}
-                            onError={(errors) => console.error(errors)}
-                          />
-
-                          {serviceabilityData && serviceabilityData.serviceability.length > 0 && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                              className="p-4 border-2 border-green-100 bg-green-50/50 rounded-xl flex items-center justify-between"
-                            >
-                              <div>
-                                <p className="font-bold text-green-800 flex items-center gap-2">
-                                  <CheckCircleIcon className="w-5 h-5" />
-                                  {serviceabilityData.serviceability.length} Pincodes Processed
-                                </p>
-                                <p className="text-sm text-green-600 pl-7">
-                                  Mapped to {serviceabilityData.zoneSummary.length} zones
-                                </p>
-                              </div>
+                            <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
                               <button
                                 type="button"
-                                onClick={goNext}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-sm"
+                                onClick={() => setInvoiceUseMax(true)}
+                                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${invoiceUseMax ? 'bg-white text-blue-600 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
+                                  }`}
                               >
-                                Save & Continue
+                                Yes, Use Max
                               </button>
-                            </motion.div>
-                          )}
+                              <button
+                                type="button"
+                                onClick={() => setInvoiceUseMax(false)}
+                                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${!invoiceUseMax ? 'bg-white text-slate-900 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
+                                  }`}
+                              >
+                                No
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+
+                  </div>{/* close Step 4 charges card */}
+                </div>{/* close Step 4 first block (charges+invoice) */}
+
+                {/* ════════════════════════════════════════════════ */}
+                {/* STEP 2: PRICING SETUP (REDESIGNED)              */}
+                {/* ════════════════════════════════════════════════ */}
+                <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full mx-auto"
+                  >
+
+                    {/* Header & Tabs */}
+                    <div className="flex flex-col items-center mb-4">
+                      <h3 className="text-lg font-bold text-slate-800 mb-1">
+                        {vendorMode === 'existing' ? 'Zone Price Matrix' : 'Serviceability & Pricing'}
+                      </h3>
+                      {vendorMode === 'existing' && autoFilledFromName && (
+                        <p className="text-slate-500 mb-2 text-xs">
+                          Fill in prices for <strong>{autoFilledFromName}</strong>'s zones
+                        </p>
+                      )}
+
+                      {/* Segmented Control — hidden when existing vendor (goes directly to matrix) */}
+                      {vendorMode !== 'existing' && (
+                        <div className="bg-slate-100 p-1 rounded-xl flex items-center shadow-inner">
+                          {[
+                            { id: 'pincode', label: 'Pincode Upload', icon: FileSpreadsheet },
+                            { id: 'wizard', label: 'Zone Wizard', icon: MapPin },
+                          ].map((m) => {
+                            const isActive = zoneConfigMode === m.id;
+                            const Icon = m.icon;
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => setZoneConfigMode(m.id as any)}
+                                className={`relative px-5 py-2.5 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${isActive
+                                  ? 'bg-white text-green-700 shadow-sm ring-1 ring-black/5'
+                                  : 'text-slate-500 hover:text-slate-700'
+                                  }`}
+                              >
+                                {isActive && (
+                                  <motion.div
+                                    layoutId="activeTab"
+                                    className="absolute inset-0 bg-white rounded-lg shadow-sm ring-1 ring-black/5"
+                                    initial={false}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                  />
+                                )}
+                                <span className="relative z-10 flex items-center gap-2">
+                                  <Icon className="w-4 h-4" />
+                                  {m.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px] ${zoneConfigMode === 'matrix' ? 'p-2' : 'p-6'}`}>
+                      <AnimatePresence mode="wait">
+
+                        {/* MODE: PINCODE UPLOAD */}
+                        {zoneConfigMode === 'pincode' && (
+                          <motion.div
+                            key="pincode"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 10 }}
+                            className="space-y-6"
+                          >
+                            <ServiceabilityUpload
+                              onServiceabilityReady={handleServiceabilityReady}
+                              onError={(errors) => console.error(errors)}
+                            />
+
+                            {serviceabilityData && serviceabilityData.serviceability.length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                className="p-4 border-2 border-green-100 bg-green-50/50 rounded-xl flex items-center justify-between"
+                              >
+                                <div>
+                                  <p className="font-bold text-green-800 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-5 h-5" />
+                                    {serviceabilityData.serviceability.length} Pincodes Processed
+                                  </p>
+                                  <p className="text-sm text-green-600 pl-7">
+                                    Mapped to {serviceabilityData.zoneSummary.length} zones
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={goNext}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-sm"
+                                >
+                                  Save & Continue
+                                </button>
+                              </motion.div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => navigate('/zone-price-matrix')}
+                              className="ml-1 underline hover:no-underline"
+                            >
+                              Open wizard to fill prices →
+                            </button>
+                          </motion.div>
+                        )}
+
+                        {/* MODE: WIZARD */}
+                        {zoneConfigMode === 'wizard' && (
+                          <motion.div
+                            key="wizard"
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            className="space-y-6"
+                          >
+                            <ZoneSelectionWizard
+                              onComplete={handleZoneSelectionComplete}
+                            />
+                          </motion.div>
+                        )}
+
+                        {/* MODE: PRICE MATRIX (NEW INLINE) */}
+                        {zoneConfigMode === 'matrix' && (
+                          <motion.div
+                            key="matrix"
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            className="space-y-6"
+                          >
+                            <ZonePriceMatrixComponent
+                              wizardData={wizardData}
+                              onUpdatePriceMatrix={(matrix) => {
+                                if (typeof setWizardData === 'function') {
+                                  setWizardData((prev: any) => ({
+                                    ...(prev || {}),
+                                    priceMatrix: matrix,
+                                  }));
+                                }
+                              }}
+                              onBack={() => setZoneConfigMode('wizard')}
+                              onSave={() => {
+                                // Proceed to Company Details (Step 3)
+                                goNext();
+                                toast.success('Price matrix saved! Proceeding to Company Details.');
+                              }}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div >
+
+                    {/* Navigation Buttons for Step 2 */}
+                    <div className="mt-8 flex items-center justify-between">
+                      <button type="button" onClick={goBack} className="text-slate-400 hover:text-slate-600 font-medium text-sm transition-colors">
+                        ← Back to Search
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goNext}
+                        disabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 transition-all"
+                      >
+                        Next: Company Details →
+                      </button>
+                    </div >
+
+                  </motion.div >
+                </div > {/* END STEP 2 */}
+
+                {/* ════════════════════════════════════════════════ */}
+                {/* STEP 3: COMPANY DETAILS                         */}
+                {/* ════════════════════════════════════════════════ */}
+
+
+                {/* ════════════════════════════════════════════════ */}
+                {/* STEP 4: CHARGES & SAVE                          */}
+                {/* ════════════════════════════════════════════════ */}
+
+
+                {currentStep === 4 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    {/* STEP 4b: SAVE ACTIONS (Moved Here) */}
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                      <div className="p-4 md:p-5 bg-slate-50 border-b border-slate-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="p-1.5 bg-green-100 text-green-600 rounded-lg">
+                            <Save className="w-5 h-5" />
+                          </div>
+                          <h3 className="text-lg font-bold text-slate-800">Finalize & Save</h3>
+                        </div>
+                        <p className="text-slate-600 text-sm ml-9">
+                          Review your configuration. You can save as a draft or publish immediately.
+                        </p>
+                      </div>
+
+                      <div className="p-4 md:p-5 space-y-4">
+                        {/* Save Mode Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <label
+                            onClick={() => setSaveMode('draft')}
+                            className={`relative flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'draft' ? 'border-amber-400 bg-amber-50/30' : 'border-slate-200'
+                              }`}
+                          >
+                            <input
+                              type="radio"
+                              name="saveMode"
+                              checked={saveMode === 'draft'}
+                              onChange={() => setSaveMode('draft')}
+                              className="mt-1 w-4 h-4 text-amber-500 focus:ring-amber-500 border-slate-300"
+                            />
+                            <div>
+                              <span className="block font-bold text-slate-900 text-sm">Save as Draft</span>
+                              <span className="text-xs text-slate-500 mt-0.5 block">
+                                Vendor will be saved but <strong>kept hidden</strong>.
+                              </span>
+                            </div>
+                          </label>
+
+                          <label
+                            onClick={() => setSaveMode('active')}
+                            className={`relative flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'active' ? 'border-green-500 bg-green-50/30' : 'border-slate-200'
+                              }`}
+                          >
+                            <input
+                              type="radio"
+                              name="saveMode"
+                              checked={saveMode === 'active'}
+                              onChange={() => setSaveMode('active')}
+                              className="mt-1 w-4 h-4 text-green-600 focus:ring-green-500 border-slate-300"
+                            />
+                            <div>
+                              <span className="block font-bold text-slate-900 text-sm">Publish Vendor</span>
+                              <span className="text-xs text-slate-500 mt-0.5 block">
+                                Vendor will be <strong>live</strong> immediately.
+                              </span>
+                            </div>
+                          </label>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
                           <button
                             type="button"
-                            onClick={() => navigate('/zone-price-matrix')}
-                            className="ml-1 underline hover:no-underline"
+                            onClick={goBack}
+                            className="text-slate-500 font-medium text-sm hover:text-slate-800 transition-colors"
                           >
-                            Open wizard to fill prices →
+                            ← Back to Details
                           </button>
-                        </motion.div>
-                      )}
 
-                      {/* MODE: WIZARD */}
-                      {zoneConfigMode === 'wizard' && (
-                        <motion.div
-                          key="wizard"
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          className="space-y-6"
-                        >
-                          <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-4">
-                            <div className="p-2 bg-blue-100 rounded-full shrink-0">
-                              <CheckCircle2 className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-blue-900 text-lg">Zone Wizard</h4>
-                              <p className="text-blue-700 mt-1 leading-relaxed text-sm">
-                                Manually select states and cities to define your zones. Note that pincode mapping will be approximate.
-                              </p>
-                            </div>
-                          </div>
-
-                          <ZoneSelectionWizard
-                            onComplete={handleZoneSelectionComplete}
-                          />
-                        </motion.div>
-                      )}
-
-                      {/* MODE: PRICE MATRIX (NEW INLINE) */}
-                      {zoneConfigMode === 'matrix' && (
-                        <motion.div
-                          key="matrix"
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          className="space-y-6"
-                        >
-                          <ZonePriceMatrixComponent
-                            wizardData={wizardData}
-                            onUpdatePriceMatrix={(matrix) => {
-                              if (typeof setWizardData === 'function') {
-                                setWizardData((prev: any) => ({
-                                  ...(prev || {}),
-                                  priceMatrix: matrix,
-                                }));
-                              }
-                            }}
-                            onBack={() => setZoneConfigMode('wizard')}
-                            onSave={() => {
-                              // Proceed to Company Details (Step 3)
-                              goNext();
-                              toast.success('Price matrix saved! Proceeding to Company Details.');
-                            }}
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div >
-
-                  {/* Navigation Buttons for Step 2 */}
-                  <div className="mt-8 flex items-center justify-between">
-                    <button type="button" onClick={goBack} className="text-slate-400 hover:text-slate-600 font-medium text-sm transition-colors">
-                      ← Back to Search
-                    </button>
-                    <button
-                      type="button"
-                      onClick={goNext}
-                      disabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
-                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 transition-all"
-                    >
-                      Next: Company Details →
-                    </button>
-                  </div >
-
-                </motion.div >
-              </div > {/* END STEP 2 */}
-
-              {/* ════════════════════════════════════════════════ */}
-              {/* STEP 3: COMPANY DETAILS                         */}
-              {/* ════════════════════════════════════════════════ */}
-
-
-              {/* ════════════════════════════════════════════════ */}
-              {/* STEP 4: CHARGES & SAVE                          */}
-              {/* ════════════════════════════════════════════════ */}
-
-
-              {currentStep === 4 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  {/* STEP 4b: SAVE ACTIONS (Moved Here) */}
-                  <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                    <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-100">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-green-100 text-green-600 rounded-lg">
-                          <Save className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-800">Finalize & Save</h3>
-                      </div>
-                      <p className="text-slate-600 ml-11">
-                        Review your configuration. You can save as a draft to edit later, or publish immediately.
-                      </p>
-                    </div>
-
-                    <div className="p-6 md:p-8 space-y-8">
-                      {/* Save Mode Selection */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label
-                          onClick={() => setSaveMode('draft')}
-                          className={`relative flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'draft' ? 'border-amber-400 bg-amber-50/30' : 'border-slate-200'
-                            }`}
-                        >
-                          <input
-                            type="radio"
-                            name="saveMode"
-                            checked={saveMode === 'draft'}
-                            onChange={() => setSaveMode('draft')}
-                            className="mt-1 w-4 h-4 text-amber-500 focus:ring-amber-500 border-slate-300"
-                          />
-                          <div>
-                            <span className="block font-bold text-slate-900">Save as Draft</span>
-                            <span className="text-sm text-slate-500 mt-1 block">
-                              Vendor will be saved but <strong>kept hidden</strong>. Use this if you need to add more details later.
-                            </span>
-                          </div>
-                        </label>
-
-                        <label
-                          onClick={() => setSaveMode('active')}
-                          className={`relative flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'active' ? 'border-green-500 bg-green-50/30' : 'border-slate-200'
-                            }`}
-                        >
-                          <input
-                            type="radio"
-                            name="saveMode"
-                            checked={saveMode === 'active'}
-                            onChange={() => setSaveMode('active')}
-                            className="mt-1 w-4 h-4 text-green-600 focus:ring-green-500 border-slate-300"
-                          />
-                          <div>
-                            <span className="block font-bold text-slate-900">Publish Vendor</span>
-                            <span className="text-sm text-slate-500 mt-1 block">
-                              Vendor will be <strong>live</strong> and available for calculations immediately.
-                            </span>
-                          </div>
-                        </label>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100">
-                        <button
-                          type="button"
-                          onClick={goBack}
-                          className="text-slate-500 font-medium hover:text-slate-800 transition-colors"
-                        >
-                          ← Back to Details
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleSubmit}
-                          disabled={isSubmitting}
-                          className={`
-                               relative overflow-hidden group px-8 py-4 rounded-xl font-bold text-lg shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl
+                          <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className={`
+                               relative overflow-hidden group px-6 py-2.5 rounded-lg font-bold text-base shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl
                                ${isSubmitting
-                              ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                              : 'bg-slate-900 text-white hover:bg-black'
-                            }
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-900 text-white hover:bg-black'
+                              }
                             `}
-                        >
-                          <span className="relative z-10 flex items-center gap-2">
-                            {isSubmitting ? (
-                              <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Saving Provider...
-                              </>
-                            ) : (
-                              <>
-                                {saveMode === 'active' ? 'Create Live Provider' : 'Save Draft'}
-                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                              </>
-                            )}
-                          </span>
-                        </button>
+                          >
+                            <span className="relative z-10 flex items-center gap-2">
+                              {isSubmitting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  {saveMode === 'active' ? 'Save Vendor' : 'Save Draft'}
+                                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </>
+                              )}
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              )}
+                  </motion.div>
+                )}
 
 
 
 
-            </form >
-          </div > {/* close flex-1 main content */}
+              </form >
+            </div > {/* close flex-1 main content */}
+          </div> {/* close left column */}
 
           {/* ═══ RIGHT SIDE PANEL (inside white card) ═══ */}
-          <div className="w-[280px] shrink-0 border-l border-slate-100 bg-slate-50/50">
+          <div className="w-[320px] shrink-0 border-l border-slate-100 bg-slate-50/50">
             <VendorSidePanel
               currentStep={currentStep}
               vendorName={sidePanelProps.vendorName}

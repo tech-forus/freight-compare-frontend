@@ -168,22 +168,23 @@ const SimpleChargeField: React.FC<SimpleChargeFieldProps> = ({
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-1">
-        <label
-          htmlFor={name}
-          className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
-        >
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        {tooltip && (
-          <div className="group relative">
-            <InformationCircleIcon className="w-4 h-4 text-slate-400 cursor-help" />
-            <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              {tooltip}
+    <div className="mb-4">
+      {/* Label */}
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <label htmlFor={name} className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide">
+            {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          {tooltip && (
+            <div className="group relative">
+              <InformationCircleIcon className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-2 w-48 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                {tooltip}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="relative">
@@ -196,16 +197,16 @@ const SimpleChargeField: React.FC<SimpleChargeFieldProps> = ({
           onBlur={onBlur}
           inputMode="decimal"
           maxLength={maxLength}
-          className={`block w-full border-2 rounded-lg shadow-sm pl-3 pr-8 py-2 text-sm text-slate-800 placeholder-slate-400
-focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition bg-slate-50/70
-                     ${error ? 'border-red-500 focus:border-red-600' : 'border-indigo-500 focus:border-indigo-600'} `}
+          className={`block w-full border border-slate-300 rounded-md shadow-sm pl-3 pr-8 py-1.5 text-sm text-slate-700 placeholder-slate-400
+focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white
+                     ${error ? 'border-red-500 focus:border-red-600' : ''} `}
           placeholder=""
           aria-invalid={!!error}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
         />
         {suffix && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">
             {suffix}
           </span>
         )}
@@ -256,7 +257,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             Basic & Core Charges
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <SimpleChargeField
               label={getLabel('docketCharges', 'Docket Charges')}
               name="docketCharges"
@@ -274,7 +275,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             />
 
             <SimpleChargeField
-              label={getLabel('minWeightKg', 'Min Chargeable Weight')}
+              label="Min Chargeable Wt"
               name="minWeightKg"
               value={chargeValues.minWeightKg ?? 0}
               onChange={(val) => setCharge('minWeightKg', val)}
@@ -306,44 +307,48 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             />
 
             {/* Fuel Surcharge (ComboInput) */}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <label
-                  htmlFor="fuelSurchargePct"
-                  className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
-                >
-                  {getLabel('fuelSurchargePct', 'Fuel Surcharge')}
-                  {isRequired('fuelSurchargePct') && <span className="text-red-500"> *</span>}
-                </label>
-                <div className="group relative">
-                  <InformationCircleIcon className="w-4 h-4 text-slate-400 cursor-help" />
-                  <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                    Fuel surcharge percentage applied on freight
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <label
+                    htmlFor="fuelSurchargePct"
+                    className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide"
+                  >
+                    {getLabel('fuelSurchargePct', 'Fuel Surcharge')}
+                    {isRequired('fuelSurchargePct') && <span className="text-red-500 ml-0.5">*</span>}
+                  </label>
+                  <div className="group relative">
+                    <InformationCircleIcon className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                    <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                      Fuel surcharge percentage applied on freight
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <ComboInput
-                value={chargeValues.fuelSurchargePct ?? 0}
-                options={FUEL_SURCHARGE_OPTIONS}
-                onChange={handleFuelSurchargeChange}
-                onBlur={() => validateField('fuelSurchargePct')}
-                placeholder="0-50"
-                suffix="%"
-                maxLength={2}
-                inputMode="numeric"
-                error={errors.fuelSurchargePct}
-                onKeyDown={(e) => {
-                  if (BLOCKED_KEYS.has(e.key)) {
+              <div className="w-full">
+                <ComboInput
+                  value={chargeValues.fuelSurchargePct ?? 0}
+                  options={FUEL_SURCHARGE_OPTIONS}
+                  onChange={handleFuelSurchargeChange}
+                  onBlur={() => validateField('fuelSurchargePct')}
+                  placeholder="0-50"
+                  suffix="%"
+                  maxLength={2}
+                  inputMode="numeric"
+                  error={errors.fuelSurchargePct}
+                  onKeyDown={(e) => {
+                    if (BLOCKED_KEYS.has(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData?.getData('text') ?? '';
                     e.preventDefault();
-                  }
-                }}
-                onPaste={(e) => {
-                  const pasted = e.clipboardData?.getData('text') ?? '';
-                  e.preventDefault();
-                  handleFuelSurchargeChange(pasted);
-                }}
-              />
+                    handleFuelSurchargeChange(pasted);
+                  }}
+                />
+              </div>
               {!errors.fuelSurchargePct && (
                 <p className="mt-1 text-xs text-slate-500">Max allowed is 50%</p>
               )}
@@ -424,7 +429,8 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             Handling & Other Charges
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-min">
+            {/* ROW 1: Appointment, ROV */}
             <CompactChargeCard
               title="Appointment"
               tooltip="Scheduled delivery appointment charges"
@@ -433,17 +439,6 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               errors={errors.appointmentCharges || {}}
               onFieldChange={(field, value) => setCardField('appointmentCharges', field, value)}
               onFieldBlur={(field) => validateCardField('appointmentCharges', field)}
-            />
-
-            <CompactChargeCard
-              title="Handling"
-              tooltip="Material handling and processing charges"
-              cardName="handlingCharges"
-              data={{ ...createDefaultChargeCard(), ...(chargeValues.handlingCharges || {}) } as ChargeCardData}
-              errors={errors.handlingCharges || {}}
-              onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
-              onFieldBlur={(field) => validateCardField('handlingCharges', field)}
-              required={true}
             />
 
             <CompactChargeCard
@@ -456,6 +451,21 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               onFieldBlur={(field) => validateCardField('rovCharges', field)}
             />
 
+            {/* SPANS RIGHT COLUMN */}
+            <div className="md:col-start-2 lg:col-start-3 md:row-span-2 h-full">
+              <CompactChargeCard
+                title="Handling"
+                tooltip="Material handling and processing charges"
+                cardName="handlingCharges"
+                data={{ ...createDefaultChargeCard(), ...(chargeValues.handlingCharges || {}) } as ChargeCardData}
+                errors={errors.handlingCharges || {}}
+                onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
+                onFieldBlur={(field) => validateCardField('handlingCharges', field)}
+                required={true}
+              />
+            </div>
+
+            {/* ROW 2: COD, To-Pay */}
             <CompactChargeCard
               title="COD / DOD"
               tooltip="Cash on Delivery / Delivery on Demand service charges"
@@ -489,6 +499,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               required={true}
               allowVariable={true}
             />
+
           </div>
         </div>
 
