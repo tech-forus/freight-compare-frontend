@@ -23,6 +23,7 @@ import {
     Train,
     Ship,
     Download,
+    Upload,
     MapPin,
     Navigation,
     X,
@@ -77,7 +78,17 @@ import { getTemporaryTransporters, getRegularTransporters, saveSearchHistory, ap
 import { incrementCalculatorUsageCount, shouldShowNewsPopup } from "../services/newsService";
 
 // 🔽 Centralized API configuration
+// 🔽 Centralized API configuration
 import { API_BASE_URL } from "../config/api";
+
+// 🔽 Excel Utilities
+import {
+    generateBoxLibraryTemplate,
+    parseExcelToBoxes,
+    isExcelFile,
+} from "../utils/excelConverter";
+
+
 
 // -----------------------------------------------------------------------------
 // Limits
@@ -367,6 +378,68 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             ...prev,
             [boxId]: { ...prev[boxId], [field]: true }
         }));
+    };
+
+    // -------------------------------------------------------------------------
+    // Excel Upload State
+    // -------------------------------------------------------------------------
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleDownloadTemplate = () => {
+        try {
+            generateBoxLibraryTemplate();
+            toast.success("Template downloaded successfully");
+        } catch (error) {
+            console.error("Failed to generate template:", error);
+            toast.error("Failed to download template");
+        }
+    };
+
+    const handleUploadExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!isExcelFile(file)) {
+            toast.error("Please upload a valid Excel file (.xlsx or .xls)");
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const parsed = await parseExcelToBoxes(file);
+            if (parsed.length === 0) {
+                toast.error("No valid boxes found in the file");
+                return;
+            }
+
+            // Map to CalculatorPage BoxDetails format
+            const newBoxes: BoxDetails[] = parsed.map((row) => ({
+                id: `box-${Date.now()}-${Math.random()}`,
+                description: row.name,
+                count: row.quantity || 1,
+                weight: row.weight,
+                length: row.length,
+                width: row.width,
+                height: row.height,
+            }));
+
+            // Replace or Append? Usually replace if uploading a full list, or append.
+            // Let's Append to existing boxes, but remove the initial empty one if it exists/is untouched
+            setBoxes((prev) => {
+                const isInitialEmpty = prev.length === 1 && !prev[0].description && !prev[0].weight;
+                return isInitialEmpty ? newBoxes : [...prev, ...newBoxes];
+            });
+
+            toast.success(`Imported ${newBoxes.length} boxes from Excel`);
+        } catch (error: any) {
+            console.error("Excel upload error:", error);
+            toast.error(error.message || "Failed to parse Excel file");
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
     };
 
     const [calculationTarget, setCalculationTarget] = useState<"all" | number>(
@@ -1904,20 +1977,64 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                     )}
 
                                     {/* Download Packing List - Inside Card */}
-                                    <div className="flex items-center justify-end mt-1">
+                                    {/* Download Packing List + Excel Upload - Inside Card */}
+                                    {/* Download Packing List + Excel Upload - Inside Card */}
+                                    <div className="flex items-center justify-between mt-4">
                                         <button
-                                            onClick={downloadPackingListAsExcel}
-                                            disabled={boxes.length === 0 || !boxes.some(b => b.count && b.weight)}
-                                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${boxes.length === 0 || !boxes.some(b => b.count && b.weight)
-                                                ? 'text-slate-300 cursor-not-allowed bg-slate-50'
-                                                : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
-                                                }`}
-                                            title={boxes.length === 0 || !boxes.some(b => b.count && b.weight) ? "Add boxes with quantity and weight to download" : "Download packing list as Excel"}
+                                            onClick={() => setBoxes(prev => [...prev, createNewBox()])}
+                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
                                         >
-                                            <Download size={16} /> Download Packing List
+                                            <PlusCircle size={20} />
+                                            <span>Add Box</span>
                                         </button>
-                                    </div>
 
+                                        <div className="flex items-center gap-2">
+                                            {/* Hidden File Input */}
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                onChange={handleUploadExcel}
+                                                accept=".xlsx,.xls"
+                                                className="hidden"
+                                            />
+
+                                            {/* Upload Excel Button */}
+                                            <button
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={isUploading}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                                title="Upload Excel file to populate boxes"
+                                            >
+                                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                                Upload Excel
+                                            </button>
+
+                                            {/* Download Template Button */}
+                                            <button
+                                                onClick={handleDownloadTemplate}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                                title="Download Excel template"
+                                            >
+                                                <Download size={16} /> Template
+                                            </button>
+
+                                            {/* Separator */}
+                                            <div className="h-4 w-px bg-slate-200 mx-1"></div>
+
+                                            <button
+                                                onClick={downloadPackingListAsExcel}
+                                                disabled={boxes.length === 0 || !boxes.some(b => b.count && b.weight)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${boxes.length === 0 || !boxes.some(b => b.count && b.weight)
+                                                    ? 'text-slate-300 cursor-not-allowed bg-slate-50'
+                                                    : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                                    }`}
+                                                title={boxes.length === 0 || !boxes.some(b => b.count && b.weight) ? "Add boxes with quantity and weight to download" : "Download packing list as Excel"}
+                                            >
+                                                <Download size={16} /> Download
+                                            </button>
+                                        </div>
+
+                                    </div>
                                 </div>
                             </Card>
                         </div>
@@ -2359,7 +2476,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                             // Scroll to results after calculation completes
                                                             setTimeout(() => {
                                                                 const target = document.getElementById("first-results") || document.getElementById("results");
-                                                                target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                if (target) {
+                                                                    // Scroll to start, then adjust up slightly to show context
+                                                                    target.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                    setTimeout(() => {
+                                                                        window.scrollBy({ top: -120, behavior: 'smooth' });
+                                                                    }, 400);
+                                                                }
                                                             }, 350);
                                                         }, 100);
                                                     } else {
