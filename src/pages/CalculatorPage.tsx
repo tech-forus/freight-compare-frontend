@@ -824,7 +824,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             weight: boxPreset.weight,
             description: boxPreset.name,
             count: 0, // 🔧 Set to 0 so placeholder shows instead of "1"
-            count: 0, // 🔧 Set to 0 so placeholder shows instead of "1"
         };
         setBoxes(updated);
 
