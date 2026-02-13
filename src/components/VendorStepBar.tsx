@@ -1,17 +1,16 @@
 import React from 'react';
-import { CheckCircle2, Search, DollarSign, Building2, FileText } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 interface StepDef {
   id: 1 | 2 | 3 | 4;
   label: string;
-  icon: React.ReactNode;
 }
 
 const STEPS: StepDef[] = [
-  { id: 1, label: 'Find Vendor', icon: <Search className="w-3.5 h-3.5" /> },
-  { id: 2, label: 'Pricing', icon: <DollarSign className="w-3.5 h-3.5" /> },
-  { id: 3, label: 'Details', icon: <Building2 className="w-3.5 h-3.5" /> },
-  { id: 4, label: 'Charges', icon: <FileText className="w-3.5 h-3.5" /> },
+  { id: 1, label: 'Find Vendor' },
+  { id: 2, label: 'Pricing' },
+  { id: 3, label: 'Details' },
+  { id: 4, label: 'Charges' },
 ];
 
 interface VendorStepBarProps {
@@ -34,75 +33,77 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
   onReset,
 }) => {
   return (
-    <div className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm select-none">
-      {/* Step indicator row */}
-      <div className="px-5 py-2 flex items-center gap-3">
-        {/* Logo */}
-        <div className="h-8 w-8 rounded-lg bg-blue-600 text-white grid place-items-center font-bold text-sm shrink-0">
-          F
-        </div>
-
-        {/* Steps */}
-        <div className="flex items-center gap-0.5 flex-1">
+    <div className="select-none">
+      {/* Stepper row */}
+      <div className="px-6 pt-4 pb-3 flex items-start justify-center">
+        <div className="flex items-start w-full max-w-xl">
           {STEPS.map((step, i) => {
-            const isActive = currentStep === step.id;
             const isDone = step.id < currentStep;
+            const isActive = step.id === currentStep;
             const isClickable = step.id <= currentStep;
 
             return (
               <React.Fragment key={step.id}>
-                {i > 0 && (
-                  <div className={`w-6 h-px mx-0.5 transition-colors ${isDone ? 'bg-green-400' : 'bg-slate-200'}`} />
+                {/* Step circle + label */}
+                <div className="flex flex-col items-center z-10">
+                  <button
+                    type="button"
+                    onClick={() => isClickable && onStepChange(step.id)}
+                    disabled={!isClickable}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 ${
+                      isDone
+                        ? 'bg-green-500 border-green-500 text-white cursor-pointer hover:bg-green-600 hover:border-green-600'
+                        : isActive
+                        ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
+                        : 'bg-white border-slate-300 text-slate-400 cursor-default'
+                    }`}
+                  >
+                    {isDone ? <Check className="w-4.5 h-4.5" strokeWidth={3} /> : step.id}
+                  </button>
+                  <span
+                    className={`mt-2 text-xs font-medium whitespace-nowrap ${
+                      isDone || isActive ? 'text-green-700' : 'text-slate-400'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+
+                {/* Connector line */}
+                {i < STEPS.length - 1 && (
+                  <div className="flex-1 mt-[18px] px-1">
+                    <div
+                      className={`h-[3px] rounded-full transition-colors ${
+                        step.id < currentStep ? 'bg-green-500' : 'bg-slate-200'
+                      }`}
+                    />
+                  </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => isClickable && onStepChange(step.id)}
-                  disabled={!isClickable}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                      : isDone
-                      ? 'bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
-                      : 'bg-slate-50 text-slate-400 cursor-default'
-                  }`}
-                >
-                  {isDone ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                  ) : (
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      {step.id}
-                    </span>
-                  )}
-                  {step.icon}
-                  {step.label}
-                </button>
               </React.Fragment>
             );
           })}
         </div>
 
-        {/* Right actions */}
+        {/* Reset button */}
         <button
           type="button"
           onClick={onReset}
-          className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
+          className="ml-6 mt-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
         >
           Reset
         </button>
       </div>
 
-      {/* Context header strip — visible after step 1 when vendor is known */}
+      {/* Context strip — visible after step 1 when vendor is known */}
       {currentStep > 1 && vendorName && (
-        <div className="px-5 py-1.5 bg-gradient-to-r from-slate-50 to-blue-50/50 border-t border-slate-100 flex items-center gap-5 text-[11px] text-slate-600 overflow-x-auto">
+        <div className="px-6 py-1.5 bg-green-50/60 border-t border-green-100 flex items-center gap-5 text-[11px] text-slate-600 overflow-x-auto">
           <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
             <span className="font-semibold text-slate-800 truncate max-w-[180px]">{vendorName}</span>
           </span>
           {transportMode && (
             <span className="flex items-center gap-1">
-              <span className="uppercase px-1.5 py-0.5 rounded bg-slate-200/80 font-semibold text-slate-700">{transportMode}</span>
+              <span className="uppercase px-1.5 py-0.5 rounded bg-green-100 font-semibold text-green-800">{transportMode}</span>
             </span>
           )}
           <span className={`flex items-center gap-1 ${zonesCount > 0 ? 'text-green-700' : 'text-amber-600'}`}>

@@ -151,7 +151,7 @@
 // // //                      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
 // // //                      ${className}`}
 // // //         />
-        
+
 // // //         {/* Suffix (%, ₹, KG, etc.) */}
 // // //         {suffix && (
 // // //           <span className="absolute right-10 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">
@@ -355,7 +355,7 @@
 // //                      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
 // //                      ${className}`}
 // //         />
-        
+
 // //         {/* Suffix (%, ₹, KG, etc.) */}
 // //         {suffix && (
 // //           <span className="absolute right-10 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">
@@ -493,13 +493,13 @@
 //     onChange(String(option));
 //     setIsOpen(false);
 //     setHighlightedIndex(-1);
-    
+
 //     // ✅ FIX: Delay onBlur to allow onChange state update to complete
 //     // This fixes the race condition where blur handler fires before onChange completes
 //     setTimeout(() => {
 //       onBlur();
 //     }, 50);
-    
+
 //     inputRef.current?.focus();
 //   };
 
@@ -560,7 +560,7 @@
 //                      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
 //                      ${className}`}
 //         />
-        
+
 //         {/* Suffix (%, ₹, KG, etc.) */}
 //         {suffix && (
 //           <span className="absolute right-10 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">
@@ -697,13 +697,13 @@ export const ComboInput: React.FC<ComboInputProps> = ({
     onChange(String(option));
     setIsOpen(false);
     setHighlightedIndex(-1);
-    
+
     // ✅ FIX: Don't call onBlur here - causes race condition
     // onBlur will fire naturally when input loses focus or via handleInputBlur
     // This gives React time to update state before validation
-    
+
     inputRef.current?.focus();
-    
+
     // ✅ FIX: Trigger blur after a delay to ensure state has updated
     // This mimics natural blur behavior but with proper timing
     setTimeout(() => {
@@ -762,13 +762,13 @@ export const ComboInput: React.FC<ComboInputProps> = ({
           maxLength={maxLength}
           placeholder={placeholder}
           disabled={disabled}
-          className={`block w-full border-2 rounded-lg shadow-sm pl-3 pr-16 py-2 text-sm text-slate-800 placeholder-slate-400
-                     focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition bg-slate-50/70
-                     ${error ? 'border-red-500 focus:border-red-600' : 'border-indigo-500 focus:border-indigo-600'}
+          className={`block w-full border border-slate-300 rounded-md shadow-sm pl-3 pr-16 py-1.5 text-sm text-slate-700 placeholder-slate-400
+                     focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white
+                     ${error ? 'border-red-500 focus:border-red-600' : 'border-slate-300'}
                      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
                      ${className}`}
         />
-        
+
         {/* Suffix (%, ₹, KG, etc.) */}
         {suffix && (
           <span className="absolute right-10 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">
@@ -786,7 +786,7 @@ export const ComboInput: React.FC<ComboInputProps> = ({
                      ${isOpen ? 'bg-slate-100' : ''}`}
           tabIndex={-1}
         >
-          <ChevronDownIcon 
+          <ChevronDownIcon
             className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           />
         </button>
