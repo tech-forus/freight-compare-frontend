@@ -127,7 +127,7 @@ const defaultBasics: VendorBasics = {
   primaryContactEmail: '',
   address: '',
   // NEW keys: explicitly set to null (one-time defaults)
-  serviceMode: null as any,   // possible values: 'FTL' | 'LTL' | null
+  serviceMode: 'LTL' as any,   // possible values: 'FTL' | 'LTL' | null
   companyRating: null, // Will be calculated from vendorRatings
   // Individual rating parameters
   vendorRatings: defaultVendorRatings,
@@ -305,7 +305,7 @@ export const useVendorBasics = (
             basics.address,
             'Address',
             getConstraint('address', 'minLength', 1) as number,
-            getConstraint('address', 'maxLength', 150) as number,
+            150,
             getField('address')?.required ?? true
           );
           break;
@@ -359,7 +359,7 @@ export const useVendorBasics = (
    */
   const validateAll = useCallback((): boolean => {
     const fields: (keyof VendorBasics)[] = [
-      'legalCompanyName',
+      'companyName',
       'contactPersonName',
       'vendorPhoneNumber',
       'vendorEmailAddress',

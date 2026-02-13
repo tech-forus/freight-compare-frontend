@@ -251,6 +251,12 @@ function MapVisual({ originZone, destZone, isRouteActive, isLarge }: MapVisualPr
                     <stop offset="0%" stopColor="#6366f1" />
                     <stop offset="100%" stopColor="#8b5cf6" />
                 </linearGradient>
+                {/* CLIP PATH to keep route inside India */}
+                <clipPath id="mapClip">
+                    {INDIA_PATHS.map((pathData: any, index: number) => (
+                        <path key={index} d={pathData.d} />
+                    ))}
+                </clipPath>
             </defs>
 
             {/* India Base Map - Multi-Path from Official SVG */}

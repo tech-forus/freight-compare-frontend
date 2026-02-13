@@ -434,7 +434,7 @@
 //     }
 
 //     const sanitized = sanitizeDecimalString(rawValue, 2);
-    
+
 //     // Allow just decimal point or trailing decimal during typing
 //     if (sanitized === '.' || sanitized.endsWith('.')) {
 //       // For display purposes, keep the number part
@@ -464,7 +464,7 @@
 //   // Handler for blur - finalizes value
 //   const handleVariableBlur = () => {
 //     const currentValue = data.variableRange;
-    
+
 //     // Handle string values (from decimal typing like "3.")
 //     if (typeof currentValue === 'string') {
 //       const trimmed = currentValue.replace(/\.$/, ''); // Remove trailing decimal
@@ -478,7 +478,7 @@
 //       onFieldBlur('variableRange');
 //       return;
 //     }
-    
+
 //     // Handle empty or invalid
 //     if (currentValue === null || currentValue === undefined || currentValue === '') {
 //       onFieldChange('variableRange', 0);
@@ -702,16 +702,17 @@ interface CompactChargeCardProps {
   title: string;
   tooltip: string;
   cardName:
-    | 'handlingCharges'
-    | 'rovCharges'
-    | 'codCharges'
-    | 'toPayCharges'
-    | 'appointmentCharges';
+  | 'handlingCharges'
+  | 'rovCharges'
+  | 'codCharges'
+  | 'toPayCharges'
+  | 'appointmentCharges';
   data: ChargeCardData;
   errors: Record<string, string>;
   onFieldChange: (field: keyof ChargeCardData, value: any) => void;
   onFieldBlur: (field: keyof ChargeCardData) => void;
   allowVariable?: boolean;
+  required?: boolean;
 }
 
 const BLOCKED = new Set(['e', 'E', '+', '-']);
@@ -744,6 +745,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
   onFieldChange,
   onFieldBlur,
   allowVariable = true,
+  required = false,
 }) => {
   const isFixed = data.mode === 'FIXED';
   const isVariable = data.mode === 'VARIABLE';
@@ -757,7 +759,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
     }
 
     const sanitized = sanitizeDecimalString(rawValue, 2);
-    
+
     // Allow just decimal point or trailing decimal during typing
     if (sanitized === '.' || sanitized.endsWith('.')) {
       // For display purposes, keep the number part
@@ -786,8 +788,8 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
 
   // Handler for blur - finalizes value
   const handleVariableBlur = () => {
-    const currentValue = data.variableRange;
-    
+    const currentValue = data.variableRange as any;
+
     // Handle string values (from decimal typing like "3.")
     if (typeof currentValue === 'string') {
       const trimmed = currentValue.replace(/\.$/, ''); // Remove trailing decimal
@@ -795,7 +797,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
       if (Number.isFinite(num)) {
         const clamped = Math.min(Math.max(num, 0), 5);
         // ✅ FIX: Only update if value actually changed
-        if (clamped !== currentValue) {
+        if (clamped !== num) {
           onFieldChange('variableRange', clamped);
         }
       } else {
@@ -804,7 +806,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
       onFieldBlur('variableRange');
       return;
     }
-    
+
     // Handle empty or invalid
     if (currentValue === null || currentValue === undefined || currentValue === '') {
       onFieldChange('variableRange', 0);
@@ -818,7 +820,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
       onFieldBlur('variableRange');
       return;
     }
-    
+
     // ✅ FIX: Calculate final value but only update if different
     const clamped = Math.min(Math.max(num, 0), 5);
     if (clamped !== currentValue) {
@@ -829,19 +831,44 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-      {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-slate-800">{title}</h3>
-            {tooltip && (
-              <div className="group relative">
-                <InformationCircleIcon className="w-4 h-4 text-slate-400 cursor-help" />
-                <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                  {tooltip}
-                </div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      {/* Header: Title + Tooltip | Toggle + Unit Select */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+          {tooltip && (
+            <div className="group relative">
+              <InformationCircleIcon className="w-4 h-4 text-slate-400 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                {tooltip}
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="inline-flex bg-slate-100 p-0.5 rounded-full">
+            <button
+              type="button"
+              onClick={() => {
+                onFieldChange('currency', 'INR' as Currency);
+                onFieldChange('mode', 'FIXED' as Mode);
+              }}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-full ${isFixed ? 'bg-indigo-600 text-white' : 'bg-transparent text-slate-600'}`}
+            >
+              Fixed ₹
+            </button>
+            {allowVariable && (
+              <button
+                type="button"
+                onClick={() => {
+                  onFieldChange('currency', 'PERCENT' as Currency);
+                  onFieldChange('mode', 'VARIABLE' as Mode);
+                }}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-full ${isVariable ? 'bg-indigo-600 text-white' : 'bg-transparent text-slate-600'}`}
+              >
+                Variable %
+              </button>
             )}
           </div>
 
@@ -849,97 +876,52 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
             <select
               value={data.unit}
               onChange={(e) => onFieldChange('unit', e.target.value as Unit)}
-              className="text-xs border border-slate-300 rounded px-2 py-1 bg-white"
+              className="text-xs border border-slate-300 rounded px-2 py-1 bg-white h-[26px]"
             >
               {UNIT_OPTIONS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
+                <option key={u} value={u}>{u}</option>
               ))}
             </select>
           )}
         </div>
-
-        <div className="inline-flex bg-slate-100 p-1 rounded-full mb-3">
-          <button
-            type="button"
-            onClick={() => {
-              onFieldChange('currency', 'INR' as Currency);
-              onFieldChange('mode', 'FIXED' as Mode);
-            }}
-            className={`px-3 py-1 text-xs font-semibold rounded-full ${
-              isFixed ? 'bg-indigo-600 text-white' : 'bg-transparent text-slate-600'
-            }`}
-          >
-            Fixed ₹
-          </button>
-
-          {allowVariable && (
-            <button
-              type="button"
-              onClick={() => {
-                onFieldChange('currency', 'PERCENT' as Currency);
-                onFieldChange('mode', 'VARIABLE' as Mode);
-              }}
-              className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                isVariable ? 'bg-indigo-600 text-white' : 'bg-transparent text-slate-600'
-              }`}
-            >
-              Variable %
-            </button>
-          )}
-        </div>
-
-        {/* Fixed rate UI */}
-        {isFixed && (
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Fixed Rate
-              {cardName === 'handlingCharges' && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={zeroToBlank(data.fixedAmount ?? null)}
-                onChange={(e) => {
-                  const val = Number(e.target.value || 0);
-                  // Auto-clamp: for handling charges, min is 1, otherwise 0
-                  const min = cardName === 'handlingCharges' ? 1 : 0;
-                  const clamped = Math.min(Math.max(val, min), 5000);
-                  onFieldChange('fixedAmount', clamped);
-                }}
-                onBlur={() => onFieldBlur('fixedAmount')}
-                className={`w-full border rounded-lg shadow-sm pl-3 pr-8 py-2 text-sm ${
-                  errors.fixedAmount ? 'border-red-500' : 'border-slate-300'
-                }`}
-                placeholder=" "
-                onKeyDown={(e) => BLOCKED.has(e.key) && e.preventDefault()}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">₹</span>
-            </div>
-            {errors.fixedAmount && <p className="mt-1 text-xs text-red-600">{errors.fixedAmount}</p>}
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-xs text-slate-500">
-                {cardName === 'handlingCharges' 
-                  ? 'Range: ₹1-5,000 (auto-clamped)' 
-                  : 'Max: ₹5,000 (auto-clamped)'}
-              </p>
-              {cardName === 'handlingCharges' && data.unit && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600 text-white">
-                  {data.unit}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Fixed rate UI */}
+      {isFixed && (
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">
+            Fixed Rate
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              value={zeroToBlank(data.fixedAmount ?? null)}
+              onChange={(e) => {
+                const val = Number(e.target.value || 0);
+                const min = cardName === 'handlingCharges' ? 1 : 0;
+                const clamped = Math.min(Math.max(val, min), 5000);
+                onFieldChange('fixedAmount', clamped);
+              }}
+              onBlur={() => onFieldBlur('fixedAmount')}
+              className={`w-full border-2 rounded-lg shadow-sm pl-3 pr-8 py-2 text-sm text-slate-800 placeholder-slate-400
+                focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition bg-slate-50/70
+                ${errors.fixedAmount ? 'border-red-500 focus:border-red-600' : 'border-indigo-500 focus:border-indigo-600'}`}
+              placeholder=" "
+              onKeyDown={(e) => BLOCKED.has(e.key) && e.preventDefault()}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">₹</span>
+          </div>
+          {errors.fixedAmount && <p className="mt-1 text-xs text-red-600">{errors.fixedAmount}</p>}
+        </div>
+      )}
 
       {/* Variable input - Combo Input (Type or Select) */}
       {isVariable && (
         <div className="mb-4">
           <label className="block text-xs font-semibold text-slate-600 mb-1">
             Percentage (%)
-            {cardName === 'handlingCharges' && <span className="text-red-500 ml-1">*</span>}
+            {required && <span className="text-red-500 ml-1">*</span>}
           </label>
 
           <ComboInput
@@ -997,15 +979,14 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
                 onFieldChange('weightThreshold', clamped);
               }}
               onBlur={() => onFieldBlur('weightThreshold')}
-              className={`w-full border rounded-lg shadow-sm pl-3 pr-10 py-2 text-sm ${
-                errors.weightThreshold ? 'border-red-500' : 'border-slate-300'
-              }`}
+              className={`w-full border rounded-lg shadow-sm pl-3 pr-10 py-2 text-sm ${errors.weightThreshold ? 'border-red-500' : 'border-slate-300'
+                }`}
               placeholder=" "
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">KG</span>
           </div>
           {errors.weightThreshold && <p className="mt-1 text-xs text-red-600">{errors.weightThreshold}</p>}
-          <p className="text-xs text-slate-500 mt-1">Range: 1-20,000 KG (auto-clamped)</p>
+          {/* Removed helper text */}
         </div>
       )}
     </div>

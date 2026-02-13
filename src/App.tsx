@@ -447,6 +447,17 @@ function App() {
               }
             />
 
+            <Route
+              path="/transporter/get-started"
+              element={
+                <MainLayout>
+                  <PublicRoute>
+                    <TransporterSignupPage />
+                  </PublicRoute>
+                </MainLayout>
+              }
+            />
+
             <Route path="/" element={<LandingPage />} />
             <Route
               path="/contact"

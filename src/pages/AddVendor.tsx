@@ -19,13 +19,11 @@ import { useWizardStorage } from '../hooks/useWizardStorage';
 import { CompanySection } from '../components/CompanySection';
 import { TransportSection } from '../components/TransportSection';
 import { ChargesSection } from '../components/ChargesSection';
-import { PriceChartUpload } from '../components/PriceChartUpload';
-import { SavedVendorsTable } from '../components/SavedVendorsTable';
-import ZoneMappingUpload from '../components/ZoneMappingUpload';
-// import { VendorRating, calculateOverallRating } from '../components/VendorRating';
 import ZoneSelectionWizard from '../components/ZoneSelectionWizard';
+import DebugFloat from '../components/DebugFloat';
 import ServiceabilityUpload from '../components/ServiceabilityUpload';
 import type { ServiceabilityEntry, ZoneSummary } from '../components/ServiceabilityUpload';
+import ZonePriceMatrixComponent from '../components/ZonePriceMatrixComponent';
 
 // Utils (unchanged)
 import { readDraft, clearDraft } from '../store/draftStore';
@@ -44,20 +42,19 @@ import {
 } from '../utils/wizardValidation';
 
 
-// Icons
-import { CheckCircleIcon, XCircleIcon, AlertTriangle, RefreshCw, FileText, EyeIcon } from 'lucide-react';
-
-// Optional email validator
-import isEmail from 'isemail';
-
-// ScrollToTop helper (smooth scroll to ref when `when` changes)
-import ScrollToTop from '../components/ScrollToTop'; // adjust path if needed
-
-import { debounce } from 'lodash';
+// Icons (consolidated)
 import {
-  Search,
-  Building2,
+  CheckCircleIcon,
+  XCircleIcon,
+  AlertTriangle,
+  RefreshCw,
+  FileText,
+  EyeIcon,
+  Save,
+  ChevronRight,
   Loader2,
+  Building2,
+  Search,
   ChevronDown,
   CheckCircle2,
   MapPin,
@@ -68,6 +65,17 @@ import {
   Cloud as CloudIcon,
   FileDown
 } from 'lucide-react';
+
+// Optional email validator
+import isEmail from 'isemail';
+
+// ScrollToTop helper (smooth scroll to ref when `when` changes)
+import ScrollToTop from '../components/ScrollToTop';
+import { VendorStepBar } from '../components/VendorStepBar';
+import { VendorSidePanel } from '../components/VendorSidePanel';
+
+import { debounce } from 'lodash';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // UTSF encoder
 import { generateUTSF, downloadUTSF, validateUTSF } from '../services/utsfEncoder';
@@ -148,8 +156,24 @@ type ZonePriceMatrixLS = {
   priceMatrix: PriceMatrix;
   timestamp: string;
 };
+/** Lightweight search result for dropdown display */
+interface VendorSearchResult {
+  id: string;
+  source: 'public' | 'temporary';
+  isTemporary: boolean;
+  companyName: string;
+  legalCompanyName: string;
+  displayName: string;
+  vendorCode: string;
+  rating: number;
+  zones: string[];
+}
+
+/** Full vendor data returned by detail endpoint (used for autofill) */
 interface VendorSuggestion {
   id: string;
+  source?: string;
+  isTemporary?: boolean;
   displayName: string;
   companyName: string;
   legalCompanyName: string;
@@ -167,12 +191,35 @@ interface VendorSuggestion {
   city: string;
   pincode: string | number;
   transportMode: string;
+  mode?: string;
+  serviceMode?: string;
   rating: number;
   zones: string[];
+  zoneConfigs?: Array<{
+    zoneCode: string;
+    zoneName: string;
+    region: string;
+    selectedStates: string[];
+    selectedCities: string[];
+    isComplete: boolean;
+  }>;
   zoneMatrixStructure: Record<string, Record<string, string>>;
   volumetricUnit: string;
   divisor: number;
   cftFactor: number | null;
+  charges?: Record<string, any>;
+  priceChart?: Record<string, Record<string, number>>;
+  invoiceValueCharges?: Record<string, any>;
+  serviceability?: Array<{
+    pincode: string;
+    zone: string;
+    state: string;
+    city: string;
+    isODA?: boolean;
+    active?: boolean;
+  }>;
+  serviceabilityChecksum?: string;
+  serviceabilitySource?: string;
 }
 function getAuthToken(): string {
   return (
@@ -293,6 +340,7 @@ export const AddVendor: React.FC = () => {
   // 👉 for ScrollToTop
   const topRef = useRef<HTMLDivElement | null>(null);
   const [scrollKey, setScrollKey] = useState<number | string>(0);
+  const [debugLogs] = useState<string[]>([]);
 
   // Invoice Value State (New)
   const [invoicePercentage, setInvoicePercentage] = useState<string>('');
@@ -301,14 +349,14 @@ export const AddVendor: React.FC = () => {
   const [invoiceManualOverride, setInvoiceManualOverride] = useState<boolean>(false);
   const [showInvoiceSection, setShowInvoiceSection] = useState<boolean>(false);
 
-  // Save Mode: 'cloud' | 'cloud_utsf' | 'utsf'
-  const [saveMode, setSaveMode] = useState<'cloud' | 'cloud_utsf' | 'utsf'>('cloud_utsf');
+  // Save Mode: 'cloud' | 'cloud_utsf' | 'utsf' | 'draft' | 'active'
+  const [saveMode, setSaveMode] = useState<'cloud' | 'cloud_utsf' | 'utsf' | 'draft' | 'active'>('active');
 
   // Zone Price Matrix (from wizard/localStorage)
   const [zpm, setZpm] = useState<ZonePriceMatrixLS | null>(null);
 
   // Zone configuration mode: 'wizard', 'upload', 'auto', or 'pincode' (new pincode-authoritative mode)
-  const [zoneConfigMode, setZoneConfigMode] = useState<'wizard' | 'upload' | 'auto' | 'pincode'>('pincode');
+  const [zoneConfigMode, setZoneConfigMode] = useState<'wizard' | 'upload' | 'auto' | 'pincode' | 'matrix'>('pincode');
 
   // NEW: Pincode-authoritative serviceability state
   const [serviceabilityData, setServiceabilityData] = useState<{
@@ -323,10 +371,32 @@ export const AddVendor: React.FC = () => {
   const [wizardStatus, setWizardStatus] = useState<WizardStatus | null>(null);
 
   const navigate = useNavigate();
+
+  // ============================================================================
+  // STEP WORKFLOW STATE
+  // ============================================================================
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [vendorMode, setVendorMode] = useState<'existing' | 'new_with_pincodes' | 'new_without_pincodes' | null>(null);
+
+  const goToStep = useCallback((step: 1 | 2 | 3 | 4) => {
+    setCurrentStep(step);
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const goNext = useCallback(() => {
+    setCurrentStep(prev => Math.min(prev + 1, 4) as 1 | 2 | 3 | 4);
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const goBack = useCallback(() => {
+    setCurrentStep(prev => Math.max(prev - 1, 1) as 1 | 2 | 3 | 4);
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   // ============================================================================
   // VENDOR AUTOCOMPLETE STATE
   // ============================================================================
-  const [suggestions, setSuggestions] = useState<VendorSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<VendorSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -361,12 +431,10 @@ export const AddVendor: React.FC = () => {
   // VENDOR AUTOCOMPLETE FUNCTIONS
   // ============================================================================
 
-  // Search function (debounced)
+  // Search function (debounced) - returns lightweight results for dropdown
   const searchTransporters = useMemo(
     () =>
       debounce(async (query: string) => {
-        // Early exit for short queries - DON'T reset loading here
-        // Let the finally block handle it to ensure spinner shows until debounce completes
         if (!query || query.length < 2) {
           setSuggestions([]);
           return;
@@ -389,6 +457,7 @@ export const AddVendor: React.FC = () => {
           const token = getAuthToken();
           const url = `${API_BASE}/api/transporter/search-transporters?query=${encodeURIComponent(query)}&customerID=${encodeURIComponent(customerID)}&limit=10`;
 
+          console.time('[Search] API call');
           const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -397,16 +466,19 @@ export const AddVendor: React.FC = () => {
             },
             signal: abortControllerRef.current.signal
           });
+          console.timeEnd('[Search] API call');
 
           if (!response.ok) throw new Error(`Search failed: ${response.status}`);
 
           const data = await response.json();
+          if (data.meta?.timeMs) {
+            console.log(`[Search] Backend took ${data.meta.timeMs}ms`);
+          }
 
           if (data.success && data.data?.length > 0) {
             setSuggestions(data.data);
             setShowDropdown(true);
           } else {
-            // No results found - show popup notification
             setSuggestions([]);
             toast.error(`No transporters found for "${query}"`, {
               duration: 3000,
@@ -419,21 +491,48 @@ export const AddVendor: React.FC = () => {
             setSuggestions([]);
           }
         } finally {
-          // Always reset loading state here - ensures consistent behavior
           setIsSearching(false);
         }
-      }, 300),
+      }, 200),  // Reduced from 300ms - search is now lightweight
     []
   );
 
-  // Auto-select handler (FIXED – sync wrapper)
+  // Auto-select handler: fetches full detail, then auto-fills form
   const handleVendorAutoSelect = useCallback(
-    (vendor: VendorSuggestion) => {
-      console.log('[AutoFill] selecting vendor', vendor);
+    (searchResult: VendorSearchResult) => {
+      console.log('[AutoFill] selecting vendor (lightweight):', searchResult.id, searchResult.companyName);
 
-      // 🔑 IMPORTANT: keep handler sync, run async logic inside
+      // Close dropdown immediately for responsive feel
+      setShowDropdown(false);
+      setHighlightedIndex(-1);
+
       (async () => {
         try {
+          // Step 1: Fetch full vendor detail from new endpoint
+          const token = getAuthToken();
+          const customerID = getCustomerIDFromToken();
+          const detailUrl = `${API_BASE}/api/transporter/search-transporters/${searchResult.id}?source=${encodeURIComponent(searchResult.source)}&customerID=${encodeURIComponent(customerID)}`;
+
+          console.time('[AutoFill] detail-fetch');
+          const detailRes = await fetch(detailUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          console.timeEnd('[AutoFill] detail-fetch');
+
+          if (!detailRes.ok) throw new Error(`Detail fetch failed: ${detailRes.status}`);
+
+          const detailData = await detailRes.json();
+          if (!detailData.success || !detailData.data) {
+            throw new Error('No detail data returned');
+          }
+
+          const vendor = detailData.data as VendorSuggestion;
+
+          // Step 2: Apply autofill with full data
           await applyVendorAutofill(vendor, { blankCellValue: '' });
 
           // UI bookkeeping (AFTER autofill completes)
@@ -442,12 +541,16 @@ export const AddVendor: React.FC = () => {
             vendor.displayName || vendor.companyName || vendor.legalCompanyName || ''
           );
           setAutoFilledFromId(vendor.id || null);
-          setShowDropdown(false);
           setSuggestions([]);
-          setHighlightedIndex(-1);
 
-          // Auto-select Wizard tab when results are found
-          setZoneConfigMode('wizard');
+          // Auto-select Wizard and switch to matrix if data exists
+          if ((vendor.zones && vendor.zones.length > 0) || (vendor.zoneMatrixStructure && Object.keys(vendor.zoneMatrixStructure).length > 0)) {
+            setZoneConfigMode('matrix');
+          } else {
+            // Even if zones are initially empty, we might have successfully autofilled serviceability
+            // which will generate zones. So we FORCE matrix mode here to meet user request "show matrix directly".
+            setZoneConfigMode('matrix');
+          }
 
           toast.success(
             `Auto-filled from "${vendor.displayName || vendor.companyName}". ${vendor.zones?.length || 0
@@ -496,8 +599,19 @@ export const AddVendor: React.FC = () => {
         duration: 1400,
         id: 'zpm-loaded',
       });
+      setZoneConfigMode('matrix');
     }
   }, [wizardData]);
+
+  // ROBUST AUTO-SWITCH: If we have zones (and auto-filled), go to matrix
+  useEffect(() => {
+    if (isAutoFilled && wizardData.zones && wizardData.zones.length > 0) {
+      if (zoneConfigMode !== 'matrix') {
+        console.log('[AutoSwitch] Switching to Matrix mode because zones are loaded');
+        setZoneConfigMode('matrix');
+      }
+    }
+  }, [isAutoFilled, wizardData.zones, zoneConfigMode]);
 
   // Handle zone mapping upload (from CSV/Excel)
   const handleZoneMappingUpload = useCallback((data: {
@@ -650,6 +764,9 @@ export const AddVendor: React.FC = () => {
       toast.success(`Auto-assigned ${data.zones.length} zones with ${totalCities} cities! Now fill in prices.`, {
         duration: 5000,
       });
+
+      // Switch to Price Matrix mode immediately
+      setZoneConfigMode('matrix');
 
     } catch (err) {
       console.error('[ZoneSelection] Failed to save:', err);
@@ -820,14 +937,14 @@ export const AddVendor: React.FC = () => {
 
     if (mode === 'FIXED') {
       // when ROV is fixed -> invoice min := fixed amount, percentage := 0.0001, useMax := true
-      const fixedVal = rov.fixedAmount ?? rov.fixed ?? rov.fixedRate ?? 0;
+      const fixedVal = rov.fixedAmount ?? (rov as any).fixed ?? (rov as any).fixedRate ?? 0;
       const fixedStr = String(Number(fixedVal) || 0);
       setInvoiceMinAmount(fixedStr);
       setInvoicePercentage('0.0001');
       setInvoiceUseMax(true);
     } else if (mode === 'VARIABLE') {
       // when ROV is variable -> invoice percentage := rov variable, min := 0, useMax := true
-      const varVal = rov.variableRange ?? rov.variable ?? rov.variablePct ?? rov.variablePercent ?? '';
+      const varVal = rov.variableRange ?? (rov as any).variable ?? (rov as any).variablePct ?? (rov as any).variablePercent ?? '';
       const varStr = toStr(varVal);
       setInvoicePercentage(varStr);
       setInvoiceMinAmount('0');
@@ -1506,7 +1623,7 @@ export const AddVendor: React.FC = () => {
       emitDebug('SUBMIT_PAYLOAD_FOR_API', payloadForApi);
 
       // ========== CLOUD SAVE ==========
-      if (saveMode === 'cloud' || saveMode === 'cloud_utsf') {
+      if (['cloud', 'cloud_utsf', 'active', 'draft'].includes(saveMode)) {
         const fd = new FormData();
         fd.append('customerID', String(payloadForApi.customerID || ''));
         fd.append('companyName', payloadForApi.companyName);
@@ -1645,6 +1762,8 @@ export const AddVendor: React.FC = () => {
       setAutoFilledFromId(null);
       setSuggestions([]);
       setServiceabilityData(null);
+      setCurrentStep(1);
+      setVendorMode(null);
       setScrollKey(Date.now());
     } catch (err) {
       emitDebugError('SUBMIT_EXCEPTION', {
@@ -1684,10 +1803,43 @@ export const AddVendor: React.FC = () => {
     setAutoFilledFromId(null);
     setSuggestions([]);
     setServiceabilityData(null);  // ✅ NEW: Reset serviceability data
+    setCurrentStep(1);           // Reset step workflow
+    setVendorMode(null);         // Reset vendor mode
     clearDraft();
     clearWizard(); // ADD THIS
     toast.success('Form reset', { duration: 1200 });
   };
+
+  // ========================================================================
+  // COMPUTED VALUES FOR SIDE PANEL & STEP BAR
+  // ========================================================================
+  const sidePanelProps = useMemo(() => {
+    const b = vendorBasics.basics;
+    const c = charges.charges;
+    return {
+      vendorName: b.companyName || legalCompanyNameInput || undefined,
+      vendorCode: b.vendorCode || undefined,
+      transportMode: transportMode || undefined,
+      serviceMode: b.serviceMode || undefined,
+      pincodeCount: serviceabilityData?.serviceability?.length ?? 0,
+      hasCompanyInfo: !!(b.companyName && b.companyName.length >= 2),
+      hasContactInfo: !!(b.contactPersonName || b.primaryContactName),
+      hasGST: !!(b.gstin && b.gstin.length >= 15),
+      hasCharges: !!(c && (
+        c.docketCharges > 0 ||
+        c.minWeightKg > 0 ||
+        c.fuelSurchargePct > 0
+      )),
+    };
+  }, [vendorBasics.basics, legalCompanyNameInput, transportMode, serviceabilityData, charges.charges]);
+
+  const sideWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (matrixSize.rows === 0) warnings.push('No zones configured');
+    if (!sidePanelProps.hasCompanyInfo) warnings.push('Company name missing');
+    if (!sidePanelProps.hasGST) warnings.push('GST not provided');
+    return warnings;
+  }, [matrixSize.rows, sidePanelProps.hasCompanyInfo, sidePanelProps.hasGST]);
 
   // ========================================================================
   // PAGE UI (your preferred UI)
@@ -1697,722 +1849,717 @@ export const AddVendor: React.FC = () => {
       ref={topRef}
       className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200"
     >
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-20 backdrop-blur bg-white/70 border-b border-slate-200">
-        <div className="w-full px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-blue-600 text-white grid place-items-center font-bold shadow-sm">
-              F
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900">Add Vendor</h1>
-              <p className="text-xs text-slate-600">
-                Freight Cost Calculator · Transporter Setup
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-          </div>
-        </div>
+      {/* ═══ STICKY STEP BAR ═══ */}
+      <div className="mt-4">
+        <VendorStepBar
+          currentStep={currentStep}
+          onStepChange={goToStep}
+          vendorName={sidePanelProps.vendorName}
+          transportMode={transportMode}
+          zonesCount={matrixSize.rows}
+          pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
+          onReset={handleReset}
+        />
       </div>
 
-      {/* Content */}
-      <div className="w-full px-8 py-6">
-        <form id="add-vendor-form" onSubmit={handleSubmit} className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white/90 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 gap-0 divide-y divide-slate-200">
-              <div className="p-6 md:p-8">
-                {/* VENDOR AUTOCOMPLETE SECTION */}
-                <div className="p-6 md:p-8 bg-gradient-to-r from-blue-50 to-slate-50">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Search className="w-5 h-5 text-blue-600" />
-                      <h3 className="text-lg font-semibold text-slate-900">Quick Lookup</h3>
-                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">NEW</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleReset}
-                        className="px-4 py-2 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300"
-                      >
-                        Reset
-                      </button>
-                      <button
-                        type="submit"
-                        form="add-vendor-form"
-                        disabled={isSubmitting}
-                        className={`px-4 py-2 rounded-lg text-white disabled:opacity-50 ${
-                          outputMode === 'cloud' ? 'bg-blue-600 hover:bg-blue-700' :
-                          outputMode === 'cloud+utsf' ? 'bg-emerald-600 hover:bg-emerald-700' :
-                          'bg-indigo-600 hover:bg-indigo-700'
-                        }`}
-                      >
-                        {isSubmitting ? 'Saving…' :
-                         outputMode === 'cloud' ? 'Save to Cloud' :
-                         outputMode === 'cloud+utsf' ? 'Cloud + UTSF' :
-                         'Generate UTSF'}
-                      </button>
-                    </div>
+      {/* ═══ UNIFIED WHITE CARD: Content + Side Panel ═══ */}
+      <div className="mx-4 md:mx-6 mt-4 mb-6 bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div className="flex gap-0 min-h-[calc(100vh-140px)]">
+          {/* LEFT: Main Content */}
+          <div className="flex-1 min-w-0 p-6">
+            <form id="add-vendor-form" onSubmit={handleSubmit} className="space-y-3">
+
+              {/* ════════════════════════════════════════════════ */}
+              {/* STEP 1: FIND VENDOR (REDESIGNED)                */}
+              {/* ════════════════════════════════════════════════ */}
+              <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="max-w-3xl mx-auto pt-10"
+                >
+
+                  {/* HERO HEADING */}
+                  <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-slate-800 mb-2">Find Your Vendor</h2>
+                    <p className="text-slate-500">Search for an existing partner or create a new profile.</p>
                   </div>
 
-                  <div ref={dropdownRef} className="relative max-w-2xl">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={legalCompanyNameInput}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setLegalCompanyNameInput(value);
-                          setIsAutoFilled(false);
-
-                          // Show loading immediately if query is long enough
-                          if (value.length >= 2) {
-                            setIsSearching(true);
-                          }
-
-                          searchTransporters(value);
-                        }}
-                        onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-                        onKeyDown={(e) => {
-                          if (!showDropdown || !suggestions.length) return;
-                          if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
-                          } else if (e.key === 'ArrowUp') {
-                            e.preventDefault();
-                            setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
-                          } else if (e.key === 'Enter' && highlightedIndex >= 0) {
-                            e.preventDefault();
-                            handleVendorAutoSelect(suggestions[highlightedIndex]);
-                          } else if (e.key === 'Escape') {
-                            setShowDropdown(false);
-                          }
-                        }}
-                        placeholder="Search existing transporters or enter new company name..."
-                        className={`w-full px-4 py-3.5 pl-12 pr-10 border-2 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 ${isAutoFilled ? 'border-green-400 bg-green-50' : 'border-slate-300 hover:border-slate-400'}`}
-                      />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                        {isSearching ? <Loader2 className="w-5 h-5 text-blue-500 animate-spin" /> : isAutoFilled ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Search className="w-5 h-5 text-slate-400" />}
+                  {/* SEARCH CONTAINER */}
+                  <div ref={dropdownRef} className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative z-10">
+                    <div className="p-1">
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          {isSearching ? <Loader2 className="h-6 w-6 text-blue-500 animate-spin" /> : <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-500 transition-colors" />}
+                        </div>
+                        <input
+                          type="text"
+                          className="block w-full pl-12 pr-4 py-4 text-lg border-none focus:ring-0 focus:outline-none placeholder:text-slate-300 transition-all bg-transparent"
+                          placeholder="Type vendor name..."
+                          value={legalCompanyNameInput}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setLegalCompanyNameInput(value);
+                            setIsAutoFilled(false);
+                            if (value.length >= 2) setIsSearching(true);
+                            searchTransporters(value);
+                          }}
+                          onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+                          onKeyDown={(e) => {
+                            if (!showDropdown || !suggestions.length) return;
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
+                            } else if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
+                            } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+                              e.preventDefault();
+                              handleVendorAutoSelect(suggestions[highlightedIndex]);
+                            } else if (e.key === 'Escape') {
+                              setShowDropdown(false);
+                            }
+                          }}
+                        />
+                        {/* Clear Button */}
+                        {legalCompanyNameInput.length > 0 && !isAutoFilled && (
+                          <button
+                            type="button"
+                            onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                          >
+                            <XCircleIcon className="h-5 w-5 text-slate-300 hover:text-slate-500 transition-colors" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    {showDropdown && suggestions.length > 0 && (
-                      <div className="absolute z-50 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-72">
-                        <div className="px-4 py-2 border-b bg-slate-50 text-xs font-semibold text-slate-600">
-                          {suggestions.length} transporter{suggestions.length !== 1 ? 's' : ''} found
-                        </div>
-                        <div className="overflow-y-auto max-h-60">
+                    {/* DROPDOWN RESULTS */}
+                    <AnimatePresence>
+                      {showDropdown && suggestions.length > 0 && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="border-t border-slate-100 bg-slate-50/50 max-h-60 overflow-y-auto"
+                        >
                           {suggestions.map((v, i) => (
-                            <button
+                            <div
                               key={v.id}
-                              type="button"
                               onClick={() => handleVendorAutoSelect(v)}
                               onMouseEnter={() => setHighlightedIndex(i)}
-                              className={`w-full px-4 py-3 text-left flex items-center gap-3 border-b border-slate-100 ${highlightedIndex === i ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                              className={`px-4 py-3 cursor-pointer flex items-center gap-3 transition-colors ${highlightedIndex === i ? 'bg-blue-50' : 'hover:bg-white'}`}
                             >
-                              <Building2 className={`w-8 h-8 p-1.5 rounded-lg text-white ${highlightedIndex === i ? 'bg-blue-500' : 'bg-slate-400'}`} />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-slate-900 truncate">{v.legalCompanyName || v.companyName}</p>
-                                <div className="flex gap-1.5 mt-1">
-                                  {v.vendorCode && <span className="text-xs px-1.5 py-0.5 bg-slate-100 rounded">{v.vendorCode}</span>}
-                                  {v.zones?.length > 0 && <span className="text-xs px-1.5 py-0.5 bg-green-50 text-green-700 rounded">{v.zones.length} zones</span>}
+                              <div className={`p-2 rounded-lg ${v.isTemporary ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                                <Building2 className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-slate-800 text-sm">{v.legalCompanyName || v.companyName}</h4>
+                                <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
+                                  {v.vendorCode && <span className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">{v.vendorCode}</span>}
+                                  {v.zones?.length > 0 && <span>• {v.zones.length} zones active</span>}
                                 </div>
                               </div>
-                              <span className={`text-xs px-2 py-1 rounded ${highlightedIndex === i ? 'bg-blue-500 text-white' : 'bg-slate-100'}`}>Select</span>
-                            </button>
+                              <div className="text-slate-400">
+                                <CheckCircleIcon className="w-5 h-5 text-slate-300 hover:text-blue-500" />
+                              </div>
+                            </div>
                           ))}
-                        </div>
-                      </div>
-                    )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
-                  {!isAutoFilled && <p className="mt-2 text-xs text-slate-500">💡 Type 2+ characters to search existing transporters</p>}
+                  {/* ══ CASE 1: VENDOR AUTO-FILLED (SUCCESS) ══ */}
+                  <AnimatePresence>
+                    {isAutoFilled && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mt-6 bg-emerald-50 border border-emerald-100 rounded-xl p-5 shadow-sm"
+                      >
+                        <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-emerald-100 p-2 rounded-full">
+                              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-emerald-900">Vendor Loaded</h4>
+                              <p className="text-sm text-emerald-700">
+                                Data auto-filled from <strong>{autoFilledFromName}</strong>
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3 w-full md:w-auto">
+                            <button
+                              type="button"
+                              onClick={clearAutoFill}
+                              className="flex-1 md:flex-none px-4 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-50"
+                            >
+                              Clear
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setVendorMode('existing'); goNext(); }}
+                              className="flex-1 md:flex-none px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center justify-center gap-2"
+                            >
+                              Continue <ChevronDown className="w-4 h-4 -rotate-90" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                  {isAutoFilled && (
-                    <div className="mt-3 flex items-center justify-between bg-green-100 border border-green-300 px-4 py-3 rounded-xl text-green-800">
-                      <span><CheckCircle2 className="w-4 h-4 inline mr-2" />Auto-filled from <strong>{autoFilledFromName}</strong>. Fill in prices.</span>
-                      <button type="button" onClick={clearAutoFill} className="text-xs underline">Clear</button>
+                  {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
+                  {/* Show this if: Not auto-filled AND (Search is empty OR No results found) */}
+                  {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className="mt-12"
+                    >
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="h-px bg-slate-200 flex-1"></div>
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or Create New</span>
+                        <div className="h-px bg-slate-200 flex-1"></div>
+                      </div>
+
+                      <p className="text-center text-slate-600 mb-6 font-medium">Do you have a pincode serviceability list?</p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {/* OPTION A: HAS PINCODES (EXCEL) */}
+                        <button
+                          type="button"
+                          onClick={() => { setVendorMode('new_with_pincodes'); setZoneConfigMode('pincode'); goNext(); }}
+                          className="group relative bg-white border-2 border-slate-100 hover:border-green-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
+                        >
+                          <div className="absolute top-4 right-4 text-slate-300 group-hover:text-green-500 transition-colors">
+                            <CheckCircle2 className="w-6 h-6" />
+                          </div>
+                          <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <FileSpreadsheet className="w-6 h-6" />
+                          </div>
+                          <h3 className="font-bold text-slate-800 text-lg group-hover:text-green-700">Yes, I have an Excel file</h3>
+                          <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                            Upload your pincode list (Excel/CSV). We will maximize coverage automatically.
+                          </p>
+                        </button>
+
+                        {/* OPTION B: MANUAL (WIZARD) */}
+                        <button
+                          type="button"
+                          onClick={() => { setVendorMode('new_without_pincodes'); setZoneConfigMode('wizard'); goNext(); }}
+                          className="group relative bg-white border-2 border-slate-100 hover:border-blue-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
+                        >
+                          <div className="absolute top-4 right-4 text-slate-300 group-hover:text-blue-500 transition-colors">
+                            <MapPin className="w-6 h-6" />
+                          </div>
+                          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <Sparkles className="w-6 h-6" />
+                          </div>
+                          <h3 className="font-bold text-slate-800 text-lg group-hover:text-blue-700">No, select manually</h3>
+                          <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                            Use the Zone Wizard to select states, cities, and regions manually.
+                          </p>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                </motion.div>
+              </div>{/* close rounded-xl */}
+              {/* END STEP 1 */}
+
+              {/* ════════════════════════════════════════════════ */}
+              {/* STEP 3: COMPANY DETAILS                         */}
+              {/* ════════════════════════════════════════════════ */}
+              <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
+                <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
+                  <div className="p-5">
+                    <CompanySection
+                      vendorBasics={vendorBasics}
+                      pincodeLookup={pincodeLookup}
+                    />
+                  </div>
+                  <div className="p-5">
+                    <TransportSection
+                      volumetric={volumetric}
+                      transportMode={transportMode}
+                      onTransportModeChange={(m) => setTransportMode(m)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <button type="button" onClick={goBack} className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
+                    ← Back to Pricing
+                  </button>
+                  <button type="button" onClick={goNext} className="px-5 py-2.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
+                    Next: Charges & Save →
+                  </button>
+                </div>
+              </div>{/* END STEP 3 */}
+
+              {/* ════════════════════════════════════════════════ */}
+              {/* STEP 4: CHARGES & SAVE                          */}
+              {/* ════════════════════════════════════════════════ */}
+              <div style={{ display: currentStep === 4 ? 'block' : 'none' }}>
+                <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
+                  <div className="p-5">
+                    <ChargesSection charges={charges} />
+                  </div>
+
+                  {/* Invoice Value Charges Section */}
+                  {showInvoiceSection && (
+                    <div className="p-6 md:p-8 bg-slate-50/60 border-t border-slate-200">
+                      <div className="w-full">
+                        <div className="flex items-center gap-2 mb-4">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                          <h3 className="text-lg font-semibold text-slate-900">
+                            Invoice Value Configuration
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Percentage Input */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                              Invoice Value Percentage (%)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={invoicePercentage}
+                                onChange={(e) => {
+                                  // Allow numbers and one dot
+                                  const val = e.target.value.replace(/[^0-9.]/g, '');
+                                  if ((val.match(/\./g) || []).length <= 1) {
+                                    setInvoicePercentage(val);
+                                    setInvoiceManualOverride(true);
+                                  }
+                                }}
+                                placeholder="0.00"
+                                className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
+                              />
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span className="text-slate-400 text-sm">%</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
+                          </div>
+
+                          {/* Min Amount Input */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                              Minimum Amount (₹)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={invoiceMinAmount}
+                                onChange={(e) => {
+                                  const val = sanitizeDigitsOnly(e.target.value);
+                                  setInvoiceMinAmount(val);
+                                  setInvoiceManualOverride(true);
+                                }}
+                                placeholder="0"
+                                className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
+                              />
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span className="text-slate-400 text-sm">₹</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
+                          </div>
+                        </div>
+
+                        {/* UI Matching Toggle */}
+                        <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                          <div className="flex-1">
+                            <span className="text-sm font-semibold text-slate-900">Calculation Method</span>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Use the maximum of the percentage value and the minimum amount?
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => setInvoiceUseMax(true)}
+                              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${invoiceUseMax ? 'bg-white text-blue-600 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
+                                }`}
+                            >
+                              Yes, Use Max
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setInvoiceUseMax(false)}
+                              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${!invoiceUseMax ? 'bg-white text-slate-900 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
+                                }`}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
-                </div>
-
-                <CompanySection
-                  vendorBasics={vendorBasics}
-                  pincodeLookup={pincodeLookup}
-                />
-              </div>
-
-              {/* Vendor Rating Section */}
-              {/* Vendor Rating Section Removed */}
-
-              <div className="p-6 md:p-8">
-                <TransportSection
-                  volumetric={volumetric}
-                  transportMode={transportMode}
-                  onTransportModeChange={(m) => setTransportMode(m)}
-                />
-              </div>
-
-              <div className="p-6 md:p-8">
-                <ChargesSection charges={charges} />
-              </div>
-
-              {/* Invoice Value Charges Section (Placed Intelligently here) */}
-              {showInvoiceSection && (
-                <div className="p-6 md:p-8 bg-slate-50/60 border-t border-slate-200">
-                  <div className="w-full">
-                    <div className="flex items-center gap-2 mb-4">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                      <h3 className="text-lg font-semibold text-slate-900">
-                        Invoice Value Configuration
-                      </h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Percentage Input */}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Invoice Value Percentage (%)
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={invoicePercentage}
-                            onChange={(e) => {
-                              // Allow numbers and one dot
-                              const val = e.target.value.replace(/[^0-9.]/g, '');
-                              if ((val.match(/\./g) || []).length <= 1) {
-                                setInvoicePercentage(val);
-                                setInvoiceManualOverride(true);
-                              }
-                            }}
-                            placeholder="0.00"
-                            className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
-                          />
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <span className="text-slate-400 text-sm">%</span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
-                      </div>
-
-                      {/* Min Amount Input */}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Minimum Amount (₹)
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={invoiceMinAmount}
-                            onChange={(e) => {
-                              const val = sanitizeDigitsOnly(e.target.value);
-                              setInvoiceMinAmount(val);
-                              setInvoiceManualOverride(true);
-                            }}
-                            placeholder="0"
-                            className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 pl-3 pr-8"
-                          />
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <span className="text-slate-400 text-sm">₹</span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">Numeric values only.</p>
-                      </div>
-                    </div>
-
-                    {/* UI Matching Toggle */}
-                    <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-                      <div className="flex-1">
-                        <span className="text-sm font-semibold text-slate-900">Calculation Method</span>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Use the maximum of the percentage value and the minimum amount?
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-                        <button
-                          type="button"
-                          onClick={() => setInvoiceUseMax(true)}
-                          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${invoiceUseMax ? 'bg-white text-blue-600 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
-                            }`}
-                        >
-                          Yes, Use Max
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInvoiceUseMax(false)}
-                          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all shadow-sm ${!invoiceUseMax ? 'bg-white text-slate-900 ring-1 ring-black/5' : 'bg-transparent text-slate-500 hover:text-slate-700 shadow-none'
-                            }`}
-                        >
-                          No
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
 
-              {/* Zone Price Matrix section with validation */}
-              <div className="p-6 md:p-8 bg-slate-50/60">
-                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                  {/* Header with mode toggle */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      Serviceability & Pricing
-                    </h3>
+                </div>{/* close Step 4 charges card */}
+              </div>{/* close Step 4 first block (charges+invoice) */}
 
-                    {/* Mode Toggle - 4 options with Pincode Upload as default */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setZoneConfigMode('pincode')}
-                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${zoneConfigMode === 'pincode'
-                          ? 'bg-white text-green-600 shadow-sm ring-1 ring-black/5'
-                          : 'bg-transparent text-slate-500 hover:text-slate-700'
-                          }`}
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5 inline mr-1" />
-                        Pincode Upload
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setZoneConfigMode('wizard')}
-                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${zoneConfigMode === 'wizard'
-                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                          : 'bg-transparent text-slate-500 hover:text-slate-700'
-                          }`}
-                      >
-                        <MapPin className="w-3.5 h-3.5 inline mr-1" />
-                        Wizard
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setZoneConfigMode('auto')}
-                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${zoneConfigMode === 'auto'
-                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                          : 'bg-transparent text-slate-500 hover:text-slate-700'
-                          }`}
-                      >
-                        <Sparkles className="w-3.5 h-3.5 inline mr-1" />
-                        Auto Assign
-                      </button>
+              {/* ════════════════════════════════════════════════ */}
+              {/* STEP 2: PRICING SETUP (REDESIGNED)              */}
+              {/* ════════════════════════════════════════════════ */}
+              <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="max-w-4xl mx-auto"
+                >
+
+                  {/* Header & Tabs */}
+                  <div className="flex flex-col items-center mb-8">
+                    <h3 className="text-2xl font-bold text-slate-800 mb-6">Serviceability & Pricing</h3>
+
+                    {/* Segmented Control */}
+                    <div className="bg-slate-100 p-1.5 rounded-xl flex items-center shadow-inner">
+                      {[
+                        { id: 'pincode', label: 'Pincode Upload', icon: FileSpreadsheet },
+                        { id: 'wizard', label: 'Zone Wizard', icon: MapPin },
+                        { id: 'auto', label: 'Auto Assign', icon: Sparkles },
+                        //     { id: 'upload', label: 'Zone CSV', icon: Upload }, // Hidden as per user preference likely, or keep it? Keeping for now.
+                      ].map((m) => {
+                        const isActive = zoneConfigMode === m.id;
+                        const Icon = m.icon;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setZoneConfigMode(m.id as any)}
+                            className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${isActive
+                              ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                              : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                          >
+                            {isActive && (
+                              <motion.div
+                                layoutId="activeTab"
+                                className="absolute inset-0 bg-white rounded-lg shadow-sm ring-1 ring-black/5"
+                                initial={false}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              />
+                            )}
+                            <span className="relative z-10 flex items-center gap-2">
+                              <Icon className="w-4 h-4" />
+                              {m.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                       <button
                         type="button"
                         onClick={() => setZoneConfigMode('upload')}
-                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${zoneConfigMode === 'upload'
+                        className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${zoneConfigMode === 'upload'
                           ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                          : 'bg-transparent text-slate-500 hover:text-slate-700'
+                          : 'text-slate-500 hover:text-slate-700'
                           }`}
                       >
-                        <Upload className="w-3.5 h-3.5 inline mr-1" />
-                        Zone CSV
+                        <span className="relative z-10 flex items-center gap-2">
+                          <Upload className="w-4 h-4" />
+                          CSV
+                        </span>
                       </button>
                     </div>
                   </div>
 
-                  {/* NEW: Pincode Upload Mode (RECOMMENDED - PINCODE AUTHORITATIVE) */}
-                  {zoneConfigMode === 'pincode' && (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-green-900">
-                              Recommended: Pincode-Authoritative Upload
-                            </p>
-                            <p className="text-xs text-green-700 mt-1">
-                              Upload your pincode list. Zones are auto-assigned from our master database.
-                              <br />
-                              <strong>This is the most reliable method</strong> - pincodes are the source of truth, zones are derived automatically.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 min-h-[400px]">
+                    <AnimatePresence mode="wait">
 
-                      <ServiceabilityUpload
-                        onServiceabilityReady={handleServiceabilityReady}
-                        onError={(errors) => {
-                          console.error('[ServiceabilityUpload] Errors:', errors);
-                        }}
-                      />
-
-                      {/* Show status after upload */}
-                      {serviceabilityData && serviceabilityData.serviceability.length > 0 && (
-                        <div className="mt-4 p-4 rounded-lg border-2 border-green-300 bg-green-50">
-                          <div className="flex items-center gap-3">
-                            <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-green-900">
-                                Serviceability Ready: {serviceabilityData.serviceability.length} pincodes
-                              </p>
-                              <p className="text-xs text-green-700">
-                                {serviceabilityData.zoneSummary.length} zones detected • Checksum: {serviceabilityData.checksum}
+                      {/* MODE: PINCODE UPLOAD */}
+                      {zoneConfigMode === 'pincode' && (
+                        <motion.div
+                          key="pincode"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 10 }}
+                          className="space-y-6"
+                        >
+                          <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-4">
+                            <div className="p-2 bg-emerald-100 rounded-full shrink-0">
+                              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-emerald-900 text-lg">Recommended Method</h4>
+                              <p className="text-emerald-700 mt-1 leading-relaxed text-sm">
+                                Upload your pincode serviceability list. We will automatically map them to zones
+                                and generate the price matrix structure for you. <strong>This is the source of truth.</strong>
                               </p>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
-                  {/* Wizard Mode Content */}
-                  {zoneConfigMode === 'wizard' && (
-                    <>
-                      {/* Wizard Actions */}
-                      <div className="flex gap-2 mb-4">
-                        <button
-                          type="button"
-                          onClick={() => navigate('/zone-price-matrix')}
-                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${isAutoFilled && wizardStatus?.hasPriceMatrix
-                            ? 'bg-gradient-to-r from-blue-600 to-green-600 text-white hover:from-blue-700 hover:to-green-700 shadow-lg animate-pulse ring-2 ring-green-400 ring-offset-2'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                          <ServiceabilityUpload
+                            onServiceabilityReady={handleServiceabilityReady}
+                            onError={(errors) => console.error(errors)}
+                          />
+
+                          {serviceabilityData && serviceabilityData.serviceability.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                              className="p-4 border-2 border-green-100 bg-green-50/50 rounded-xl flex items-center justify-between"
+                            >
+                              <div>
+                                <p className="font-bold text-green-800 flex items-center gap-2">
+                                  <CheckCircleIcon className="w-5 h-5" />
+                                  {serviceabilityData.serviceability.length} Pincodes Processed
+                                </p>
+                                <p className="text-sm text-green-600 pl-7">
+                                  Mapped to {serviceabilityData.zoneSummary.length} zones
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={goNext}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 shadow-sm"
+                              >
+                                Save & Continue
+                              </button>
+                            </motion.div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => navigate('/zone-price-matrix')}
+                            className="ml-1 underline hover:no-underline"
+                          >
+                            Open wizard to fill prices →
+                          </button>
+                        </motion.div>
+                      )}
+
+                      {/* MODE: WIZARD */}
+                      {zoneConfigMode === 'wizard' && (
+                        <motion.div
+                          key="wizard"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          className="space-y-6"
+                        >
+                          <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-4">
+                            <div className="p-2 bg-blue-100 rounded-full shrink-0">
+                              <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-blue-900 text-lg">Zone Wizard</h4>
+                              <p className="text-blue-700 mt-1 leading-relaxed text-sm">
+                                Manually select states and cities to define your zones. Note that pincode mapping will be approximate.
+                              </p>
+                            </div>
+                          </div>
+
+                          <ZoneSelectionWizard
+                            onComplete={handleZoneSelectionComplete}
+                          />
+                        </motion.div>
+                      )}
+
+                      {/* MODE: PRICE MATRIX (NEW INLINE) */}
+                      {zoneConfigMode === 'matrix' && (
+                        <motion.div
+                          key="matrix"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          className="space-y-6"
+                        >
+                          <ZonePriceMatrixComponent
+                            wizardData={wizardData}
+                            onUpdatePriceMatrix={(matrix) => {
+                              if (typeof setWizardData === 'function') {
+                                setWizardData((prev: any) => ({
+                                  ...(prev || {}),
+                                  priceMatrix: matrix,
+                                }));
+                              }
+                            }}
+                            onBack={() => setZoneConfigMode('wizard')}
+                            onSave={() => {
+                              // Proceed to Company Details (Step 3)
+                              goNext();
+                              toast.success('Price matrix saved! Proceeding to Company Details.');
+                            }}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div >
+
+                  {/* Navigation Buttons for Step 2 */}
+                  <div className="mt-8 flex items-center justify-between">
+                    <button type="button" onClick={goBack} className="text-slate-400 hover:text-slate-600 font-medium text-sm transition-colors">
+                      ← Back to Search
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      disabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
+                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 transition-all"
+                    >
+                      Next: Company Details →
+                    </button>
+                  </div >
+
+                </motion.div >
+              </div > {/* END STEP 2 */}
+
+              {/* ════════════════════════════════════════════════ */}
+              {/* STEP 3: COMPANY DETAILS                         */}
+              {/* ════════════════════════════════════════════════ */}
+
+
+              {/* ════════════════════════════════════════════════ */}
+              {/* STEP 4: CHARGES & SAVE                          */}
+              {/* ════════════════════════════════════════════════ */}
+
+
+              {currentStep === 4 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  {/* STEP 4b: SAVE ACTIONS (Moved Here) */}
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-100">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-green-100 text-green-600 rounded-lg">
+                          <Save className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800">Finalize & Save</h3>
+                      </div>
+                      <p className="text-slate-600 ml-11">
+                        Review your configuration. You can save as a draft to edit later, or publish immediately.
+                      </p>
+                    </div>
+
+                    <div className="p-6 md:p-8 space-y-8">
+                      {/* Save Mode Selection */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label
+                          onClick={() => setSaveMode('draft')}
+                          className={`relative flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'draft' ? 'border-amber-400 bg-amber-50/30' : 'border-slate-200'
                             }`}
                         >
-                          {wizardStatus?.hasPriceMatrix ? 'Edit Wizard' : 'Open Wizard'}
-                        </button>
+                          <input
+                            type="radio"
+                            name="saveMode"
+                            checked={saveMode === 'draft'}
+                            onChange={() => setSaveMode('draft')}
+                            className="mt-1 w-4 h-4 text-amber-500 focus:ring-amber-500 border-slate-300"
+                          />
+                          <div>
+                            <span className="block font-bold text-slate-900">Save as Draft</span>
+                            <span className="text-sm text-slate-500 mt-1 block">
+                              Vendor will be saved but <strong>kept hidden</strong>. Use this if you need to add more details later.
+                            </span>
+                          </div>
+                        </label>
+
+                        <label
+                          onClick={() => setSaveMode('active')}
+                          className={`relative flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'active' ? 'border-green-500 bg-green-50/30' : 'border-slate-200'
+                            }`}
+                        >
+                          <input
+                            type="radio"
+                            name="saveMode"
+                            checked={saveMode === 'active'}
+                            onChange={() => setSaveMode('active')}
+                            className="mt-1 w-4 h-4 text-green-600 focus:ring-green-500 border-slate-300"
+                          />
+                          <div>
+                            <span className="block font-bold text-slate-900">Publish Vendor</span>
+                            <span className="text-sm text-slate-500 mt-1 block">
+                              Vendor will be <strong>live</strong> and available for calculations immediately.
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100">
                         <button
                           type="button"
-                          onClick={loadZoneData}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
+                          onClick={goBack}
+                          className="text-slate-500 font-medium hover:text-slate-800 transition-colors"
                         >
-                          <RefreshCw className="h-4 w-4" />
-                          Reload Data
+                          ← Back to Details
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSubmit}
+                          disabled={isSubmitting}
+                          className={`
+                               relative overflow-hidden group px-8 py-4 rounded-xl font-bold text-lg shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl
+                               ${isSubmitting
+                              ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                              : 'bg-slate-900 text-white hover:bg-black'
+                            }
+                            `}
+                        >
+                          <span className="relative z-10 flex items-center gap-2">
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Saving Provider...
+                              </>
+                            ) : (
+                              <>
+                                {saveMode === 'active' ? 'Create Live Provider' : 'Save Draft'}
+                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                              </>
+                            )}
+                          </span>
                         </button>
                       </div>
-
-                      {/* Status Display */}
-                      <div className="space-y-3">
-                        {/* Primary Status */}
-                        <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-slate-200 bg-slate-50">
-                          {wizardStatus?.hasPriceMatrix ? (
-                            <>
-                              <CheckCircleIcon className="h-6 w-6 text-green-600 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-green-900">
-                                  Zone data loaded ({matrixSize.rows}×{matrixSize.cols})
-                                </p>
-                                <p className="text-xs text-green-700">
-                                  {wizardStatus.zoneCount} zones configured
-                                </p>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <XCircleIcon className="h-6 w-6 text-red-600 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-red-900">
-                                  No zone data configured
-                                </p>
-                                <p className="text-xs text-red-700">
-                                  Open the wizard or upload a CSV to configure zones
-                                </p>
-                              </div>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Validation Errors */}
-                        {wizardValidation &&
-                          !wizardValidation.isValid &&
-                          wizardValidation.errors.length > 0 && (
-                            <div className="p-4 rounded-lg border-2 border-red-300 bg-red-50">
-                              <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-red-900 mb-2">
-                                    Configuration Issues:
-                                  </p>
-                                  <ul className="space-y-1 text-sm text-red-800">
-                                    {wizardValidation.errors.map((error, idx) => (
-                                      <li key={idx} className="flex items-start gap-2">
-                                        <span className="text-red-600 mt-0.5">•</span>
-                                        <span>{error}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Validation Warnings */}
-                        {wizardValidation &&
-                          wizardValidation.isValid &&
-                          wizardValidation.warnings.length > 0 && (
-                            <div className="p-4 rounded-lg border-2 border-yellow-300 bg-yellow-50">
-                              <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-yellow-900 mb-2">
-                                    Warnings:
-                                  </p>
-                                  <ul className="space-y-1 text-sm text-yellow-800">
-                                    {wizardValidation.warnings.map((warning, idx) => (
-                                      <li key={idx} className="flex items-start gap-2">
-                                        <span className="text-yellow-600 mt-0.5">•</span>
-                                        <span>{warning}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Success State */}
-                        {wizardValidation &&
-                          wizardValidation.isValid &&
-                          wizardValidation.warnings.length === 0 &&
-                          wizardStatus?.hasPriceMatrix && (
-                            <div className="p-4 rounded-lg border-2 border-green-300 bg-green-50">
-                              <div className="flex items-center gap-3">
-                                <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
-                                <p className="text-sm text-green-800">
-                                  Configuration is complete and valid
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Progress Bar */}
-                        {wizardStatus && (
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-slate-700">
-                                Configuration Progress
-                              </span>
-                              <span className="text-xs font-semibold text-slate-900">
-                                {wizardStatus.hasPriceMatrix ? 100 : wizardStatus.completionPercentage}%
-                              </span>
-                            </div>
-                            <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-r from-blue-600 to-green-600 transition-all duration-500"
-                                style={{
-                                  width: `${wizardStatus.hasPriceMatrix ? 100 : wizardStatus.completionPercentage}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Info Note */}
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          The wizard saves data in your browser under{' '}
-                          <code className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-slate-800">
-                            vendorWizard.v1
-                          </code>
-                          . After configuring zones and pricing, click{' '}
-                          <strong className="text-slate-900">Reload Data</strong> to load it
-                          here.
-                        </p>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Upload Mode Content */}
-                  {zoneConfigMode === 'upload' && (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <FileSpreadsheet className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-amber-900">
-                              Don't have an existing vendor to copy from?
-                            </p>
-                            <p className="text-xs text-amber-700 mt-1">
-                              Upload a CSV/Excel file with your pincode-to-zone mappings.
-                              We'll auto-configure zones and create an empty price matrix for you to fill in.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <ZoneMappingUpload
-                        onDataParsed={handleZoneMappingUpload}
-                        blankCellValue={0}
-                      />
-
-                      {/* Show status after upload */}
-                      {wizardStatus?.hasPriceMatrix && (
-                        <div className="mt-4 p-4 rounded-lg border-2 border-green-300 bg-green-50">
-                          <div className="flex items-center gap-3">
-                            <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-green-900">
-                                Zone data loaded ({matrixSize.rows}×{matrixSize.cols})
-                              </p>
-                              <p className="text-xs text-green-700">
-                                {wizardStatus.zoneCount} zones configured from upload.
-                                <button
-                                  type="button"
-                                  onClick={() => navigate('/zone-price-matrix')}
-                                  className="ml-1 underline hover:no-underline"
-                                >
-                                  Open wizard to fill prices →
-                                </button>
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  )}
-
-                  {/* Auto Assign Mode Content */}
-                  {zoneConfigMode === 'auto' && (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-blue-900">
-                              Auto Zone Assignment
-                            </p>
-                            <p className="text-xs text-blue-700 mt-1">
-                              Select zones and we'll automatically assign cities/states based on official zone rules.
-                              <br />
-                              <strong>Limited zones (X1)</strong>: Only specific metro cities.
-                              <strong className="ml-2">Full zones (X2, X3...)</strong>: All cities in states.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <ZoneSelectionWizard
-                        onComplete={handleZoneSelectionComplete}
-                        blankCellValue={0}
-                      />
-
-                      {/* Show status after auto-assign */}
-                      {wizardStatus?.hasPriceMatrix && (
-                        <div className="mt-4 p-4 rounded-lg border-2 border-green-300 bg-green-50">
-                          <div className="flex items-center gap-3">
-                            <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-green-900">
-                                Zone data loaded ({matrixSize.rows}×{matrixSize.cols})
-                              </p>
-                              <p className="text-xs text-green-700">
-                                {wizardStatus.zoneCount} zones auto-configured.
-                                <button
-                                  type="button"
-                                  onClick={() => navigate('/zone-price-matrix')}
-                                  className="ml-1 underline hover:no-underline"
-                                >
-                                  Open wizard to fill prices →
-                                </button>
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Keep file upload for CSV/Excel import */}
-              <div className="p-6 md:p-8">
-                <PriceChartUpload
-                  file={priceChartFile}
-                  onFileChange={setPriceChartFile}
-                />
-              </div>
-
-
-
-              {/* Save Mode Selector */}
-              <div className="flex items-center justify-between p-4 bg-blue-50/50 border-t border-blue-100 mb-6 rounded-lg">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-semibold text-slate-700">Save Mode:</span>
-                  <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setSaveMode('cloud')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${saveMode === 'cloud' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      <CloudIcon size={14} />
-                      Save to Cloud
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSaveMode('cloud_utsf')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${saveMode === 'cloud_utsf' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      <Sparkles size={14} />
-                      Cloud + UTSF
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSaveMode('utsf')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${saveMode === 'utsf' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      <FileDown size={14} />
-                      UTSF Only
-                    </button>
                   </div>
-                </div>
-                <div className="text-xs font-medium text-slate-500 px-3 py-1.5 bg-blue-100/50 rounded-md">
-                  {saveMode === 'cloud_utsf' ? 'Saves to both cloud & UTSF file' : saveMode === 'cloud' ? 'Saves to cloud database only' : 'Saves to UTSF file only'}
-                </div>
-              </div>
+                </motion.div>
+              )}
 
-              {/* Footer actions */}
-              <div className="p-6 md:p-8 flex items-center justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="px-5 py-3 bg-slate-200 text-slate-800 font-medium rounded-xl hover:bg-slate-300 transition-colors"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <XCircleIcon className="w-5 h-5" />
-                    Reset Form
-                  </span>
-                </button>
-                {/*
-                               <button
-                  type="button"
-                  onClick={() => setShowInvoiceSection((s) => !s)}
-                  className="px-5 py-3 bg-slate-200 text-slate-800 font-medium rounded-xl hover:bg-slate-300 transition-colors"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <EyeIcon className="w-5 h-5" />
-                    Show Invoice Value
-                  </span>
-                </button>*/}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || (wizardValidation && !wizardValidation.isValid)}
-                  className={`px-5 py-3 text-white font-semibold rounded-xl transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed ${saveMode === 'cloud_utsf'
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                        Saving…
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircleIcon className="w-5 h-5" />
-                        {saveMode === 'cloud_utsf' ? 'Save Cloud + UTSF' : saveMode === 'cloud' ? 'Save Vendor' : 'Save UTSF File'}
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
-            </div>
+
+
+
+            </form >
+          </div > {/* close flex-1 main content */}
+
+          {/* ═══ RIGHT SIDE PANEL (inside white card) ═══ */}
+          <div className="w-[280px] shrink-0 border-l border-slate-100 bg-slate-50/50">
+            <VendorSidePanel
+              currentStep={currentStep}
+              vendorName={sidePanelProps.vendorName}
+              vendorCode={sidePanelProps.vendorCode}
+              transportMode={sidePanelProps.transportMode}
+              serviceMode={sidePanelProps.serviceMode}
+              zonesCount={matrixSize.rows}
+              pincodeCount={sidePanelProps.pincodeCount}
+              matrixSize={matrixSize}
+              hasCompanyInfo={sidePanelProps.hasCompanyInfo}
+              hasContactInfo={sidePanelProps.hasContactInfo}
+              hasGST={sidePanelProps.hasGST}
+              hasCharges={sidePanelProps.hasCharges}
+              hasPricing={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
+              isAutoFilled={isAutoFilled}
+              autoFilledFrom={autoFilledFromName}
+              vendorMode={vendorMode}
+              warnings={sideWarnings}
+            />
           </div>
-        </form>
-
-
-      </div >
+        </div> {/* close flex */}
+      </div> {/* close white card */}
 
       {/* Full-screen submit overlay */}
       {
@@ -2441,9 +2588,8 @@ export const AddVendor: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        // overlay is already on success, form already reset
                         setShowSubmitOverlay(false);
-                        // ensure we’re at the top
+                        setCurrentStep(1);
                         setScrollKey(Date.now());
                       }}
                       className="mt-1 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
@@ -2468,7 +2614,8 @@ export const AddVendor: React.FC = () => {
         )
       }
 
-      {/* Smooth scroll helper after success */}
+      {/* Debug Panel */}
+      <DebugFloat logs={debugLogs} />
       <ScrollToTop targetRef={topRef} when={scrollKey} offset={80} />
     </div >
   );

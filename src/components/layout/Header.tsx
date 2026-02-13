@@ -237,7 +237,7 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
               )}
               {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
               <MobileNavLink to="/contact">Contact Us</MobileNavLink>
-              {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>}
+              {/* {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>} */}
               <MobileNavLink to="/vehicle-info">
                 <Info size={20} className="text-blue-600" /> Vehicle Info
               </MobileNavLink>
@@ -269,26 +269,33 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
 
 // --- MAIN HEADER COMPONENT (FIXED) ---
 const Header: React.FC = () => {
-  const { isAuthenticated, user, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <>
       <header className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-200/80 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <BrandLogo />
-            <nav className="hidden lg:flex items-center gap-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center h-20 relative">
+            {/* LEFT SIDE: Logo */}
+            <div className="flex-shrink-0">
+              <BrandLogo />
+            </div>
+
+            {/* CENTER: Navigation (Absolute Positioned for true center) */}
+            <nav className="hidden lg:flex items-center gap-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               {/* Conditional About Us */}
               {isAuthenticated && <NavLink to="/about">About Us</NavLink>}
 
               <NavLink to="/contact">Contact</NavLink>
               {/* --- FIXED: Use NavLink here */}
-              {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>}
+              {/* {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>} */}
               {isAuthenticated && <NavLink to="/addvendor">Add Vendor</NavLink>}
               <NavLink to="/vehicle-info">Vehicle Info</NavLink>
             </nav>
-            <div className="flex items-center gap-4">
+
+            {/* RIGHT SIDE: Actions */}
+            <div className="flex items-center gap-4 ml-auto">
               <div className="hidden sm:flex items-center gap-4">
                 {isAuthenticated ? (
                   <>

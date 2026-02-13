@@ -24,7 +24,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
   const { basics, errors, setField, validateField } = vendorBasics;
   const {
     geo,
-    isLoading,
+    loading: isLoading,
     error: geoError,
     setPincode,
     setState,
@@ -60,14 +60,18 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
         Company & Contact Information
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 5-Column Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+
+        {/* ROW 1: Company, Contact, Phone, Email, GST */}
 
         {/* Company Name */}
         {isVisible('companyName') && (
-          <div>
+          <div className="col-span-1">
             <label
               htmlFor="companyName"
-              className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+              className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+              title={getLabel('companyName', 'Company Name')}
             >
               {getLabel('companyName', 'Company Name')}
               {isRequired('companyName') && <span className="text-red-500"> *</span>}
@@ -86,20 +90,21 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                   ? 'border-red-500 focus:ring-red-500'
                   : 'border-slate-300 focus:ring-blue-500'
                 }`}
-              placeholder={getPlaceholder('companyName', 'Enter company name')}
+              placeholder={getPlaceholder('companyName', 'Company Name')}
               required
             />
             {errors.companyName && (
-              <p className="mt-1 text-xs text-red-600">{errors.companyName}</p>
+              <p className="mt-1 text-xs text-red-600 truncate">{errors.companyName}</p>
             )}
           </div>
         )}
 
-        {/* Contact Person Name */}
-        <div>
+        {/* Contact Person */}
+        <div className="col-span-1">
           <label
             htmlFor="contactPersonName"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('contactPersonName', 'Contact Person')}
           >
             {getLabel('contactPersonName', 'Contact Person')}
             {isRequired('contactPersonName') && <span className="text-red-500"> *</span>}
@@ -110,10 +115,8 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             name="contactPersonName"
             value={basics.contactPersonName}
             onChange={(e) => {
-              // Allow only alphabets, space, hyphen, apostrophe, then FORCE UPPERCASE
               const raw = e.target.value.replace(/[^a-zA-Z\s\-']/g, '').slice(0, getConstraint('contactPersonName', 'maxLength', 30) as number);
-              const value = raw.toUpperCase();
-              setField('contactPersonName', value);
+              setField('contactPersonName', raw.toUpperCase());
             }}
             onBlur={() => validateField('contactPersonName')}
             maxLength={getConstraint('contactPersonName', 'maxLength', 30) as number}
@@ -123,21 +126,20 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                 ? 'border-red-500 focus:ring-red-500'
                 : 'border-slate-300 focus:ring-blue-500'
               }`}
-            placeholder={getPlaceholder('contactPersonName', 'Enter contact person name')}
+            placeholder={getPlaceholder('contactPersonName', 'Contact Person')}
             required
           />
           {errors.contactPersonName && (
-            <p className="mt-1 text-xs text-red-600">
-              {errors.contactPersonName}
-            </p>
+            <p className="mt-1 text-xs text-red-600 truncate">{errors.contactPersonName}</p>
           )}
         </div>
 
         {/* Phone Number */}
-        <div>
+        <div className="col-span-1">
           <label
             htmlFor="vendorPhoneNumber"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('vendorPhoneNumber', 'Phone Number')}
           >
             {getLabel('vendorPhoneNumber', 'Phone Number')}
             {isRequired('vendorPhoneNumber') && <span className="text-red-500"> *</span>}
@@ -148,7 +150,6 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             name="vendorPhoneNumber"
             value={basics.vendorPhoneNumber}
             onChange={(e) => {
-              // Only allow digits
               const value = e.target.value.replace(/\D/g, '').slice(0, getConstraint('vendorPhoneNumber', 'maxLength', 10) as number);
               setField('vendorPhoneNumber', value);
             }}
@@ -161,21 +162,20 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                 ? 'border-red-500 focus:ring-red-500'
                 : 'border-slate-300 focus:ring-blue-500'
               }`}
-            placeholder={getPlaceholder('vendorPhoneNumber', '10-digit phone number')}
+            placeholder={getPlaceholder('vendorPhoneNumber', 'Phone Number')}
             required
           />
           {errors.vendorPhoneNumber && (
-            <p className="mt-1 text-xs text-red-600">
-              {errors.vendorPhoneNumber}
-            </p>
+            <p className="mt-1 text-xs text-red-600 truncate">{errors.vendorPhoneNumber}</p>
           )}
         </div>
 
-        {/* Email */}
-        <div>
+        {/* Email Address */}
+        <div className="col-span-1">
           <label
             htmlFor="vendorEmailAddress"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('vendorEmailAddress', 'Email Address')}
           >
             {getLabel('vendorEmailAddress', 'Email Address')}
             {isRequired('vendorEmailAddress') && <span className="text-red-500"> *</span>}
@@ -185,10 +185,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             id="vendorEmailAddress"
             name="vendorEmailAddress"
             value={basics.vendorEmailAddress}
-            onChange={(e) => {
-              const value = e.target.value.toLowerCase();
-              setField('vendorEmailAddress', value);
-            }}
+            onChange={(e) => setField('vendorEmailAddress', e.target.value.toLowerCase())}
             onBlur={() => validateField('vendorEmailAddress')}
             className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
                        focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
@@ -196,21 +193,20 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                 ? 'border-red-500 focus:ring-red-500'
                 : 'border-slate-300 focus:ring-blue-500'
               }`}
-            placeholder={getPlaceholder('vendorEmailAddress', 'email@example.com')}
+            placeholder={getPlaceholder('vendorEmailAddress', 'Email Address')}
             required
           />
           {errors.vendorEmailAddress && (
-            <p className="mt-1 text-xs text-red-600">
-              {errors.vendorEmailAddress}
-            </p>
+            <p className="mt-1 text-xs text-red-600 truncate">{errors.vendorEmailAddress}</p>
           )}
         </div>
 
-        {/* GST Number (Optional) */}
-        <div>
+        {/* GST Number */}
+        <div className="col-span-1">
           <label
             htmlFor="gstin"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('gstin', 'GST Number')}
           >
             {getLabel('gstin', 'GST Number')}
             {isRequired('gstin') && <span className="text-red-500"> *</span>}
@@ -221,15 +217,10 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             name="gstin"
             value={basics.gstin || ''}
             onChange={(e) => {
-              // Convert to uppercase and validate character set
               const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, getConstraint('gstin', 'maxLength', 15) as number);
               setField('gstin', value);
             }}
-            onBlur={() => {
-              if (basics.gstin) {
-                validateField('gstin');
-              }
-            }}
+            onBlur={() => basics.gstin && validateField('gstin')}
             maxLength={getConstraint('gstin', 'maxLength', 15) as number}
             className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
                        focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
@@ -237,87 +228,21 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                 ? 'border-red-500 focus:ring-red-500'
                 : 'border-slate-300 focus:ring-blue-500'
               }`}
-            placeholder={getPlaceholder('gstin', '15-character GST number')}
+            placeholder={getPlaceholder('gstin', 'GST Number')}
           />
           {errors.gstin && (
-            <p className="mt-1 text-xs text-red-600">{errors.gstin}</p>
+            <p className="mt-1 text-xs text-red-600 truncate">{errors.gstin}</p>
           )}
         </div>
 
-        {/* Sub Vendor */}
-        <div>
-          <label
-            htmlFor="subVendor"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
-          >
-            {getLabel('subVendor', 'Sub Transporter')}
-            {isRequired('subVendor') && <span className="text-red-500"> *</span>}
-          </label>
-          <input
-            type="text"
-            id="subVendor"
-            name="subVendor"
-            value={basics.subVendor}
-            onChange={(e) => {
-              // allow alphabets, spaces, hyphens, apostrophes — then FORCE UPPERCASE
-              const raw = e.target.value.replace(/[^a-zA-Z\s\-']/g, '').slice(0, getConstraint('subVendor', 'maxLength', 20) as number);
-              const value = raw.toUpperCase();
-              setField('subVendor', value);
-            }}
-            onBlur={() => validateField('subVendor')}
-            maxLength={getConstraint('subVendor', 'maxLength', 20) as number}
-            className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
-                       focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
-                       ${errors.subVendor
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-blue-500'
-              }`}
-            placeholder={getPlaceholder('subVendor', 'Enter sub vendor (optional)')}
-          />
-          {errors.subVendor && (
-            <p className="mt-1 text-xs text-red-600">{errors.subVendor}</p>
-          )}
-        </div>
-
-        {/* Vendor Code */}
-        <div>
-          <label
-            htmlFor="vendorCode"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
-          >
-            {getLabel('vendorCode', 'Transporter Code')}
-            {isRequired('vendorCode') && <span className="text-red-500"> *</span>}
-          </label>
-          <input
-            type="text"
-            id="vendorCode"
-            name="vendorCode"
-            value={basics.vendorCode}
-            onChange={(e) => {
-              // Auto-uppercase and allow only alphanumeric
-              const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, getConstraint('vendorCode', 'maxLength', 20) as number);
-              setField('vendorCode', value);
-            }}
-            onBlur={() => validateField('vendorCode')}
-            maxLength={getConstraint('vendorCode', 'maxLength', 20) as number}
-            className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
-                       focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
-                       ${errors.vendorCode
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-blue-500'
-              }`}
-            placeholder={getPlaceholder('vendorCode', 'Enter vendor code (optional)')}
-          />
-          {errors.vendorCode && (
-            <p className="mt-1 text-xs text-red-600">{errors.vendorCode}</p>
-          )}
-        </div>
+        {/* ROW 2: Pincode, State, City, Sub Vendor, Vendor Code */}
 
         {/* Pincode */}
-        <div>
+        <div className="col-span-1">
           <label
             htmlFor="pincode"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('pincode', 'Pincode')}
           >
             {getLabel('pincode', 'Pincode')}
             {isRequired('pincode') && <span className="text-red-500"> *</span>}
@@ -329,7 +254,6 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
               name="pincode"
               value={geo.pincode || ''}
               onChange={(e) => {
-                // Only allow digits
                 const value = e.target.value.replace(/\D/g, '').slice(0, getConstraint('pincode', 'maxLength', 6) as number);
                 setPincode(value);
               }}
@@ -340,7 +264,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                   ? 'border-red-500 focus:ring-red-500'
                   : 'border-slate-300 focus:ring-blue-500'
                 }`}
-              placeholder={getPlaceholder('pincode', '6-digit pincode')}
+              placeholder={getPlaceholder('pincode', 'Pincode')}
               required
             />
             {isLoading && (
@@ -350,52 +274,20 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             )}
           </div>
           {geoError && (
-            <p className="mt-1 text-xs text-orange-600">{geoError}</p>
+            <p className="mt-1 text-xs text-orange-600 truncate">{geoError}</p>
           )}
         </div>
 
-        {/* Address - FULL WIDTH (md:col-span-2) */}
-        <div className="md:col-span-2">
-          <label
-            htmlFor="address"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
-          >
-            {getLabel('address', 'Address')}
-            {isRequired('address') && <span className="text-red-500"> *</span>}
-          </label>
-          <textarea
-            id="address"
-            name="address"
-            value={basics.address}
-            onChange={(e) => setField('address', e.target.value.slice(0, getConstraint('address', 'maxLength', 150) as number))}
-            onBlur={() => validateField('address')}
-            maxLength={getConstraint('address', 'maxLength', 150) as number}
-            rows={2}
-            className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
-                       focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
-                       ${errors.address
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-blue-500'
-              }`}
-            placeholder={getPlaceholder('address', 'Enter complete address')}
-            required
-          />
-          {errors.address && (
-            <p className="mt-1 text-xs text-red-600">{errors.address}</p>
-          )}
-        </div>
-
-        {/* State (auto-filled or manual) */}
-        <div>
+        {/* State */}
+        <div className="col-span-1">
           <label
             htmlFor="state"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('state', 'State')}
           >
             {getLabel('state', 'State')}
             {isRequired('state') && <span className="text-red-500"> *</span>}
-            {isManual && (
-              <span className="text-xs text-orange-500 ml-2">(Manual)</span>
-            )}
+            {isManual && <span className="text-xs text-orange-500 ml-1">(M)</span>}
           </label>
           <input
             type="text"
@@ -411,22 +303,21 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                 : 'bg-slate-50/70'
               }
                        border-slate-300 focus:ring-blue-500`}
-            placeholder={getPlaceholder('state', 'State (auto-filled)')}
+            placeholder={getPlaceholder('state', 'State')}
             required
           />
         </div>
 
-        {/* City (auto-filled or manual) */}
-        <div>
+        {/* City */}
+        <div className="col-span-1">
           <label
             htmlFor="city"
-            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('city', 'City')}
           >
             {getLabel('city', 'City')}
             {isRequired('city') && <span className="text-red-500"> *</span>}
-            {isManual && (
-              <span className="text-xs text-orange-500 ml-2">(Manual)</span>
-            )}
+            {isManual && <span className="text-xs text-orange-500 ml-1">(M)</span>}
           </label>
           <input
             type="text"
@@ -442,22 +333,122 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                 : 'bg-slate-50/70'
               }
                        border-slate-300 focus:ring-blue-500`}
-            placeholder={getPlaceholder('city', 'City (auto-filled)')}
+            placeholder={getPlaceholder('city', 'City')}
             required
           />
         </div>
 
+        {/* Sub Vendor */}
+        <div className="col-span-1">
+          <label
+            htmlFor="subVendor"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('subVendor', 'Sub Transporter')}
+          >
+            {getLabel('subVendor', 'Sub Transporter')}
+            {isRequired('subVendor') && <span className="text-red-500"> *</span>}
+          </label>
+          <input
+            type="text"
+            id="subVendor"
+            name="subVendor"
+            value={basics.subVendor}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^a-zA-Z\s\-']/g, '').slice(0, getConstraint('subVendor', 'maxLength', 20) as number);
+              setField('subVendor', raw.toUpperCase());
+            }}
+            onBlur={() => validateField('subVendor')}
+            maxLength={getConstraint('subVendor', 'maxLength', 20) as number}
+            className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
+                       focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
+                       ${errors.subVendor
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-slate-300 focus:ring-blue-500'
+              }`}
+            placeholder={getPlaceholder('subVendor', 'Sub Transporter')}
+          />
+          {errors.subVendor && (
+            <p className="mt-1 text-xs text-red-600 truncate">{errors.subVendor}</p>
+          )}
+        </div>
+
+        {/* Vendor Code */}
+        <div className="col-span-1">
+          <label
+            htmlFor="vendorCode"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('vendorCode', 'Transporter Code')}
+          >
+            {getLabel('vendorCode', 'Transporter Code')}
+            {isRequired('vendorCode') && <span className="text-red-500"> *</span>}
+          </label>
+          <input
+            type="text"
+            id="vendorCode"
+            name="vendorCode"
+            value={basics.vendorCode}
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, getConstraint('vendorCode', 'maxLength', 20) as number);
+              setField('vendorCode', value);
+            }}
+            onBlur={() => validateField('vendorCode')}
+            maxLength={getConstraint('vendorCode', 'maxLength', 20) as number}
+            className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
+                       focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
+                       ${errors.vendorCode
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-slate-300 focus:ring-blue-500'
+              }`}
+            placeholder={getPlaceholder('vendorCode', 'Code')}
+          />
+          {errors.vendorCode && (
+            <p className="mt-1 text-xs text-red-600 truncate">{errors.vendorCode}</p>
+          )}
+        </div>
+
+        {/* ROW 3: Address (3 cols) + Service Modes (2 cols) */}
+
+        {/* Address */}
+        <div className="col-span-1 md:col-span-3">
+          <label
+            htmlFor="address"
+            className="block text-xs font-semibold text-slate-600 uppercase tracking-wider truncate"
+            title={getLabel('address', 'Address')}
+          >
+            {getLabel('address', 'Address')}
+            {isRequired('address') && <span className="text-red-500"> *</span>}
+          </label>
+          <textarea
+            id="address"
+            name="address"
+            value={basics.address}
+            onChange={(e) => setField('address', e.target.value.slice(0, 150))}
+            onBlur={() => validateField('address')}
+            maxLength={150}
+            rows={2}
+            className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
+                       focus:outline-none focus:ring-1 focus:border-blue-500 transition bg-slate-50/70
+                       ${errors.address
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-slate-300 focus:ring-blue-500'
+              }`}
+            placeholder={getPlaceholder('address', 'Enter complete address')}
+            required
+          />
+          {errors.address && (
+            <p className="mt-1 text-xs text-red-600 truncate">{errors.address}</p>
+          )}
+        </div>
+
         {/* Service Modes */}
-        <div className="md:col-span-1">
-          <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+        <div className="col-span-1 md:col-span-2 flex flex-col justify-end">
+          <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1 truncate">
             {getLabel('serviceMode', 'Service Modes')}
             {isRequired('serviceMode') && <span className="text-red-500"> *</span>}
           </label>
-
-          <div className="mt-1 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="inline-flex items-center gap-3">
-
-              {/* FTL */}
+          <div className="mt-1 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm inline-block w-full">
+            <div className="flex w-full gap-2">
+              {/* Full Truck Load */}
               <button
                 type="button"
                 onClick={() => {
@@ -471,17 +462,17 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                   }
                 }}
                 aria-pressed={basics.serviceMode === 'FTL'}
-                className={`inline-flex items-center justify-center min-w-[76px] px-5 py-2 text-sm font-semibold rounded-lg transition-all outline-none
+                className={`flex-1 items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg transition-all outline-none whitespace-nowrap
                   focus:ring-2 focus:ring-blue-400 focus:ring-offset-1
                   ${basics.serviceMode === 'FTL'
-                    ? 'bg-blue-600 text-white border-2 border-blue-700 shadow'
-                    : 'bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 hover:shadow-md'
+                    ? 'bg-blue-600 text-white border-blue-700 shadow-md transform scale-[1.02]'
+                    : 'bg-white text-slate-700 border-transparent hover:bg-slate-50 hover:text-blue-600'
                   }`}
               >
-                FTL
+                Full Truck Load
               </button>
 
-              {/* LTL */}
+              {/* Part Truck Load */}
               <button
                 type="button"
                 onClick={() => {
@@ -495,24 +486,21 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
                   }
                 }}
                 aria-pressed={basics.serviceMode === 'LTL'}
-                className={`inline-flex items-center justify-center min-w-[76px] px-5 py-2 text-sm font-semibold rounded-lg transition-all outline-none
+                className={`flex-1 items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg transition-all outline-none whitespace-nowrap
                   focus:ring-2 focus:ring-blue-400 focus:ring-offset-1
                   ${basics.serviceMode === 'LTL'
-                    ? 'bg-blue-600 text-white border-2 border-blue-700 shadow'
-                    : 'bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 hover:shadow-md'
+                    ? 'bg-blue-600 text-white border-blue-700 shadow-md transform scale-[1.02]'
+                    : 'bg-white text-slate-700 border-transparent hover:bg-slate-50 hover:text-blue-600'
                   }`}
               >
-                LTL
+                Part Truck Load
               </button>
             </div>
-
-            {errors.serviceMode && (
-              <p className="mt-2 text-xs text-red-600">{errors.serviceMode}</p>
-            )}
           </div>
+          {errors.serviceMode && (
+            <p className="mt-2 text-xs text-red-600 truncate">{errors.serviceMode}</p>
+          )}
         </div>
-
-
       </div>
     </div>
   );
