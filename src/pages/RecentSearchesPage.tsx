@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Clock,
   Package,
@@ -27,9 +27,10 @@ import {
   Wine,
   ShoppingBag,
   Layers,
-  CheckCircle,
-  Star,
-  Route,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -44,6 +45,12 @@ import {
   clearAllSearchHistory,
   type SearchHistoryEntry,
 } from "../services/api";
+import {
+  generateBoxLibraryTemplate,
+  parseExcelToBoxes,
+  isExcelFile,
+  BoxExcelRow,
+} from "../utils/excelConverter";
 
 // --- LIBRARY CATEGORIES ---
 const LIBRARY_CATEGORIES = [
@@ -132,6 +139,15 @@ const RecentSearchesPage: React.FC = () => {
     height: undefined,
     quantity: 1,
   });
+
+  // Excel upload state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadLibraryName, setUploadLibraryName] = useState("");
+  const [uploadLibraryCategory, setUploadLibraryCategory] = useState("general");
+  const [parsedBoxes, setParsedBoxes] = useState<BoxExcelRow[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- LOAD DATA ---
   const loadLibraries = async () => {
@@ -378,12 +394,115 @@ const RecentSearchesPage: React.FC = () => {
     navigate("/compare");
   };
 
-  const toggleSearchExpand = (id: string) => {
-    const newSet = new Set(expandedSearches);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setExpandedSearches(newSet);
+  // --- EXCEL HANDLERS ---
+  const handleDownloadTemplate = () => {
+    try {
+      generateBoxLibraryTemplate();
+    } catch (error) {
+      console.error('Failed to generate template:', error);
+      alert('Failed to generate Excel template. Please try again.');
+    }
   };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!isExcelFile(file)) {
+      alert('Please upload an Excel file (.xlsx or .xls)');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      // Parse the Excel file
+      const boxes = await parseExcelToBoxes(file);
+
+      if (boxes.length === 0) {
+        throw new Error('No valid boxes found in the Excel file');
+      }
+
+      // Store parsed boxes and show modal for library naming
+      setParsedBoxes(boxes);
+      setShowUploadModal(true);
+      setUploadLibraryName('');
+      setUploadLibraryCategory('general');
+    } catch (error) {
+      console.error('Excel parsing error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to parse Excel file';
+      setUploadError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setIsUploading(false);
+      // Clear file input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCreateLibraryFromExcel = async () => {
+    if (!uploadLibraryName.trim()) {
+      alert('Please enter a library name');
+      return;
+    }
+
+    if (parsedBoxes.length === 0) {
+      alert('No boxes to create');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Transform parsed boxes to API format
+      const apiBoxes = parsedBoxes.map(box => ({
+        name: box.name,
+        weight: box.weight,
+        length: box.length,
+        width: box.width,
+        height: box.height,
+        quantity: box.quantity || 1,
+      }));
+
+      // Create library with boxes
+      const created = await createBoxLibrary(
+        uploadLibraryName.trim(),
+        uploadLibraryCategory,
+        apiBoxes
+      );
+
+      if (created) {
+        // Refresh libraries list
+        await loadLibraries();
+
+        // Close modal and reset state
+        setShowUploadModal(false);
+        setParsedBoxes([]);
+        setUploadLibraryName('');
+        setUploadLibraryCategory('general');
+
+        alert(`Successfully created library "${uploadLibraryName}" with ${parsedBoxes.length} boxes`);
+      } else {
+        throw new Error('Failed to create library');
+      }
+    } catch (error) {
+      console.error('Error creating library from Excel:', error);
+      alert('Failed to create library. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const cancelUploadModal = () => {
+    setShowUploadModal(false);
+    setParsedBoxes([]);
+    setUploadLibraryName('');
+    setUploadError(null);
+  };
+
 
   // --- FILTERED DATA ---
   const filteredLibraries = libraries.filter((lib) =>
@@ -520,14 +639,49 @@ const RecentSearchesPage: React.FC = () => {
           /* Box Libraries Tab (unchanged)                                */
           /* ============================================================ */
           <div className="space-y-6">
+            {/* Create New Library Button + Excel Actions */}
             <Card>
-              <button
-                onClick={() => setShowNewLibraryModal(true)}
-                className="w-full flex items-center justify-center gap-3 py-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all"
-              >
-                <FolderPlus size={24} />
-                <span className="text-lg font-semibold">Create New Library</span>
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  onClick={() => setShowNewLibraryModal(true)}
+                  className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all">
+                  <FolderPlus size={20} />
+                  <span className="text-sm font-semibold">Create Library</span>
+                </button>
+
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-green-50 border-2 border-green-300 rounded-xl text-green-700 hover:bg-green-100 hover:border-green-400 transition-all">
+                  <Download size={20} />
+                  <span className="text-sm font-semibold">Download Template</span>
+                </button>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-blue-50 border-2 border-blue-300 rounded-xl text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isUploading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      <span className="text-sm font-semibold">Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={20} />
+                      <span className="text-sm font-semibold">Upload Excel</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </Card>
 
             {filteredLibraries.length === 0 ? (
@@ -1080,6 +1234,85 @@ const RecentSearchesPage: React.FC = () => {
                 >
                   <span>Use {selectedBoxIdsForUse.size} Boxes</span>
                   <ArrowRight size={18} />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* EXCEL UPLOAD MODAL */}
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+              <h2 className="text-2xl font-bold text-slate-800">Create Library from Excel</h2>
+              <p className="text-slate-500 mt-2">
+                Found <strong className="text-blue-600">{parsedBoxes.length} boxes</strong> in the uploaded file.
+                <br />
+                Give your library a name to continue.
+              </p>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Library Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Electronics Boxes"
+                  value={uploadLibraryName}
+                  onChange={(e) => setUploadLibraryName(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Category
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {LIBRARY_CATEGORIES.map((cat) => {
+                    const Icon = cat.icon;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setUploadLibraryCategory(cat.id)}
+                        className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left ${uploadLibraryCategory === cat.id
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-slate-200 hover:border-slate-300"
+                          }`}
+                      >
+                        <Icon size={18} className={uploadLibraryCategory === cat.id ? "text-blue-600" : "text-slate-500"} />
+                        <span className={`text-xs font-medium ${uploadLibraryCategory === cat.id ? "text-blue-600" : "text-slate-700"}`}>
+                          {cat.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={cancelUploadModal}
+                  disabled={isUploading}
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateLibraryFromExcel}
+                  disabled={!uploadLibraryName.trim() || isUploading}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {isUploading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Library'
+                  )}
                 </button>
               </div>
             </motion.div>
