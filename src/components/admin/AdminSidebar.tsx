@@ -9,7 +9,8 @@ import {
     LogOut,
     Home,
     Shield,
-    FileJson
+    FileJson,
+    Activity
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { AdminPermissionKey, hasPermission } from '../../config/adminPermissions';
@@ -64,6 +65,12 @@ const AdminSidebar: React.FC = () => {
             title: 'UTSF Manager',
             path: '/super-admin/utsf-manager',
             icon: FileJson,
+            superAdminOnly: true, // Only super admin can see this
+        },
+        {
+            title: 'UTSF Health',
+            path: '/super-admin/utsf-health',
+            icon: Activity,
             superAdminOnly: true, // Only super admin can see this
         },
         {

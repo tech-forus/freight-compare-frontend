@@ -31,6 +31,9 @@ interface Vendor {
   };
   createdAt?: string;
   updatedAt?: string;
+  source?: 'MongoDB' | 'UTSF';
+  integrityMode?: string;
+  softExclusions?: number;
 }
 
 // Use centralized API configuration
@@ -72,32 +75,48 @@ const MyVendors: React.FC = () => {
         return;
       }
 
-      const data = await getTemporaryTransporters(ownerId);
-
-      if (data === null) {
-        console.warn('fetchVendorsInternal: server returned unauthorized (null).');
-        toast.error('Authentication required. Please login.');
-        setVendors([]);
-        return;
+      // Fetch MongoDB vendors
+      const mongoData = await getTemporaryTransporters(ownerId);
+      let mongoVendors: Vendor[] = [];
+      if (mongoData && Array.isArray(mongoData)) {
+        mongoVendors = mongoData.map((v: any) => ({ ...v, source: 'MongoDB' as const }));
       }
 
-      if (!Array.isArray(data) || data.length === 0) {
-        console.debug('fetchVendorsInternal: no vendors returned', {
-          length: Array.isArray(data) ? data.length : 'not-array',
+      // Fetch UTSF vendors
+      let utsfVendors: Vendor[] = [];
+      try {
+        const token = Cookies.get('authToken') || localStorage.getItem('token') || localStorage.getItem('authToken');
+        const utsfRes = await fetch(`${API_BASE}/api/utsf/my-vendors?customerId=${ownerId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        setVendors([]);
-        return;
+        if (utsfRes.ok) {
+          const utsfJson = await utsfRes.json();
+          if (utsfJson.success && Array.isArray(utsfJson.transporters)) {
+            utsfVendors = utsfJson.transporters.map((t: any) => ({
+              _id: t._id,
+              companyName: t.companyName,
+              rating: t.rating,
+              createdAt: t.createdAt,
+              updatedAt: t.updatedAt,
+              source: 'UTSF' as const,
+              integrityMode: t.integrityMode,
+              softExclusions: t.softExclusions,
+            }));
+          }
+        }
+      } catch (utsfErr) {
+        console.warn('fetchVendorsInternal: UTSF fetch failed (non-fatal)', utsfErr);
       }
 
-      console.debug('fetchVendorsInternal: got vendors count=', data.length);
-
-      // ✅ SORT BY DATE - NEWEST FIRST
-      const sortedVendors = [...data].sort((a, b) => {
+      // Merge and sort by date (newest first)
+      const allVendors = [...mongoVendors, ...utsfVendors];
+      const sortedVendors = allVendors.sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA; // Descending order (newest first)
+        return dateB - dateA;
       });
 
+      console.debug('fetchVendorsInternal: merged vendors count=', sortedVendors.length, `(MongoDB=${mongoVendors.length}, UTSF=${utsfVendors.length})`);
       setVendors(sortedVendors);
 
     } catch (err: any) {
@@ -155,12 +174,6 @@ const MyVendors: React.FC = () => {
   // Delete handler (fixed)
   // -------------------------
   const handleDeleteVendor = async (vendorId: string, companyName: string) => {
-    console.log('🗑️ ═══════ DELETE VENDOR FRONTEND ═══════');
-    console.log('📋 Function called with:');
-    console.log('  - vendorId:', vendorId);
-    console.log('  - companyName:', companyName);
-    console.log('👤 User data from useAuth():', user);
-
     const customerId =
       user?._id ||
       user?.id ||
@@ -171,19 +184,15 @@ const MyVendors: React.FC = () => {
       localStorage.getItem('customerId') ||
       localStorage.getItem('customerID');
 
-    console.log('✅ Resolved customerId:', customerId);
-
-    if (!window.confirm(`Are you sure you want to delete ${companyName}?`)) {
-      console.log('❌ User cancelled deletion');
-      return;
-    }
-
+    if (!window.confirm(`Are you sure you want to delete ${companyName}?`)) return;
     if (!customerId) {
-      console.error('❌ CRITICAL: No customerID found!');
-      console.error('   - user object is:', user);
       toast.error('Unable to identify user. Please log in again.');
       return;
     }
+
+    // Check if this is a UTSF vendor
+    const vendor = vendors.find(v => v._id === vendorId);
+    const isUtsf = vendor?.source === 'UTSF';
 
     try {
       const token =
@@ -191,81 +200,56 @@ const MyVendors: React.FC = () => {
         localStorage.getItem('token') ||
         localStorage.getItem('authToken');
 
-      console.log('🔐 Auth token:', token ? 'Found' : 'NOT FOUND');
-
       if (!token) {
-        console.error('❌ No auth token found');
         toast.error('Authentication required to delete vendor');
         return;
       }
 
-      const payload = {
-        customerID: customerId,
-        companyName,
-        vendorId,
-      };
-
-      console.log('📦 Final payload to send:');
-      console.log(JSON.stringify(payload, null, 2));
-
-      const url = `${API_BASE}/api/transporter/remove-tied-up`;
-
-      console.log('🌐 DELETE URL:', url);
-
-      const response = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      console.log('📡 Response received:');
-      console.log('  - Status:', response.status);
-      console.log('  - Status Text:', response.statusText);
-
-      let data: any = null;
-      const contentType = response.headers.get('content-type') || '';
-
-      if (contentType.includes('application/json')) {
-        try {
-          data = await response.json();
-          console.log('  - Parsed JSON data:', data);
-        } catch (parseErr) {
-          console.warn('⚠️ Failed to parse JSON response:', parseErr);
-        }
+      let response;
+      if (isUtsf) {
+        // UTSF vendor: use the user-scoped endpoint
+        response = await fetch(`${API_BASE}/api/utsf/my-vendors/${vendorId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ customerId }),
+        });
       } else {
-        const text = await response.text();
-        console.log('  - Non-JSON response body:', text);
+        // MongoDB vendor: use the legacy endpoint
+        response = await fetch(`${API_BASE}/api/transporter/remove-tied-up`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            customerID: customerId,
+            companyName,
+            vendorId,
+          }),
+        });
       }
 
       if (response.status === 401) {
-        console.error('❌ Unauthorized (401)');
         toast.error('Not authorized. Please login again.');
         return;
       }
-
+      if (response.status === 403) {
+        toast.error('You can only delete your own vendors.');
+        return;
+      }
       if (!response.ok) {
-        console.error('❌ Delete failed, non-OK status:', response.status);
-        toast.error(
-          (data && data.message) ||
-          `Failed to delete vendor (status ${response.status})`
-        );
+        const data = await response.json().catch(() => null);
+        toast.error(data?.message || `Failed to delete vendor (status ${response.status})`);
         return;
       }
 
-      if (data && data.success === false) {
-        console.error('❌ Delete failed (API said false):', data);
-        toast.error(data.message || 'Failed to delete vendor');
-        return;
-      }
-
-      console.log('✅ Vendor deleted successfully');
       toast.success('Vendor deleted successfully');
       await fetchVendorsInternal();
     } catch (err) {
-      console.error('💥 Error deleting vendor:', err);
+      console.error('Error deleting vendor:', err);
       toast.error('Error deleting vendor');
     }
   };
@@ -340,35 +324,66 @@ const MyVendors: React.FC = () => {
               <div key={vendor._id} className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {vendor.companyName}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Code: {vendor.vendorCode}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {vendor.companyName}
+                      </h3>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${vendor.source === 'UTSF'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-blue-100 text-blue-800'
+                        }`}>
+                        {vendor.source || 'MongoDB'}
+                      </span>
+                    </div>
+                    {vendor.vendorCode && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Code: {vendor.vendorCode}
+                      </p>
+                    )}
                     <div className="mt-3 space-y-1">
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Phone:</span>{' '}
-                        {vendor.vendorPhone}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Email:</span>{' '}
-                        {vendor.vendorEmail}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">GST:</span> {vendor.gstNo}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Mode:</span> {vendor.mode}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Location:</span>{' '}
-                        {vendor.city}, {vendor.state} - {vendor.pincode}
-                      </p>
+                      {vendor.vendorPhone && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Phone:</span>{' '}
+                          {vendor.vendorPhone}
+                        </p>
+                      )}
+                      {vendor.vendorEmail && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Email:</span>{' '}
+                          {vendor.vendorEmail}
+                        </p>
+                      )}
+                      {vendor.gstNo && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">GST:</span> {vendor.gstNo}
+                        </p>
+                      )}
+                      {vendor.mode && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Mode:</span> {vendor.mode}
+                        </p>
+                      )}
+                      {vendor.city && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Location:</span>{' '}
+                          {vendor.city}{vendor.state ? `, ${vendor.state}` : ''}{vendor.pincode ? ` - ${vendor.pincode}` : ''}
+                        </p>
+                      )}
                       {vendor.rating && vendor.rating > 0 && (
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">Rating:</span>{' '}
                           {vendor.rating}/5
+                        </p>
+                      )}
+                      {vendor.source === 'UTSF' && vendor.integrityMode && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Integrity:</span>{' '}
+                          <span className={vendor.integrityMode === 'STRICT' ? 'text-emerald-600 font-semibold' : 'text-orange-500'}>
+                            {vendor.integrityMode}
+                          </span>
+                          {vendor.softExclusions != null && vendor.softExclusions > 0 && (
+                            <span className="text-gray-400 ml-1">({vendor.softExclusions} soft-blocked)</span>
+                          )}
                         </p>
                       )}
                     </div>

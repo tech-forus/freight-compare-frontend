@@ -9,7 +9,7 @@
 // TYPES AND CONSTANTS
 // ============================================================================
 
-const UTSF_VERSION = '2.0';
+const UTSF_VERSION = '3.0';
 
 const ALL_ZONES = [
   'N1', 'N2', 'N3', 'N4',
@@ -71,6 +71,14 @@ export interface ZoneRemap {
 export interface ZoneDiscrepancies {
   totalMismatched: number;
   remaps: ZoneRemap[];
+}
+
+export interface GovernanceUpdate {
+  timestamp: string;
+  editorId: string;
+  reason: string;
+  changeSummary: string;
+  snapshot: string | null;
 }
 
 export interface VendorFormData {
@@ -345,6 +353,8 @@ function encodeServiceability(data: VendorFormData): {
   serviceability: Record<string, any>;
   servedByZone: Map<string, number[]>;
   zoneDiscrepancies: ZoneDiscrepancies;
+  zoneOverrides: Record<number, string>;
+  complianceScore: number;
 } {
   const serviceabilityData = data.serviceability || [];
 
@@ -354,6 +364,9 @@ function encodeServiceability(data: VendorFormData): {
   // Track vendor-zone != master-zone discrepancies
   // Key: "vendorZone->masterZone", Value: list of pincodes
   const discrepancyMap = new Map<string, number[]>();
+
+  // === ZONE OVERRIDES: Track pincodes where transporter zone differs from master ===
+  const zoneOverrides: Record<number, string> = {};
 
   // If no explicit serviceability data but we have selectedZones,
   // derive serviceability from master pincodes for those zones.
@@ -392,6 +405,9 @@ function encodeServiceability(data: VendorFormData): {
             discrepancyMap.set(key, []);
           }
           discrepancyMap.get(key)!.push(pincode);
+
+          // === ZONE OVERRIDE: Store the transporter's zone mapping ===
+          zoneOverrides[pincode] = vendorZone;
         }
       }
     }
@@ -414,27 +430,58 @@ function encodeServiceability(data: VendorFormData): {
   // Build serviceability for each zone
   const serviceability: Record<string, any> = {};
 
+  // === STRICT DELTA TRACKING for compliance score ===
+  let totalMasterPincodes = 0;
+  let totalForcedExceptions = 0;
+
   for (const zone of ALL_ZONES) {
     const zoneMaster = getPincodesForZone(zone);
     const zoneServed = servedByZone.get(zone) || [];
 
     const totalInZone = zoneMaster.length;
-    const servedCount = new Set(zoneServed).size;
+    const servedSet = new Set(zoneServed.map(p => Number(p)));
+    const servedCount = servedSet.size;
 
     if (totalInZone === 0) {
       continue; // Zone not in master
     }
+
+    totalMasterPincodes += totalInZone;
+
+    // === STRICT SET INTERSECTION ===
+    // Any pincode in Master_Zone_Z but NOT in Transporter data → forced exception
+    const missingFromTransporter: number[] = [];
+    if (zoneServed.length > 0) {
+      // Only check if transporter claims to serve this zone at all
+      for (const masterPin of zoneMaster) {
+        if (!servedSet.has(Number(masterPin))) {
+          missingFromTransporter.push(Number(masterPin));
+        }
+      }
+    }
+
+    totalForcedExceptions += missingFromTransporter.length;
 
     const coveragePercent = totalInZone > 0 ? (servedCount / totalInZone * 100) : 0;
 
     // Determine optimal encoding mode
     const { mode, pincodesToStore } = determineCoverageMode(zoneServed, zoneMaster, 50.0);
 
+    // === STRICT DELTA: For FULL_ZONE mode, if there are missing pincodes,
+    // force upgrade to FULL_MINUS_EXCEPTIONS and inject them ===
+    let finalMode = mode;
+    let finalPincodesToStore = pincodesToStore;
+    if (mode === 'FULL_ZONE' && missingFromTransporter.length > 0) {
+      finalMode = ZoneCoverageMode.FULL_MINUS_EXCEPTIONS;
+      finalPincodesToStore = missingFromTransporter;
+      console.log(`[UTSF Encoder] STRICT DELTA: Zone ${zone} forced FULL_ZONE → FULL_MINUS_EXCEPT (${missingFromTransporter.length} missing pincodes)`);
+    }
+
     // Compress pincodes to ranges
-    const { ranges, singles } = compressToRanges(pincodesToStore);
+    const { ranges, singles } = compressToRanges(finalPincodesToStore);
 
     const coverage: any = {
-      mode,
+      mode: finalMode,
       totalInZone,
       servedCount,
       coveragePercent: Math.round(coveragePercent * 100) / 100
@@ -445,10 +492,10 @@ function encodeServiceability(data: VendorFormData): {
       coverage.type = 'special';
     }
 
-    if (mode === ZoneCoverageMode.FULL_MINUS_EXCEPTIONS) {
+    if (finalMode === ZoneCoverageMode.FULL_MINUS_EXCEPTIONS) {
       coverage.exceptRanges = ranges;
       coverage.exceptSingles = singles;
-    } else if (mode === ZoneCoverageMode.ONLY_SERVED) {
+    } else if (finalMode === ZoneCoverageMode.ONLY_SERVED) {
       coverage.servedRanges = ranges;
       coverage.servedSingles = singles;
     }
@@ -456,7 +503,15 @@ function encodeServiceability(data: VendorFormData): {
     serviceability[zone] = coverage;
   }
 
-  return { serviceability, servedByZone, zoneDiscrepancies };
+  // === COMPLIANCE SCORE: 1.0 = perfect match, 0.0 = all forced ===
+  const complianceScore = totalMasterPincodes > 0
+    ? Math.round((1.0 - (totalForcedExceptions / totalMasterPincodes)) * 10000) / 10000
+    : 1.0;
+
+  console.log(`[UTSF Encoder] Compliance Score: ${complianceScore} (${totalForcedExceptions} forced exceptions / ${totalMasterPincodes} total master pincodes)`);
+  console.log(`[UTSF Encoder] Zone Overrides: ${Object.keys(zoneOverrides).length} pincodes mapped differently by transporter`);
+
+  return { serviceability, servedByZone, zoneDiscrepancies, zoneOverrides, complianceScore };
 }
 
 function encodeOda(data: VendorFormData, servedByZone: Map<string, number[]>): Record<string, any> {
@@ -604,7 +659,7 @@ export async function generateUTSF(vendorData: VendorFormData): Promise<any> {
   const isTemporary = !!(vendorData.customerID && vendorData.customerID.trim());
   const transporterType = isTemporary ? 'temporary' : 'regular';
 
-  // Build meta section
+  // Build meta section with v3.0 governance headers
   const meta = {
     id: '', // Will be assigned by backend
     companyName: vendorData.companyName || 'Unknown',
@@ -631,6 +686,14 @@ export async function generateUTSF(vendorData: VendorFormData): Promise<any> {
     },
     isVerified: false,
     approvalStatus: 'pending',
+    // === v3.0 GOVERNANCE HEADERS ===
+    created: {
+      by: 'WEBAPP_USER',
+      at: now,
+      source: 'FE'
+    },
+    version: '3.0.0',
+    updateCount: 0,
     createdAt: now,
     updatedAt: now
   };
@@ -638,8 +701,8 @@ export async function generateUTSF(vendorData: VendorFormData): Promise<any> {
   // Build pricing section
   const pricing = encodePricing(vendorData);
 
-  // Build serviceability section
-  const { serviceability, servedByZone, zoneDiscrepancies } = encodeServiceability(vendorData);
+  // Build serviceability section with strict delta + zoneOverrides + compliance
+  const { serviceability, servedByZone, zoneDiscrepancies, zoneOverrides, complianceScore } = encodeServiceability(vendorData);
 
   // Build ODA section
   const oda = encodeOda(vendorData, servedByZone);
@@ -647,8 +710,9 @@ export async function generateUTSF(vendorData: VendorFormData): Promise<any> {
   // Build stats section
   const stats = calculateStats(serviceability, oda, vendorData);
   stats.zoneDiscrepancyCount = zoneDiscrepancies.totalMismatched;
+  stats.complianceScore = complianceScore;
 
-  // Assemble UTSF
+  // Assemble UTSF v3.0
   const utsf: any = {
     version: UTSF_VERSION,
     generatedAt: now,
@@ -657,8 +721,15 @@ export async function generateUTSF(vendorData: VendorFormData): Promise<any> {
     pricing,
     serviceability,
     oda,
-    stats
+    stats,
+    // === v3.0 AUDIT TRAIL ===
+    updates: [] as GovernanceUpdate[],
   };
+
+  // Include zone overrides if any exist
+  if (Object.keys(zoneOverrides).length > 0) {
+    utsf.zoneOverrides = zoneOverrides;
+  }
 
   // Include zone discrepancies if any exist
   if (zoneDiscrepancies.totalMismatched > 0) {

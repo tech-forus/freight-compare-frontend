@@ -46,6 +46,7 @@ import FormBuilderPage from './pages/FormBuilderPage';
 import AdminManagementPage from './pages/AdminManagementPage';
 import AdminWelcomePage from './pages/AdminWelcomePage';
 import UTSFManager from './pages/UTSFManager';
+import UTSFHealthMonitor from './pages/UTSFHealthMonitor';
 import { getFirstAvailableRoute, hasPermission } from './config/adminPermissions';
 
 export const PrivateRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -376,6 +377,16 @@ function App() {
               element={
                 <SuperAdminRoute>
                   <UTSFManager />
+                </SuperAdminRoute>
+              }
+            />
+
+            {/* UTSF Health Monitor - SUPER ADMIN ONLY */}
+            <Route
+              path="/super-admin/utsf-health"
+              element={
+                <SuperAdminRoute>
+                  <UTSFHealthMonitor />
                 </SuperAdminRoute>
               }
             />

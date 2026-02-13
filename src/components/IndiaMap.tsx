@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   loadCentroids,
-  getCentroidWithFallback,
   latLngToSvg,
   INDIA_GEO_BOUNDS,
   type LatLng,
 } from '../utils/mapProjection';
+import { generateSmoothWigglyPath } from '../utils/routePathGenerator';
 
 // =============================================================================
 // Type Definitions
@@ -36,16 +36,32 @@ const convertLatLngToSvgPoint = (coords: LatLng): { x: number; y: number } => {
 // The Map Component
 // =============================================================================
 export const IndiaMap: React.FC<IndiaMapProps> = ({ originCoords, destCoords }) => {
-  const [centroidsLoaded, setCentroidsLoaded] = useState(false);
-
   // Load centroids on mount (ensures shared cache is populated)
   useEffect(() => {
-    loadCentroids().then(() => setCentroidsLoaded(true));
+    loadCentroids();
   }, []);
 
   // Calculate SVG points only if coordinates are provided
   const originPoint = originCoords ? convertLatLngToSvgPoint(originCoords) : null;
   const destPoint = destCoords ? convertLatLngToSvgPoint(destCoords) : null;
+
+  // Generate wiggly path when both points are available
+  const wigglyPath = useMemo(() => {
+    if (!originPoint || !destPoint) return '';
+
+    console.log('🗺️ Generating wiggly path from', originPoint, 'to', destPoint);
+    const path = generateSmoothWigglyPath(
+      originPoint,
+      destPoint,
+      {
+        segments: 20,        // More segments for varied curves
+        wiggleFactor: 60,    // Strong wiggles for dramatic effect
+        tension: 0.8,        // Very smooth curves
+      }
+    );
+    console.log('📍 Generated path:', path.substring(0, 100) + '...');
+    return path;
+  }, [originPoint?.x, originPoint?.y, destPoint?.x, destPoint?.y]);
 
   // Animation variants for the route path
   const pathVariants = {
@@ -100,14 +116,11 @@ export const IndiaMap: React.FC<IndiaMapProps> = ({ originCoords, destCoords }) 
       />
 
       {/* This block only renders when we have both start and end points */}
-      {originPoint && destPoint && (
+      {originPoint && destPoint && wigglyPath && (
         <>
-          {/* Glowing Path - STRAIGHT LINE */}
-          <motion.line
-            x1={originPoint.x}
-            y1={originPoint.y}
-            x2={destPoint.x}
-            y2={destPoint.y}
+          {/* Glowing Path - WIGGLY ROAD */}
+          <motion.path
+            d={wigglyPath}
             fill="none"
             stroke="url(#glowPath)"
             strokeWidth="6"
@@ -118,11 +131,8 @@ export const IndiaMap: React.FC<IndiaMapProps> = ({ originCoords, destCoords }) 
             transition={{ duration: 2, ease: "easeInOut" }}
           />
           {/* The clean, main path on top of the glow */}
-          <motion.line
-            x1={originPoint.x}
-            y1={originPoint.y}
-            x2={destPoint.x}
-            y2={destPoint.y}
+          <motion.path
+            d={wigglyPath}
             fill="none"
             stroke="white"
             strokeOpacity="0.8"

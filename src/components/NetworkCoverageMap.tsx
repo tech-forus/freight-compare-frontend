@@ -13,6 +13,7 @@ import {
     type LatLng,
     type SvgPoint,
 } from '../utils/mapProjection';
+import { generateSmoothWigglyPath } from '../utils/routePathGenerator';
 
 interface NetworkCoverageMapProps {
     fromPincode?: string;
@@ -268,35 +269,47 @@ function MapVisual({ originZone, destZone, isRouteActive, isLarge }: MapVisualPr
                 ))}
             </g>
 
-            {/* Connecting Line - STRAIGHT LINE (no Bezier curve) */}
+            {/* Connecting Line - WIGGLY PATH (Road Trip Style) */}
             {isRouteActive && originZone && destZone && (
                 <>
-                    {/* Glow effect line */}
-                    <motion.line
-                        x1={originZone.x}
-                        y1={originZone.y}
-                        x2={destZone.x}
-                        y2={destZone.y}
+                    {/* Glow effect path */}
+                    <motion.path
+                        d={useMemo(() => generateSmoothWigglyPath(
+                            { x: originZone.x, y: originZone.y },
+                            { x: destZone.x, y: destZone.y },
+                            {
+                                segments: 40, // Higher detail for smoother small turns
+                                wiggleFactor: isLarge ? 30 : 15, // Reduced from 50/25 to keep it tighter
+                                tension: 0.6
+                            }
+                        ), [originZone.x, originZone.y, destZone.x, destZone.y, isLarge])}
                         stroke="#6366f1"
-                        strokeWidth={isLarge ? 6 : 8}
+                        strokeWidth={isLarge ? 6 : 4}
                         strokeLinecap="round"
                         strokeOpacity={0.3}
+                        fill="none"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ duration: 1.2, ease: "easeInOut", delay: 0.3 }}
+                        transition={{ duration: 2.5, ease: "easeInOut", delay: 0.3 }}
                     />
-                    {/* Main route line */}
-                    <motion.line
-                        x1={originZone.x}
-                        y1={originZone.y}
-                        x2={destZone.x}
-                        y2={destZone.y}
+                    {/* Main route path */}
+                    <motion.path
+                        d={useMemo(() => generateSmoothWigglyPath(
+                            { x: originZone.x, y: originZone.y },
+                            { x: destZone.x, y: destZone.y },
+                            {
+                                segments: 40,
+                                wiggleFactor: isLarge ? 30 : 15, // Reduced from 50/25
+                                tension: 0.6
+                            }
+                        ), [originZone.x, originZone.y, destZone.x, destZone.y, isLarge])}
                         stroke="url(#routeGradient)"
-                        strokeWidth={isLarge ? 3 : 4}
+                        strokeWidth={isLarge ? 3 : 2}
                         strokeLinecap="round"
+                        fill="none"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ duration: 1.2, ease: "easeInOut", delay: 0.5 }}
+                        transition={{ duration: 2.5, ease: "easeInOut", delay: 0.5 }}
                     />
                 </>
             )}

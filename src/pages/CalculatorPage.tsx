@@ -22,12 +22,15 @@ import {
     Plane,
     Train,
     Ship,
-
+    Download,
+    MapPin,
+    Navigation,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
 
 import { useAuth } from "../hooks/useAuth";
@@ -295,6 +298,16 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     // Real-time vendor approval status (synced from Super Admin)
     const [vendorStatusMap, setVendorStatusMap] = useState<Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }>>({});
 
+    // Nearest serviceable pincode state
+    const [nearestPincodeInfo, setNearestPincodeInfo] = useState<{
+        nearestPincode: string;
+        originalPincode: string;
+        distance: number;
+        servedBy: string[];
+    } | null>(null);
+    const [isSearchingNearest, setIsSearchingNearest] = useState(false);
+    const [showingNearestResults, setShowingNearestResults] = useState(false);
+
     // Form state
     // Form state initialized with storage data to prevent race conditions
     const [modeOfTransport, setModeOfTransport] = useState<"Road" | "Air" | "Rail" | "Ship">(() => {
@@ -545,6 +558,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         [boxes, shipmentType]
     );
 
+    // 🔧 Clear error when user fills in required fields
+    useEffect(() => {
+        if (error && !hasBoxValidationErrors && !hasPincodeIssues) {
+            setError("");
+        }
+    }, [boxes, hasBoxValidationErrors, hasPincodeIssues]);
+
     // ---------------------------------------------------------------------------
     // Effects
     // ---------------------------------------------------------------------------
@@ -794,6 +814,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             height: boxPreset.height,
             weight: boxPreset.weight,
             description: boxPreset.name,
+            count: 0, // 🔧 Set to 0 so placeholder shows instead of "1"
         };
         setBoxes(updated);
 
@@ -1320,6 +1341,34 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         },
     });
 
+    // -------------------- Excel Download Helper --------------------
+    const downloadPackingListAsExcel = () => {
+        if (boxes.length === 0) return;
+
+        // Create CSV content (simple Excel-compatible format)
+        const headers = ['Box Name', 'Quantity', 'Weight (kg)', 'Length (cm)', 'Width (cm)', 'Height (cm)'];
+        const rows = boxes.map(box => [
+            box.description || 'Unnamed Box',
+            box.count || 0,
+            box.weight || 0,
+            box.length || '-',
+            box.width || '-',
+            box.height || '-',
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        // Download as CSV (opens in Excel)
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `packing-list-${fromPincode}-to-${toPincode}-${Date.now()}.csv`;
+        link.click();
+    };
+
     // -------------------- Render --------------------
     const equalityError =
         isSamePincode && isFromPincodeValid && isToPincodeValid
@@ -1798,14 +1847,28 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                         </motion.div>
                                     )}
 
-                                    {/* Add Box Button - Inside Card */}
-                                    <button
-                                        id="add-box-button"
-                                        onClick={addBoxType}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all mt-1"
-                                    >
-                                        <PlusCircle size={14} /> Add another box
-                                    </button>
+                                    {/* Add Box Button + Download - Inside Card */}
+                                    <div className="flex items-center justify-between mt-1">
+                                        <button
+                                            id="add-box-button"
+                                            onClick={addBoxType}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
+                                        >
+                                            <PlusCircle size={14} /> Add another box
+                                        </button>
+
+                                        <button
+                                            onClick={downloadPackingListAsExcel}
+                                            disabled={boxes.length === 0 || !boxes.some(b => b.count && b.weight)}
+                                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${boxes.length === 0 || !boxes.some(b => b.count && b.weight)
+                                                ? 'text-slate-300 cursor-not-allowed bg-slate-50'
+                                                : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                                                }`}
+                                            title={boxes.length === 0 || !boxes.some(b => b.count && b.weight) ? "Add boxes with quantity and weight to download" : "Download packing list as Excel"}
+                                        >
+                                            <Download size={16} /> Download Packing List
+                                        </button>
+                                    </div>
 
                                 </div>
                             </Card>
@@ -2147,15 +2210,104 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
                                             if (isCalculating) return null;
 
+                                            // Detect if user vendors are only FTL/WheelsEye (i.e. no "real" tied-up vendors)
+                                            const FTL_NAMES = ['LOCAL FTL', 'Wheelseye FTL', 'wheelseye', 'local ftl', 'ftl transporter', 'local-ftl'];
+                                            const isFtlOrWheel = (q: any) => {
+                                                const name = (q.companyName || q.transporterName || '').toLowerCase();
+                                                return FTL_NAMES.some(f => name.includes(f.toLowerCase()));
+                                            };
+                                            const realTiedUpVendors = tiedUpVendors.filter(q => !isFtlOrWheel(q));
+                                            const hasNoRealTiedUp = realTiedUpVendors.length === 0;
+
+                                            // For "Our Vendors" — always include FTL/Wheelseye there
+                                            const ftlFromTied = tiedUpVendors.filter(q => isFtlOrWheel(q));
+                                            const combinedOtherVendors = [...ftlFromTied, ...otherVendors];
+
+                                            // Helper: search nearest serviceable pincode
+                                            const handleFindNearest = async () => {
+                                                setIsSearchingNearest(true);
+                                                try {
+                                                    const customerId = getCustomer()?._id || getCustomer()?.id;
+                                                    const res = await axios.get(`${API_BASE_URL}/api/utsf/nearest-serviceable`, {
+                                                        params: { pincode: toPincode, fromPincode, customerId },
+                                                        headers: { Authorization: `Bearer ${token}` }
+                                                    });
+                                                    if (res.data.success && res.data.nearestPincode) {
+                                                        setNearestPincodeInfo(res.data);
+                                                        setShowingNearestResults(true);
+                                                        // Swap destination and recalculate
+                                                        setToPincode(res.data.nearestPincode);
+                                                        // Wait for state update, then calculate + scroll to results
+                                                        setTimeout(async () => {
+                                                            await calculateQuotes();
+                                                            // Scroll to results after calculation completes
+                                                            setTimeout(() => {
+                                                                const target = document.getElementById("first-results") || document.getElementById("results");
+                                                                target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                            }, 350);
+                                                        }, 100);
+                                                    } else {
+                                                        toast.error(res.data.message || 'No serviceable pincode found nearby');
+                                                    }
+                                                } catch (err: any) {
+                                                    console.error('[Nearest Pincode]', err);
+                                                    toast.error('Failed to search for nearest pincode');
+                                                } finally {
+                                                    setIsSearchingNearest(false);
+                                                }
+                                            };
+
                                             return (
                                                 <>
-                                                    {tiedUpVendors.length > 0 && (
-                                                        <section id="first-results">
-                                                            <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-blue-600 pl-4 py-2 bg-blue-50/50 rounded-r-lg">
-                                                                Your Vendors
-                                                            </h2>
+                                                    {/* Nearest Pincode Banner */}
+                                                    {showingNearestResults && nearestPincodeInfo && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: -10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            className="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3"
+                                                        >
+                                                            <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                                                                <Navigation size={20} className="text-amber-600" />
+                                                            </div>
+                                                            <div className="flex-grow">
+                                                                <p className="text-sm font-semibold text-amber-900">
+                                                                    Showing results for nearest serviceable pincode
+                                                                </p>
+                                                                <p className="text-xs text-amber-700 mt-0.5">
+                                                                    <span className="font-bold text-amber-900">{nearestPincodeInfo.nearestPincode}</span>
+                                                                    {' '}instead of{' '}
+                                                                    <span className="line-through text-amber-500">{nearestPincodeInfo.originalPincode}</span>
+                                                                    <span className="ml-2 text-amber-500">(±{nearestPincodeInfo.distance} away)</span>
+                                                                </p>
+                                                                {nearestPincodeInfo.servedBy.length > 0 && (
+                                                                    <p className="text-[11px] text-amber-600 mt-1">
+                                                                        Served by: {nearestPincodeInfo.servedBy.join(', ')}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setShowingNearestResults(false);
+                                                                    setNearestPincodeInfo(null);
+                                                                    setToPincode(nearestPincodeInfo.originalPincode);
+                                                                    setTimeout(() => calculateQuotes(), 100);
+                                                                }}
+                                                                className="text-xs text-amber-700 hover:text-amber-900 underline flex-shrink-0"
+                                                            >
+                                                                Reset to original
+                                                            </button>
+                                                        </motion.div>
+                                                    )}
+
+                                                    {/* YOUR VENDORS SECTION */}
+                                                    <section id="first-results">
+                                                        <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-blue-600 pl-4 py-2 bg-blue-50/50 rounded-r-lg">
+                                                            Your Vendors
+                                                        </h2>
+
+                                                        {realTiedUpVendors.length > 0 ? (
                                                             <div className="space-y-4">
-                                                                {tiedUpVendors.map((item, index) => (
+                                                                {realTiedUpVendors.map((item, index) => (
                                                                     <VendorResultCard
                                                                         key={`tied-${index}`}
                                                                         quote={item}
@@ -2166,10 +2318,53 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     />
                                                                 ))}
                                                             </div>
-                                                        </section>
-                                                    )}
+                                                        ) : (
+                                                            /* EMPTY STATE: No user vendors serve this pincode */
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                className="bg-gradient-to-br from-slate-50 to-blue-50/30 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center"
+                                                            >
+                                                                <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                                    <MapPin size={28} className="text-blue-500" />
+                                                                </div>
+                                                                <h3 className="text-lg font-bold text-slate-800">
+                                                                    None of your vendors serve pincode <span className="text-blue-600 font-mono">{toPincode}</span>
+                                                                </h3>
+                                                                <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+                                                                    Your added vendors don't have coverage for this destination.
+                                                                    You can add a vendor that serves this area, or check if a nearby pincode is covered.
+                                                                </p>
 
-                                                    {otherVendors.length > 0 && (() => {
+                                                                <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
+                                                                    <button
+                                                                        onClick={handleFindNearest}
+                                                                        disabled={isSearchingNearest}
+                                                                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${isSearchingNearest
+                                                                            ? 'bg-slate-100 text-slate-400 cursor-wait'
+                                                                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md active:scale-95'
+                                                                            }`}
+                                                                    >
+                                                                        {isSearchingNearest ? (
+                                                                            <><Loader2 size={16} className="animate-spin" /> Searching...</>
+                                                                        ) : (
+                                                                            <><Navigation size={16} /> Find nearest serviceable pincode</>
+                                                                        )}
+                                                                    </button>
+
+                                                                    <Link
+                                                                        to="/my-vendors"
+                                                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                                                                    >
+                                                                        <PlusCircle size={16} /> Add a vendor
+                                                                    </Link>
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </section>
+
+                                                    {/* OUR VENDORS SECTION */}
+                                                    {combinedOtherVendors.length > 0 && (() => {
                                                         const isSubscribed = getCustomer()?.isSubscribed;
                                                         return (
                                                             <section>
@@ -2177,9 +2372,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     Our Vendors
                                                                 </h2>
 
-                                                                {/* No container-level blur. Each card decides what to blur. */}
                                                                 <div className="space-y-4">
-                                                                    {otherVendors.map((item, index) => (
+                                                                    {combinedOtherVendors.map((item, index) => (
                                                                         <VendorResultCard
                                                                             key={`other-${index}`}
                                                                             quote={{ ...item, isHidden: !isSubscribed || (item as any).isHidden }}
@@ -2200,7 +2394,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         );
                                                     })()}
 
-                                                    {tiedUpVendors.length === 0 && otherVendors.length === 0 && (
+                                                    {realTiedUpVendors.length === 0 && combinedOtherVendors.length === 0 && (
                                                         <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-300">
                                                             <PackageSearch className="mx-auto h-12 w-12 text-slate-400" />
                                                             <h3 className="mt-4 text-xl font-semibold text-slate-700">
@@ -2220,6 +2414,21 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     Try adding vendors in "My Vendors" with zone pricing for these areas
                                                                 </li>
                                                             </ul>
+
+                                                            <button
+                                                                onClick={handleFindNearest}
+                                                                disabled={isSearchingNearest}
+                                                                className={`mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${isSearchingNearest
+                                                                    ? 'bg-slate-100 text-slate-400 cursor-wait'
+                                                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md active:scale-95'
+                                                                    }`}
+                                                            >
+                                                                {isSearchingNearest ? (
+                                                                    <><Loader2 size={16} className="animate-spin" /> Searching...</>
+                                                                ) : (
+                                                                    <><Navigation size={16} /> Find nearest serviceable pincode</>
+                                                                )}
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </>

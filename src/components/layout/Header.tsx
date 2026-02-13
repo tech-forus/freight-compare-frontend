@@ -12,6 +12,7 @@ import {
   PackagePlus,
   Info,
   History,
+  FileJson,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,7 +37,7 @@ const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) =>
 );
 
 const UserProfileDropdown = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin, isSuperAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -128,6 +129,17 @@ const UserProfileDropdown = () => {
               >
                 <History size={16} /> Box Libraries
               </Link>
+
+              {(isAdmin || isSuperAdmin) && (
+                <Link
+                  to="/super-admin/utsf-manager"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-md"
+                >
+                  <FileJson size={16} /> UTSF Manager
+                </Link>
+              )}
+
               <hr className="my-1 border-slate-100" />
               <button
                 onClick={logout}
