@@ -23,7 +23,7 @@ import {
     Plane,
     Train,
     Ship,
-    X,
+    X as XIcon,
 
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -1919,7 +1919,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                             className="absolute top-3 right-3 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                                             aria-label="Close"
                                         >
-                                            <X size={20} />
+                                            <XIcon size={20} />
                                         </button>
 
                                         {/* Icon */}

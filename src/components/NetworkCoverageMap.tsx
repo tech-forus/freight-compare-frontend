@@ -250,6 +250,12 @@ function MapVisual({ originZone, destZone, isRouteActive, isLarge }: MapVisualPr
                     <stop offset="0%" stopColor="#6366f1" />
                     <stop offset="100%" stopColor="#8b5cf6" />
                 </linearGradient>
+                {/* CLIP PATH to keep route inside India */}
+                <clipPath id="mapClip">
+                    {INDIA_PATHS.map((pathData: any, index: number) => (
+                        <path key={index} d={pathData.d} />
+                    ))}
+                </clipPath>
             </defs>
 
             {/* India Base Map - Multi-Path from Official SVG */}
@@ -268,36 +274,176 @@ function MapVisual({ originZone, destZone, isRouteActive, isLarge }: MapVisualPr
                 ))}
             </g>
 
-            {/* Connecting Line - STRAIGHT LINE (no Bezier curve) */}
+            {/* Connecting Line - SIMULATED ROAD PATH (Google Maps style) */}
             {isRouteActive && originZone && destZone && (
                 <>
-                    {/* Glow effect line */}
-                    <motion.line
-                        x1={originZone.x}
-                        y1={originZone.y}
-                        x2={destZone.x}
-                        y2={destZone.y}
-                        stroke="#6366f1"
-                        strokeWidth={isLarge ? 6 : 8}
-                        strokeLinecap="round"
-                        strokeOpacity={0.3}
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ duration: 1.2, ease: "easeInOut", delay: 0.3 }}
-                    />
-                    {/* Main route line */}
-                    <motion.line
-                        x1={originZone.x}
-                        y1={originZone.y}
-                        x2={destZone.x}
-                        y2={destZone.y}
-                        stroke="url(#routeGradient)"
-                        strokeWidth={isLarge ? 3 : 4}
-                        strokeLinecap="round"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ duration: 1.2, ease: "easeInOut", delay: 0.5 }}
-                    />
+                    {/* Road Path Generation Logic */}
+                    {(() => {
+                        // 1. Path Generation with "Gravity" towards hubs to simulate highways
+                        // This prevents "flight paths" across oceans and makes it look like a road network
+                        const generateRealisticPath = (p1: { x: number, y: number }, p2: { x: number, y: number }): string => {
+                            const dx = p2.x - p1.x;
+                            const dy = p2.y - p1.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+
+                            const points: { x: number, y: number }[] = [p1];
+
+                            // For longer routes, add an intermediate "waypoint" to simulate routing through major hubs
+                            // We bias towards the geometric center of India (approx 280, 350 in this SVG viewbox) 
+                            // to keep paths inland.
+                            if (dist > 100) {
+                                // Simple heuristic: Pull slightly towards center of map
+                                const centerX = 280;
+                                const centerY = 350;
+
+                                // Strength of pull depends on distance (longer = more pull)
+                                const biasStrength = 0.25;
+
+                                const midX = (p1.x + p2.x) / 2;
+                                const midY = (p1.y + p2.y) / 2;
+
+                                // Weighted average between direct midpoint and map center
+                                const waypointX = midX * (1 - biasStrength) + centerX * biasStrength;
+                                const waypointY = midY * (1 - biasStrength) + centerY * biasStrength;
+
+                                // Add some randomness to the waypoint so it doesn't look identical every time
+                                // Deterministic random based on coords
+                                const seed = (p1.x + p2.y);
+                                const jitterX = (Math.sin(seed) * 20);
+                                const jitterY = (Math.cos(seed) * 20);
+
+                                points.push({ x: waypointX + jitterX, y: waypointY + jitterY });
+                            }
+
+                            points.push(p2);
+
+                            // 2. Midpoint displacement (Jaggedness) on each segment
+                            const addJitter = (start: { x: number, y: number }, end: { x: number, y: number }, iterations: number): string => {
+                                let segPoints = [start, end];
+                                for (let i = 0; i < iterations; i++) {
+                                    const nextPoints = [];
+                                    for (let j = 0; j < segPoints.length - 1; j++) {
+                                        const a = segPoints[j];
+                                        const b = segPoints[j + 1];
+                                        const mx = (a.x + b.x) / 2;
+                                        const my = (a.y + b.y) / 2;
+
+                                        // local segment vector
+                                        const ldx = b.x - a.x;
+                                        const ldy = b.y - a.y;
+                                        const segLen = Math.sqrt(ldx * ldx + ldy * ldy);
+
+                                        // perpendicular shift
+                                        const shift = (Math.sin(mx * i + my) * 0.5 + 0.5) * (segLen * 0.25); // 0.25 roughness
+
+                                        // Normal: (-dy, dx)
+                                        const px = mx - (ldy / segLen) * shift;
+                                        const py = my + (ldx / segLen) * shift;
+
+                                        nextPoints.push(a);
+                                        nextPoints.push({ x: px, y: py });
+                                    }
+                                    nextPoints.push(segPoints[segPoints.length - 1]);
+                                    segPoints = nextPoints;
+                                }
+                                // Don't repeat the start point when joining
+                                return segPoints.slice(0, segPoints.length - 1).map(pt => `${pt.x},${pt.y}`).join(" L");
+                            };
+
+                            // Build full path string
+                            let dPath = `M${points[0].x},${points[0].y}`;
+                            for (let i = 0; i < points.length - 1; i++) {
+                                // Append segment L...
+                                const roughSegment = addJitter(points[i], points[i + 1], 4);
+                                // segStr format: "x1,y1 L x2,y2 ..."
+                                // We append " L " + segStr (skipping the first point of segStr which equals points[i])
+                                const parts = roughSegment.split(" L");
+                                const tail = parts.slice(1).join(" L");
+                                dPath += ` L${tail}`;
+                                // Add the waypoint/endpoint
+                                dPath += ` L${points[i + 1].x},${points[i + 1].y}`;
+                            }
+                            return dPath;
+                        };
+
+                        const pathD = generateRealisticPath({ x: originZone.x, y: originZone.y }, { x: destZone.x, y: destZone.y });
+
+                        return (
+                            <>
+                                {/* CLIPPED ROUTE GROUP */}
+                                <g clipPath="url(#mapClip)">
+                                    {/* 1. Base Road (Blue/Indigo) */}
+                                    <motion.path
+                                        d={pathD}
+                                        stroke="#448aff" // Google Maps Blue
+                                        strokeWidth={isLarge ? 5 : 6}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        fill="none"
+                                        initial={{ pathLength: 0, opacity: 0 }}
+                                        animate={{ pathLength: 1, opacity: 1 }}
+                                        transition={{ duration: 1.5, ease: "easeInOut" }}
+                                    />
+
+                                    {/* 2. Dashed Overlay (Simulates traffic/route) */}
+                                    <motion.path
+                                        d={pathD}
+                                        stroke="#818cf8" // Indigo 400 (Lighter)
+                                        strokeWidth={isLarge ? 2 : 3}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        fill="none"
+                                        strokeDasharray="4 6" // Dashes
+                                        initial={{ pathLength: 0, opacity: 0 }}
+                                        animate={{ pathLength: 1, opacity: 1 }}
+                                        transition={{ duration: 1.5, ease: "easeInOut", delay: 0.1 }}
+                                    />
+                                </g>
+
+                                {/* 3. Traveling Colorful Truck */}
+                                <motion.g
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 1, duration: 0.5 }}
+                                >
+                                    <g>
+                                        <animateMotion
+                                            dur="12s" // Even slower for realism
+                                            repeatCount="indefinite"
+                                            path={pathD}
+                                            rotate="0"
+                                            calcMode="linear"
+                                        />
+
+                                        {/* Detailed Green/Orange Truck Icon */}
+                                        <g transform={`scale(${isLarge ? 0.12 : 0.09}) translate(-170, -170)`}>
+                                            {/* Truck Chassis */}
+                                            <path fill="#1f2937" d="M50 250h340v30H50z" />
+
+                                            {/* Wheels */}
+                                            <circle cx="110" cy="280" r="35" fill="#374151" stroke="#e5e7eb" strokeWidth="4" />
+                                            <circle cx="310" cy="280" r="35" fill="#374151" stroke="#e5e7eb" strokeWidth="4" />
+
+                                            {/* Cab (Green) */}
+                                            <path fill="#4ade80" d="M260 250V140l40-10 60 40v80h-100z" />
+                                            <path fill="#22c55e" d="M260 250h100v-50h-100z" /> {/* Door Detail */}
+
+                                            {/* Window */}
+                                            <path fill="#bfdbfe" d="M270 150h30l40 30v20h-70z" />
+
+                                            {/* Container (Orange Box) */}
+                                            <rect x="50" y="100" width="200" height="150" fill="#f97316" rx="4" />
+                                            {/* Container Inner Detail */}
+                                            <rect x="65" y="115" width="170" height="120" fill="#fb923c" rx="2" />
+
+                                            {/* Bumper/Light */}
+                                            <rect x="360" y="230" width="10" height="20" fill="#facc15" />
+                                        </g>
+                                    </g>
+                                </motion.g>
+                            </>
+                        );
+                    })()}
                 </>
             )}
 

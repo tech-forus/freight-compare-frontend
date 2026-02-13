@@ -198,7 +198,7 @@ export default function UserSelect() {
             illustration={<Truck />}
             title="Transporter"
             description="Manage your fleet, access our load board, boost profits."
-            linkTo="/signup-transporter"
+            linkTo="/transporter/get-started"
             glowColor="#f59e0b"
           />
         </motion.div>

@@ -23,6 +23,7 @@ import ZoneSelectionWizard from '../components/ZoneSelectionWizard';
 import DebugFloat from '../components/DebugFloat';
 import ServiceabilityUpload from '../components/ServiceabilityUpload';
 import type { ServiceabilityEntry, ZoneSummary } from '../components/ServiceabilityUpload';
+import ZonePriceMatrixComponent from '../components/ZonePriceMatrixComponent';
 
 // Utils (unchanged)
 import { readDraft, clearDraft } from '../store/draftStore';
@@ -53,7 +54,6 @@ import {
   ChevronRight,
   Loader2,
   Building2,
-  Coins,
   Search,
   ChevronDown,
   CheckCircle2,
@@ -356,7 +356,7 @@ export const AddVendor: React.FC = () => {
   const [zpm, setZpm] = useState<ZonePriceMatrixLS | null>(null);
 
   // Zone configuration mode: 'wizard', 'upload', 'auto', or 'pincode' (new pincode-authoritative mode)
-  const [zoneConfigMode, setZoneConfigMode] = useState<'wizard' | 'upload' | 'auto' | 'pincode'>('pincode');
+  const [zoneConfigMode, setZoneConfigMode] = useState<'wizard' | 'upload' | 'auto' | 'pincode' | 'matrix'>('pincode');
 
   // NEW: Pincode-authoritative serviceability state
   const [serviceabilityData, setServiceabilityData] = useState<{
@@ -543,8 +543,14 @@ export const AddVendor: React.FC = () => {
           setAutoFilledFromId(vendor.id || null);
           setSuggestions([]);
 
-          // Auto-select Wizard tab when results are found
-          setZoneConfigMode('wizard');
+          // Auto-select Wizard and switch to matrix if data exists
+          if ((vendor.zones && vendor.zones.length > 0) || (vendor.zoneMatrixStructure && Object.keys(vendor.zoneMatrixStructure).length > 0)) {
+            setZoneConfigMode('matrix');
+          } else {
+            // Even if zones are initially empty, we might have successfully autofilled serviceability
+            // which will generate zones. So we FORCE matrix mode here to meet user request "show matrix directly".
+            setZoneConfigMode('matrix');
+          }
 
           toast.success(
             `Auto-filled from "${vendor.displayName || vendor.companyName}". ${vendor.zones?.length || 0
@@ -593,8 +599,19 @@ export const AddVendor: React.FC = () => {
         duration: 1400,
         id: 'zpm-loaded',
       });
+      setZoneConfigMode('matrix');
     }
   }, [wizardData]);
+
+  // ROBUST AUTO-SWITCH: If we have zones (and auto-filled), go to matrix
+  useEffect(() => {
+    if (isAutoFilled && wizardData.zones && wizardData.zones.length > 0) {
+      if (zoneConfigMode !== 'matrix') {
+        console.log('[AutoSwitch] Switching to Matrix mode because zones are loaded');
+        setZoneConfigMode('matrix');
+      }
+    }
+  }, [isAutoFilled, wizardData.zones, zoneConfigMode]);
 
   // Handle zone mapping upload (from CSV/Excel)
   const handleZoneMappingUpload = useCallback((data: {
@@ -747,6 +764,9 @@ export const AddVendor: React.FC = () => {
       toast.success(`Auto-assigned ${data.zones.length} zones with ${totalCities} cities! Now fill in prices.`, {
         duration: 5000,
       });
+
+      // Switch to Price Matrix mode immediately
+      setZoneConfigMode('matrix');
 
     } catch (err) {
       console.error('[ZoneSelection] Failed to save:', err);
@@ -2344,6 +2364,35 @@ export const AddVendor: React.FC = () => {
                           />
                         </motion.div>
                       )}
+
+                      {/* MODE: PRICE MATRIX (NEW INLINE) */}
+                      {zoneConfigMode === 'matrix' && (
+                        <motion.div
+                          key="matrix"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          className="space-y-6"
+                        >
+                          <ZonePriceMatrixComponent
+                            wizardData={wizardData}
+                            onUpdatePriceMatrix={(matrix) => {
+                              if (typeof setWizardData === 'function') {
+                                setWizardData((prev: any) => ({
+                                  ...(prev || {}),
+                                  priceMatrix: matrix,
+                                }));
+                              }
+                            }}
+                            onBack={() => setZoneConfigMode('wizard')}
+                            onSave={() => {
+                              // Proceed to Company Details (Step 3)
+                              goNext();
+                              toast.success('Price matrix saved! Proceeding to Company Details.');
+                            }}
+                          />
+                        </motion.div>
+                      )}
                     </AnimatePresence>
                   </div >
 
@@ -2368,67 +2417,19 @@ export const AddVendor: React.FC = () => {
               {/* ════════════════════════════════════════════════ */}
               {/* STEP 3: COMPANY DETAILS                         */}
               {/* ════════════════════════════════════════════════ */}
-              {currentStep === 3 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 bg-slate-50">
-                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-blue-600" />
-                        Company Details
-                      </h3>
-                      <p className="text-slate-500 mt-1 ml-7">
-                        Enter the legal and contact information.
-                      </p>
-                    </div>
-                    <div className="p-6">
-                      <CompanySection vendorBasics={vendorBasics} pincodeLookup={pincodeLookup} />
-                    </div>
 
-                    {/* Step 3 Footer */}
-                    <div className="flex items-center justify-between p-6 border-t border-slate-100 bg-slate-50">
-                      <button type="button" onClick={goBack} className="text-slate-500 hover:text-slate-800 font-medium">
-                        ← Back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={goNext}
-                        disabled={!sidePanelProps.hasCompanyInfo}
-                        className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-black disabled:opacity-50"
-                      >
-                        Next: Charges →
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
 
               {/* ════════════════════════════════════════════════ */}
               {/* STEP 4: CHARGES & SAVE                          */}
               {/* ════════════════════════════════════════════════ */}
+
+
               {currentStep === 4 && (
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-                    <div className="p-6 border-b border-slate-100 bg-slate-50">
-                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <Coins className="w-5 h-5 text-amber-600" />
-                        Charges Configuration
-                      </h3>
-                    </div>
-                    <div className="p-6">
-                      <ChargesSection
-                        charges={charges}
-                      />
-                    </div>
-                  </div>
-
                   {/* STEP 4b: SAVE ACTIONS (Moved Here) */}
                   <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
                     <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-100">
@@ -2616,7 +2617,7 @@ export const AddVendor: React.FC = () => {
       {/* Debug Panel */}
       <DebugFloat logs={debugLogs} />
       <ScrollToTop targetRef={topRef} when={scrollKey} offset={80} />
-    </div>
+    </div >
   );
 };
 

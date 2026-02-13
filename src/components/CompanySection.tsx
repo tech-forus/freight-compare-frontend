@@ -446,7 +446,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             {getLabel('serviceMode', 'Service Modes')}
             {isRequired('serviceMode') && <span className="text-red-500"> *</span>}
           </label>
-          <div className="mt-1 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm inline-block w-1/2 ml-auto">
+          <div className="mt-1 rounded-lg border border-slate-200 bg-white p-1.5 shadow-sm inline-block w-full">
             <div className="flex w-full gap-2">
               {/* Full Truck Load */}
               <button

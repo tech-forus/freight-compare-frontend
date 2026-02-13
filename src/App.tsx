@@ -438,7 +438,7 @@ function App() {
             />
 
             <Route
-              path="/signup-transporter"
+              path="/transporter/get-started"
               element={
                 <MainLayout>
                   <PublicRoute>
