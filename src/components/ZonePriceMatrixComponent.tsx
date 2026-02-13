@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { ArrowLeft, FileSpreadsheet, Ban, AlertTriangle, X } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, AlertTriangle, X } from "lucide-react";
 import DecimalInput from "./DecimalInput";
 
 // Type definitions needed
@@ -48,15 +48,25 @@ const ZonePriceMatrixComponent: React.FC<ZonePriceMatrixComponentProps> = ({
         return zone.selectedCities.length > 0;
     }, []);
 
-    // Filter active zones
-    const activeZones = useMemo(
-        () => (wizardData.zones || []).filter(z => zoneHasCities(z)),
+    // Check if any zone has cities — if none do, show all zones (e.g. existing vendor auto-fill)
+    const anyZoneHasCities = useMemo(
+        () => (wizardData.zones || []).some(z => zoneHasCities(z)),
         [wizardData.zones, zoneHasCities]
     );
 
+    // Filter active zones: show all zones if none have cities (auto-filled vendor), otherwise filter
+    const activeZones = useMemo(
+        () => anyZoneHasCities
+            ? (wizardData.zones || []).filter(z => zoneHasCities(z))
+            : (wizardData.zones || []),
+        [wizardData.zones, zoneHasCities, anyZoneHasCities]
+    );
+
     const inactiveZones = useMemo(
-        () => (wizardData.zones || []).filter(z => !zoneHasCities(z)),
-        [wizardData.zones, zoneHasCities]
+        () => anyZoneHasCities
+            ? (wizardData.zones || []).filter(z => !zoneHasCities(z))
+            : [],
+        [wizardData.zones, zoneHasCities, anyZoneHasCities]
     );
 
     const activeZoneCodes = useMemo(
@@ -150,7 +160,7 @@ const ZonePriceMatrixComponent: React.FC<ZonePriceMatrixComponentProps> = ({
                                 <p className="text-sm text-slate-600">Paste your price matrix data here</p>
                             </div>
                         </div>
-                        <button onClick={() => { setBulkPasteModal(false); setBulkPasteText(""); }} className="p-2 hover:bg-slate-100 rounded-lg">
+                        <button type="button" onClick={() => { setBulkPasteModal(false); setBulkPasteText(""); }} className="p-2 hover:bg-slate-100 rounded-lg">
                             <X className="h-5 w-5 text-slate-500" />
                         </button>
                     </div>
@@ -177,12 +187,14 @@ const ZonePriceMatrixComponent: React.FC<ZonePriceMatrixComponentProps> = ({
 
                     <div className="flex gap-3 mt-6">
                         <button
+                            type="button"
                             onClick={() => { setBulkPasteModal(false); setBulkPasteText(""); }}
                             className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-300"
                         >
                             Cancel
                         </button>
                         <button
+                            type="button"
                             onClick={handleBulkPaste}
                             disabled={!bulkPasteText.trim()}
                             className={`flex-1 px-6 py-3 rounded-xl font-semibold ${bulkPasteText.trim()
@@ -200,83 +212,52 @@ const ZonePriceMatrixComponent: React.FC<ZonePriceMatrixComponentProps> = ({
 
     /* -------------------- Render -------------------- */
     return (
-        <div className="w-full">
-            <div className="flex items-start justify-between mb-6">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-slate-900">Zone Price Matrix</h1>
-                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Smart Mode</span>
-                    </div>
-                    <p className="mt-1 text-slate-600 text-sm">Only zones WITH cities appear below. Empty zones excluded.</p>
+        <div className="w-full flex flex-col h-full min-h-[400px]">
+            {/* Compact toolbar */}
+            <div className="flex items-center justify-between mb-3 shrink-0">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-lg font-bold text-slate-900">Zone Price Matrix</h1>
+                    <span className="text-xs text-slate-400">{activeZones.length}×{activeZones.length}</span>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={onBack} className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 flex items-center gap-2">
-                        <ArrowLeft className="h-4 w-4" /> Back
+                <div className="flex gap-2">
+                    <button type="button" onClick={onBack} className="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-1.5">
+                        <ArrowLeft className="h-3.5 w-3.5" /> Back
                     </button>
-                    <button
-                        onClick={() => setBulkPasteModal(true)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 flex items-center gap-2"
-                    >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        Bulk Paste
+                    <button type="button" onClick={() => setBulkPasteModal(true)} className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 flex items-center gap-1.5">
+                        <FileSpreadsheet className="h-3.5 w-3.5" /> Bulk Paste
                     </button>
-                    <button onClick={onSave} className="px-6 py-2 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600">Save & Continue</button>
+                    <button type="button" onClick={onSave} className="px-4 py-1.5 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600">Save & Continue</button>
                 </div>
             </div>
 
-            {/* Excluded zones badges */}
-            {inactiveZones.length > 0 && (
-                <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Ban className="h-4 w-4 text-orange-600" />
-                        <p className="text-sm text-orange-700 font-semibold">Excluded from pricing ({inactiveZones.length} zones with no cities):</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {inactiveZones.map(z => (
-                            <span key={z.zoneCode} className="px-3 py-1.5 text-sm bg-orange-200 text-orange-800 rounded-lg font-medium">
-                                {z.zoneCode}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Legend */}
-            <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="flex flex-wrap gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
-                        <span>Active zone</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded"></div>
-                        <span>Special zone (X1/X2/X3)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-                        <span>Same zone (diagonal)</span>
-                    </div>
-                </div>
+            {/* Legend — inline compact */}
+            <div className="flex gap-4 text-[11px] text-slate-500 mb-2 shrink-0">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-blue-100 border border-blue-300 rounded-sm inline-block"></span>Active</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-purple-100 border border-purple-300 rounded-sm inline-block"></span>Special</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-green-100 border border-green-300 rounded-sm inline-block"></span>Same zone</span>
+                {inactiveZones.length > 0 && <span className="text-orange-500">{inactiveZones.length} zone{inactiveZones.length > 1 ? 's' : ''} excluded (no cities)</span>}
             </div>
 
-            {/* Matrix - only active zones */}
+            {/* Matrix — fills remaining space */}
             {zonesForMatrix.length === 0 ? (
-                <div className="p-12 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                    <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-700 mb-2">No Active Zones</h3>
-                    <p className="text-slate-500">All selected zones have 0 cities. Go back and configure zones with cities.</p>
+                <div className="flex-1 flex items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                    <div className="text-center">
+                        <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-slate-700 mb-2">No Active Zones</h3>
+                        <p className="text-slate-500">All selected zones have 0 cities. Go back and configure zones with cities.</p>
+                    </div>
                 </div>
             ) : (
-                <div className="overflow-auto max-h-[60vh] border border-slate-200 rounded-lg shadow-inner bg-white">
-                    <table className="w-full border-collapse relative table-fixed">
-                        <thead>
+                <div className="flex-1 overflow-auto border border-slate-200 rounded-lg bg-white relative">
+                    <table className="border-collapse w-full">
+                        <thead className="sticky top-0 z-20 bg-white">
                             <tr>
-                                <th className="p-1 bg-slate-100 border border-slate-200 text-[10px] font-bold sticky top-0 z-30 shadow-sm text-center">To→</th>
+                                <th className="p-1 bg-slate-100 border border-slate-200 text-[10px] font-bold sticky left-0 z-30 shadow-sm text-center w-[44px] min-w-[44px]">To→</th>
                                 {zonesForMatrix.map(zone => {
                                     const isSpec = zone.region === "Special";
                                     return (
-                                        <th key={zone.zoneCode} className={`p-1 border border-slate-200 text-[9px] font-bold sticky top-0 z-20 shadow-sm text-center ${isSpec ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`} title={`${zone.zoneCode} (${zone.selectedCities?.length || 0} cities)`}>
-                                            <div className="truncate">{zone.zoneCode}</div>
+                                        <th key={zone.zoneCode} className={`p-1 border border-slate-200 text-[10px] font-bold text-center min-w-[48px] ${isSpec ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`} title={`${zone.zoneCode} (${zone.selectedCities?.length || 0} cities)`}>
+                                            {zone.zoneCode}
                                         </th>
                                     );
                                 })}
@@ -287,13 +268,13 @@ const ZonePriceMatrixComponent: React.FC<ZonePriceMatrixComponentProps> = ({
                                 const fromSpec = fromZone.region === "Special";
                                 return (
                                     <tr key={fromZone.zoneCode}>
-                                        <td className={`p-1 border border-slate-200 text-[9px] font-bold sticky left-0 z-10 shadow-sm text-center ${fromSpec ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`} title={`${fromZone.zoneCode} (${fromZone.selectedCities?.length || 0} cities)`}>
-                                            <div className="truncate">{fromZone.zoneCode}</div>
+                                        <td className={`p-1 border border-slate-200 text-[10px] font-bold sticky left-0 z-10 shadow-sm text-center w-[44px] min-w-[44px] ${fromSpec ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                                            {fromZone.zoneCode}
                                         </td>
                                         {zonesForMatrix.map(toZone => {
                                             const isDiagonal = fromZone.zoneCode === toZone.zoneCode;
                                             return (
-                                                <td key={toZone.zoneCode} className={`p-1 border border-slate-200 ${isDiagonal ? "bg-green-50" : "bg-white"}`}>
+                                                <td key={toZone.zoneCode} className={`p-0.5 border border-slate-200 min-w-[48px] ${isDiagonal ? "bg-green-50" : "bg-white"}`}>
                                                     <DecimalInput
                                                         value={getPrice(fromZone.zoneCode, toZone.zoneCode)}
                                                         onChange={val => updatePrice(fromZone.zoneCode, toZone.zoneCode, val)}
@@ -310,28 +291,6 @@ const ZonePriceMatrixComponent: React.FC<ZonePriceMatrixComponentProps> = ({
                     </table>
                 </div>
             )}
-
-            {/* Summary */}
-            <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-slate-900">{(wizardData.zones || []).length}</div>
-                        <div className="text-xs text-slate-500">Total Selected</div>
-                    </div>
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">{activeZones.length}</div>
-                        <div className="text-xs text-slate-500">In Price Matrix</div>
-                    </div>
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600">{inactiveZones.length}</div>
-                        <div className="text-xs text-slate-500">Excluded (Empty)</div>
-                    </div>
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{activeZones.reduce((s, z) => s + (z.selectedCities?.length || 0), 0)}</div>
-                        <div className="text-xs text-slate-500">Total Cities</div>
-                    </div>
-                </div>
-            </div>
 
             <BulkPasteModal />
         </div>

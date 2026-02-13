@@ -543,18 +543,14 @@ export const AddVendor: React.FC = () => {
           setAutoFilledFromId(vendor.id || null);
           setSuggestions([]);
 
-          // Auto-select Wizard and switch to matrix if data exists
-          if ((vendor.zones && vendor.zones.length > 0) || (vendor.zoneMatrixStructure && Object.keys(vendor.zoneMatrixStructure).length > 0)) {
-            setZoneConfigMode('matrix');
-          } else {
-            // Even if zones are initially empty, we might have successfully autofilled serviceability
-            // which will generate zones. So we FORCE matrix mode here to meet user request "show matrix directly".
-            setZoneConfigMode('matrix');
-          }
+          // Auto-advance: switch to matrix mode and jump directly to Step 2 (Zone Price Matrix)
+          setZoneConfigMode('matrix');
+          setVendorMode('existing');
+          goToStep(2);
 
           toast.success(
             `Auto-filled from "${vendor.displayName || vendor.companyName}". ${vendor.zones?.length || 0
-            } zones loaded (prices blank).`,
+            } zones loaded — fill in prices below.`,
             { duration: 5000 }
           );
         } catch (err) {
@@ -571,6 +567,7 @@ export const AddVendor: React.FC = () => {
       setShowDropdown,
       setSuggestions,
       setHighlightedIndex,
+      goToStep,
     ]
   );
 
@@ -2217,65 +2214,74 @@ export const AddVendor: React.FC = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="max-w-4xl mx-auto"
+                  className="w-full mx-auto"
                 >
 
                   {/* Header & Tabs */}
-                  <div className="flex flex-col items-center mb-8">
-                    <h3 className="text-2xl font-bold text-slate-800 mb-6">Serviceability & Pricing</h3>
+                  <div className="flex flex-col items-center mb-4">
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">
+                      {vendorMode === 'existing' ? 'Zone Price Matrix' : 'Serviceability & Pricing'}
+                    </h3>
+                    {vendorMode === 'existing' && autoFilledFromName && (
+                      <p className="text-slate-500 mb-2 text-xs">
+                        Fill in prices for <strong>{autoFilledFromName}</strong>'s zones
+                      </p>
+                    )}
 
-                    {/* Segmented Control */}
-                    <div className="bg-slate-100 p-1.5 rounded-xl flex items-center shadow-inner">
-                      {[
-                        { id: 'pincode', label: 'Pincode Upload', icon: FileSpreadsheet },
-                        { id: 'wizard', label: 'Zone Wizard', icon: MapPin },
-                        { id: 'auto', label: 'Auto Assign', icon: Sparkles },
-                        //     { id: 'upload', label: 'Zone CSV', icon: Upload }, // Hidden as per user preference likely, or keep it? Keeping for now.
-                      ].map((m) => {
-                        const isActive = zoneConfigMode === m.id;
-                        const Icon = m.icon;
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => setZoneConfigMode(m.id as any)}
-                            className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${isActive
-                              ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                              : 'text-slate-500 hover:text-slate-700'
-                              }`}
-                          >
-                            {isActive && (
-                              <motion.div
-                                layoutId="activeTab"
-                                className="absolute inset-0 bg-white rounded-lg shadow-sm ring-1 ring-black/5"
-                                initial={false}
-                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                              />
-                            )}
-                            <span className="relative z-10 flex items-center gap-2">
-                              <Icon className="w-4 h-4" />
-                              {m.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                      <button
-                        type="button"
-                        onClick={() => setZoneConfigMode('upload')}
-                        className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${zoneConfigMode === 'upload'
-                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                          : 'text-slate-500 hover:text-slate-700'
-                          }`}
-                      >
-                        <span className="relative z-10 flex items-center gap-2">
-                          <Upload className="w-4 h-4" />
-                          CSV
-                        </span>
-                      </button>
-                    </div>
+                    {/* Segmented Control — hidden when existing vendor (goes directly to matrix) */}
+                    {vendorMode !== 'existing' && (
+                      <div className="bg-slate-100 p-1.5 rounded-xl flex items-center shadow-inner">
+                        {[
+                          { id: 'pincode', label: 'Pincode Upload', icon: FileSpreadsheet },
+                          { id: 'wizard', label: 'Zone Wizard', icon: MapPin },
+                          { id: 'auto', label: 'Auto Assign', icon: Sparkles },
+                          //     { id: 'upload', label: 'Zone CSV', icon: Upload }, // Hidden as per user preference likely, or keep it? Keeping for now.
+                        ].map((m) => {
+                          const isActive = zoneConfigMode === m.id;
+                          const Icon = m.icon;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setZoneConfigMode(m.id as any)}
+                              className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${isActive
+                                ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                              {isActive && (
+                                <motion.div
+                                  layoutId="activeTab"
+                                  className="absolute inset-0 bg-white rounded-lg shadow-sm ring-1 ring-black/5"
+                                  initial={false}
+                                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                />
+                              )}
+                              <span className="relative z-10 flex items-center gap-2">
+                                <Icon className="w-4 h-4" />
+                                {m.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => setZoneConfigMode('upload')}
+                          className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${zoneConfigMode === 'upload'
+                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                          <span className="relative z-10 flex items-center gap-2">
+                            <Upload className="w-4 h-4" />
+                            CSV
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 min-h-[400px]">
+                  <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px] ${zoneConfigMode === 'matrix' ? 'p-2' : 'p-6'}`}>
                     <AnimatePresence mode="wait">
 
                       {/* MODE: PINCODE UPLOAD */}
