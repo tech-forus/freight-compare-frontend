@@ -1,5 +1,4 @@
 // frontend/src/pages/CalculatorPage.tsx
-import toast from 'react-hot-toast';
 import CoverageCounter from "../components/CoverageCounter";
 import NetworkCoverageMap from "../components/NetworkCoverageMap";
 
