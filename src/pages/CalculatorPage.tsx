@@ -1903,38 +1903,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                         </motion.div>
                                     )}
 
-                                    {/* Add Box Button + Download - Inside Card */}
-                                    <div className="flex items-center justify-between mt-1">
-                                        <button
-                                            id="add-box-button"
-                                            onClick={addBoxType}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
-                                        >
-                                            <PlusCircle size={14} /> Add another box
-                                        </button>
-                                        {/* Add Box Button + Download - Inside Card */}
-                                        <div className="flex items-center justify-between mt-1">
-                                            <button
-                                                id="add-box-button"
-                                                onClick={addBoxType}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
-                                            >
-                                                <PlusCircle size={14} /> Add another box
-                                            </button>
-
-                                            <button
-                                                onClick={downloadPackingListAsExcel}
-                                                disabled={boxes.length === 0 || !boxes.some(b => b.count && b.weight)}
-                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${boxes.length === 0 || !boxes.some(b => b.count && b.weight)
-                                                    ? 'text-slate-300 cursor-not-allowed bg-slate-50'
-                                                    : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
-                                                    }`}
-                                                title={boxes.length === 0 || !boxes.some(b => b.count && b.weight) ? "Add boxes with quantity and weight to download" : "Download packing list as Excel"}
-                                            >
-                                                <Download size={16} /> Download Packing List
-                                            </button>
-                                        </div>
-
+                                    {/* Download Packing List - Inside Card */}
+                                    <div className="flex items-center justify-end mt-1">
                                         <button
                                             onClick={downloadPackingListAsExcel}
                                             disabled={boxes.length === 0 || !boxes.some(b => b.count && b.weight)}
