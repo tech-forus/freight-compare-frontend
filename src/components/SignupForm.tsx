@@ -215,7 +215,6 @@ const SignupForm: React.FC<SignupFormProps> = ({ isModal = false }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
   const { register, handleSubmit, formState: { errors }, trigger, getValues, control, watch, setValue, clearErrors } = useForm<FormValues>({
     mode: "onTouched",
     defaultValues: {

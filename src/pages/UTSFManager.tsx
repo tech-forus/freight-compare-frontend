@@ -17,7 +17,11 @@ import {
   RotateCcw,
   Wrench,
   Loader2,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Pencil,
+  X,
+  Save,
+  BookOpen
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
 import toast from 'react-hot-toast';
@@ -91,6 +95,11 @@ const UTSFManager: React.FC = () => {
 
   // Admin Actions
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Enrich Modal
+  const [enrichTarget, setEnrichTarget] = useState<UTSFTransporter | null>(null);
+  const [enrichDetails, setEnrichDetails] = useState<TransporterDetails | null>(null);
+  const [enrichLoading, setEnrichLoading] = useState(false);
 
   useEffect(() => {
     loadTransporters();
@@ -277,6 +286,43 @@ const UTSFManager: React.FC = () => {
     loadTransporters();
   };
 
+  const handleOpenEnrich = async (t: UTSFTransporter) => {
+    setEnrichTarget(t);
+    setEnrichDetails(null);
+    // Load full details if not already cached
+    if (transporterDetails[t.id]) {
+      setEnrichDetails(transporterDetails[t.id]);
+    } else {
+      setEnrichLoading(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/utsf/transporters/${t.id}`);
+        const d = await res.json();
+        if (d.success) {
+          setTransporterDetails(prev => ({ ...prev, [t.id]: d.transporter }));
+          setEnrichDetails(d.transporter);
+        }
+      } catch (e) {
+        toast.error('Failed to load transporter details');
+      } finally {
+        setEnrichLoading(false);
+      }
+    }
+  };
+
+  const handleEnrichSaved = () => {
+    setEnrichTarget(null);
+    setEnrichDetails(null);
+    // Invalidate cached details so it reloads after save
+    if (enrichTarget) {
+      setTransporterDetails(prev => {
+        const copy = { ...prev };
+        delete copy[enrichTarget.id];
+        return copy;
+      });
+    }
+    loadTransporters();
+  };
+
   // Expand logic
   const toggleExpand = async (id: string) => {
     if (expandedId === id) {
@@ -422,6 +468,14 @@ const UTSFManager: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Enrich Button */}
+                        <button
+                          onClick={() => handleOpenEnrich(t)}
+                          className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded transition-colors"
+                          title="Enrich UTSF — Edit pricing & meta">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+
                         {/* Admin Tools */}
                         {(t.complianceScore || 0) < 1 && (
                           <button onClick={() => handleRepair(t.id, t.companyName)}
@@ -565,9 +619,419 @@ const UTSFManager: React.FC = () => {
           </table>
         )}
       </div>
+      {/* Enrich Modal */}
+      {enrichTarget && (
+        <EnrichUTSFModal
+          transporter={enrichTarget}
+          details={enrichDetails}
+          loading={enrichLoading}
+          onClose={() => { setEnrichTarget(null); setEnrichDetails(null); }}
+          onSaved={handleEnrichSaved}
+        />
+      )}
     </AdminLayout>
   );
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EnrichUTSFModal — Edit all pricing & meta fields for a UTSF transporter
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface EnrichForm {
+  // meta
+  companyName: string;
+  transporterType: string;
+  rating: number;
+  isVerified: boolean;
+  // base charges
+  minCharges: number;
+  docketCharges: number;
+  greenTax: number;
+  daccCharges: number;
+  miscellanousCharges: number;
+  fuel: number;
+  fuelMax: number;
+  // variable charges (fixed + variable%)
+  rovCharges_v: number; rovCharges_f: number;
+  insuaranceCharges_v: number; insuaranceCharges_f: number;
+  fmCharges_v: number; fmCharges_f: number;
+  appointmentCharges_v: number; appointmentCharges_f: number;
+  handlingCharges_v: number; handlingCharges_f: number; handlingCharges_t: number;
+  odaCharges_v: number; odaCharges_f: number;
+  odaMode: string; odaThresholdWeight: number;
+  // invoice value
+  invoiceEnabled: boolean;
+  invoicePercentage: number;
+  invoiceMinimumAmount: number;
+  // volumetric
+  divisor: number;
+}
+
+function buildFormFromDetails(details: TransporterDetails | null, t: UTSFTransporter): EnrichForm {
+  const pr = details?.priceRate || (details?.data?.pricing?.priceRate) || {};
+  const vol = details?.data?.pricing?.volumetric || details?.data?.volumetric || {};
+  const inv = pr.invoiceValueCharges || {};
+  return {
+    companyName: t.companyName,
+    transporterType: t.transporterType,
+    rating: t.rating,
+    isVerified: t.isVerified,
+    minCharges: pr.minCharges ?? 0,
+    docketCharges: pr.docketCharges ?? 0,
+    greenTax: pr.greenTax ?? 0,
+    daccCharges: pr.daccCharges ?? 0,
+    miscellanousCharges: pr.miscellanousCharges ?? 0,
+    fuel: pr.fuel ?? 0,
+    fuelMax: pr.fuelMax ?? 0,
+    rovCharges_v: pr.rovCharges?.v ?? 0,
+    rovCharges_f: pr.rovCharges?.f ?? 0,
+    insuaranceCharges_v: pr.insuaranceCharges?.v ?? 0,
+    insuaranceCharges_f: pr.insuaranceCharges?.f ?? 0,
+    fmCharges_v: pr.fmCharges?.v ?? 0,
+    fmCharges_f: pr.fmCharges?.f ?? 0,
+    appointmentCharges_v: pr.appointmentCharges?.v ?? 0,
+    appointmentCharges_f: pr.appointmentCharges?.f ?? 0,
+    handlingCharges_v: pr.handlingCharges?.v ?? 0,
+    handlingCharges_f: pr.handlingCharges?.f ?? 0,
+    handlingCharges_t: pr.handlingCharges?.thresholdWeight ?? 0,
+    odaCharges_v: pr.odaCharges?.v ?? 0,
+    odaCharges_f: pr.odaCharges?.f ?? 0,
+    odaMode: pr.odaCharges?.mode || 'legacy',
+    odaThresholdWeight: pr.odaCharges?.thresholdWeight ?? 0,
+    invoiceEnabled: inv.enabled ?? false,
+    invoicePercentage: inv.percentage ?? 0,
+    invoiceMinimumAmount: inv.minimumAmount ?? 0,
+    divisor: vol.divisor ?? vol.kFactor ?? 5000,
+  };
+}
+
+interface EnrichUTSFModalProps {
+  transporter: UTSFTransporter;
+  details: TransporterDetails | null;
+  loading: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+const EnrichUTSFModal: React.FC<EnrichUTSFModalProps> = ({ transporter, details, loading, onClose, onSaved }) => {
+  const [form, setForm] = useState<EnrichForm>(() => buildFormFromDetails(details, transporter));
+  const [saving, setSaving] = useState(false);
+  const [showFormulas, setShowFormulas] = useState(false);
+
+  // Re-initialize form once details load
+  useEffect(() => {
+    if (details) setForm(buildFormFromDetails(details, transporter));
+  }, [details]);
+
+  const num = (key: keyof EnrichForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(f => ({ ...f, [key]: parseFloat(e.target.value) || 0 }));
+  const str = (key: keyof EnrichForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        meta: {
+          companyName: form.companyName,
+          transporterType: form.transporterType,
+          rating: form.rating,
+          isVerified: form.isVerified,
+        },
+        pricing: {
+          priceRate: {
+            minCharges: form.minCharges,
+            docketCharges: form.docketCharges,
+            greenTax: form.greenTax,
+            daccCharges: form.daccCharges,
+            miscellanousCharges: form.miscellanousCharges,
+            fuel: form.fuel,
+            fuelMax: form.fuelMax || undefined,
+            rovCharges: { v: form.rovCharges_v, f: form.rovCharges_f },
+            insuaranceCharges: { v: form.insuaranceCharges_v, f: form.insuaranceCharges_f },
+            fmCharges: { v: form.fmCharges_v, f: form.fmCharges_f },
+            appointmentCharges: { v: form.appointmentCharges_v, f: form.appointmentCharges_f },
+            handlingCharges: { v: form.handlingCharges_v, f: form.handlingCharges_f, thresholdWeight: form.handlingCharges_t },
+            odaCharges: {
+              v: form.odaCharges_v,
+              f: form.odaCharges_f,
+              ...(form.odaMode !== 'legacy' ? {
+                mode: form.odaMode,
+                thresholdWeight: form.odaThresholdWeight,
+              } : {}),
+            },
+            invoiceValueCharges: {
+              enabled: form.invoiceEnabled,
+              percentage: form.invoicePercentage,
+              minimumAmount: form.invoiceMinimumAmount,
+            },
+          },
+          volumetric: { divisor: form.divisor, kFactor: form.divisor },
+        },
+        changeSummary: `Admin enrich: meta + pricing updated`,
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/utsf/transporters/${transporter.id}/enrich`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Enriched ${form.companyName}`);
+        onSaved();
+      } else {
+        toast.error(data.message || 'Enrich failed');
+      }
+    } catch (e) {
+      toast.error('Save request failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Input helpers
+  const NI = ({ label, k, unit }: { label: string; k: keyof EnrichForm; unit?: string }) => (
+    <div>
+      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+      <div className="flex items-center gap-1">
+        {unit && <span className="text-slate-400 text-xs">{unit}</span>}
+        <input
+          type="number"
+          step="any"
+          value={form[k] as number}
+          onChange={num(k)}
+          className="w-full border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      </div>
+    </div>
+  );
+
+  const VFRow = ({ label, vk, fk }: { label: string; vk: keyof EnrichForm; fk: keyof EnrichForm }) => (
+    <div className="grid grid-cols-2 gap-2">
+      <NI label={`${label} Variable (%)`} k={vk} />
+      <NI label={`${label} Fixed (₹)`} k={fk} unit="₹" />
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Enrich UTSF</h2>
+            <p className="text-xs text-slate-500 font-mono">{transporter.id}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded transition-colors">
+            <X className="w-5 h-5 text-slate-600" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+            {/* ── Company Info ── */}
+            <section>
+              <h3 className="font-semibold text-slate-700 text-sm mb-3 uppercase tracking-wide">Company Info</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Company Name</label>
+                  <input value={form.companyName} onChange={str('companyName')}
+                    className="w-full border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Transporter Type</label>
+                  <select value={form.transporterType} onChange={str('transporterType')}
+                    className="w-full border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="Road">Road</option>
+                    <option value="Air">Air</option>
+                    <option value="Rail">Rail</option>
+                    <option value="Ship">Ship</option>
+                  </select>
+                </div>
+                <NI label="Rating (0-5)" k="rating" />
+                <div className="flex items-center gap-2 pt-5">
+                  <input type="checkbox" id="isVerified" checked={form.isVerified}
+                    onChange={e => setForm(f => ({ ...f, isVerified: e.target.checked }))}
+                    className="w-4 h-4 accent-blue-600" />
+                  <label htmlFor="isVerified" className="text-sm text-slate-700">Verified Transporter</label>
+                </div>
+              </div>
+            </section>
+
+            {/* ── Base Charges ── */}
+            <section>
+              <h3 className="font-semibold text-slate-700 text-sm mb-3 uppercase tracking-wide">Base Charges</h3>
+              <div className="grid grid-cols-3 gap-3">
+                <NI label="Min Charges (₹)" k="minCharges" unit="₹" />
+                <NI label="Docket Charges (₹)" k="docketCharges" unit="₹" />
+                <NI label="Green Tax (₹)" k="greenTax" unit="₹" />
+                <NI label="DACC Charges (₹)" k="daccCharges" unit="₹" />
+                <NI label="Miscellaneous (₹)" k="miscellanousCharges" unit="₹" />
+                <NI label="Fuel Surcharge (%)" k="fuel" />
+                <NI label="Fuel Max (₹, 0=none)" k="fuelMax" unit="₹" />
+              </div>
+            </section>
+
+            {/* ── Variable Charges ── */}
+            <section>
+              <h3 className="font-semibold text-slate-700 text-sm mb-3 uppercase tracking-wide">
+                Variable Charges
+                <span className="ml-2 text-xs font-normal text-slate-400 normal-case">charge = max(variable% × baseFreight, fixed)</span>
+              </h3>
+              <div className="space-y-3">
+                <VFRow label="ROV" vk="rovCharges_v" fk="rovCharges_f" />
+                <VFRow label="Insurance" vk="insuaranceCharges_v" fk="insuaranceCharges_f" />
+                <VFRow label="FM" vk="fmCharges_v" fk="fmCharges_f" />
+                <VFRow label="Appointment" vk="appointmentCharges_v" fk="appointmentCharges_f" />
+                {/* ODA with mode support */}
+                <div className="col-span-2 border border-slate-200 rounded-lg p-3 space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">ODA Mode</label>
+                      <select
+                        value={form.odaMode}
+                        onChange={e => setForm(f => ({ ...f, odaMode: e.target.value }))}
+                        className="w-full border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="legacy">legacy (default)</option>
+                        <option value="switch">switch (DB Schenker)</option>
+                        <option value="excess">excess (Shipshopy)</option>
+                      </select>
+                    </div>
+                    <NI label="ODA Fixed (₹)" k="odaCharges_f" unit="₹" />
+                    {form.odaMode === 'legacy' ? (
+                      <NI label="ODA Variable (%)" k="odaCharges_v" />
+                    ) : (
+                      <NI label="Threshold Weight (kg)" k="odaThresholdWeight" />
+                    )}
+                  </div>
+                  {form.odaMode !== 'legacy' && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <NI label="Rate / v (₹/kg)" k="odaCharges_v" unit="₹" />
+                      <div className="col-span-2 text-xs text-slate-400 pt-5">
+                        {form.odaMode === 'switch'
+                          ? 'wt <= threshold → fixed | wt > threshold → v × wt'
+                          : 'fixed + max(0, wt - threshold) × v'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Handling has extra thresholdWeight */}
+                <div className="grid grid-cols-3 gap-2">
+                  <NI label="Handling Variable (%)" k="handlingCharges_v" />
+                  <NI label="Handling Fixed (₹)" k="handlingCharges_f" unit="₹" />
+                  <NI label="Handling Threshold (kg)" k="handlingCharges_t" />
+                </div>
+              </div>
+            </section>
+
+            {/* ── Invoice Value Config ── */}
+            <section>
+              <h3 className="font-semibold text-slate-700 text-sm mb-3 uppercase tracking-wide">Invoice Value Config</h3>
+              <div className="grid grid-cols-3 gap-3 items-end">
+                <div className="flex items-center gap-2 pb-1">
+                  <input type="checkbox" id="invEnabled" checked={form.invoiceEnabled}
+                    onChange={e => setForm(f => ({ ...f, invoiceEnabled: e.target.checked }))}
+                    className="w-4 h-4 accent-blue-600" />
+                  <label htmlFor="invEnabled" className="text-sm text-slate-700">Enabled</label>
+                </div>
+                <NI label="Percentage (%)" k="invoicePercentage" />
+                <NI label="Minimum Amount (₹)" k="invoiceMinimumAmount" unit="₹" />
+              </div>
+            </section>
+
+            {/* ── Volumetric Config ── */}
+            <section>
+              <h3 className="font-semibold text-slate-700 text-sm mb-3 uppercase tracking-wide">Volumetric Config</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <NI label="Divisor / kFactor" k="divisor" />
+                <div className="text-xs text-slate-400 pt-5">
+                  Air=5000 · Road=3500 · Rail=4000 · Ship=6000
+                </div>
+              </div>
+            </section>
+
+            {/* ── Formula Reference (collapsible) ── */}
+            <section className="border border-slate-200 rounded-lg overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+                onClick={() => setShowFormulas(f => !f)}>
+                <span className="flex items-center gap-2 font-semibold text-slate-700 text-sm">
+                  <BookOpen className="w-4 h-4 text-blue-500" />
+                  Formula Reference — Freight Calculation Engine
+                </span>
+                {showFormulas ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+              {showFormulas && (
+                <div className="px-4 py-4 bg-slate-900 text-slate-200 font-mono text-xs leading-6 space-y-3">
+                  <div>
+                    <p className="text-yellow-400 font-bold">// STEP 1 — Chargeable Weight  (calculations.ts)</p>
+                    <p>volumetricWeight = (L × W × H) / divisor</p>
+                    <p className="text-slate-400">  divisors: Air=5000, Road=3500, Rail=4000, Ship=6000</p>
+                    <p>chargeableWeight = max(actualWeight, volumetricWeight)</p>
+                  </div>
+                  <div>
+                    <p className="text-yellow-400 font-bold">// STEP 2 — Base Freight  (utsfService.js calculatePrice)</p>
+                    <p>baseFreight = unitPrice × chargeableWeight</p>
+                    <p>effectiveBaseFreight = max(baseFreight, minCharges)</p>
+                  </div>
+                  <div>
+                    <p className="text-yellow-400 font-bold">// STEP 3 — Surcharges</p>
+                    <p>fuelCharges = (fuel% / 100) × baseFreight</p>
+                    <p className="text-slate-400">// Fuel CAP (if fuelMax {'>'} 0):</p>
+                    <p>fuelCharges = min(fuelCharges, fuelMax)</p>
+                    <p className="text-slate-400">// ROV, Insurance, FM, Appointment (standard variable):</p>
+                    <p>charge = max((variable% / 100) × baseFreight, fixedAmount)</p>
+                    <p className="text-slate-400">// Handling (threshold-based):</p>
+                    <p>handlingCharges = fixedAmount + ((chargeableWeight - thresholdWeight) × variable% / 100)</p>
+                    <p className="text-slate-400">// ODA (only if destination is ODA zone):</p>
+                    <p className="text-green-400">legacy:  odaCharges = fixed + (wt × v% / 100)</p>
+                    <p className="text-green-400">switch:  wt {'<='} threshold → fixed | wt {'>'} threshold → v × wt</p>
+                    <p className="text-green-400">excess:  fixed + max(0, wt - threshold) × v</p>
+                    <p className="text-slate-400">// Invoice Value (if enabled):</p>
+                    <p>invoiceValueCharges = max((percentage / 100) × invoiceValue, minimumAmount)</p>
+                  </div>
+                  <div>
+                    <p className="text-yellow-400 font-bold">// STEP 4 — Total</p>
+                    <p>totalCharges =</p>
+                    <p className="pl-4">effectiveBaseFreight</p>
+                    <p className="pl-4">+ docketCharges + greenTax + daccCharges + miscCharges</p>
+                    <p className="pl-4">+ fuelCharges</p>
+                    <p className="pl-4">+ rovCharges + insuaranceCharges + fmCharges</p>
+                    <p className="pl-4">+ appointmentCharges + handlingCharges + odaCharges</p>
+                    <p className="pl-4">+ invoiceValueCharges</p>
+                  </div>
+                </div>
+              )}
+            </section>
+
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || loading}
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save Enrichment
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Component to display detailed transporter information (simplified from previous version)
 const TransporterDetailsView: React.FC<{ details: TransporterDetails }> = ({ details }) => {

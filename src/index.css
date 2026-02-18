@@ -9,3 +9,12 @@
   --color-primary-light: #dbeafe; /* blue-100 */
   --color-primary-muted: #3b82f6; /* blue-500 */
 }
+
+/* Hide scrollbar but keep scroll functionality (used on sticky right panel) */
+.scrollbar-hide {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE / Edge */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;                /* Chrome / Safari */
+}
