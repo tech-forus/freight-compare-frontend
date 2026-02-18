@@ -2567,36 +2567,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                             Authorization: `Bearer ${token}`,
                                                             'Cache-Control': 'no-cache'
                                                         }
-                                                        params: {
-                                                            pincode: toPincode,
-                                                            fromPincode,
-                                                            customerId,
-                                                            _t: Date.now() // Cache-bust to prevent 304 stale responses
-                                                        },
-                                                        headers: {
-                                                            Authorization: `Bearer ${token}`,
-                                                            'Cache-Control': 'no-cache'
-                                                        }
                                                     });
                                                     if (res.data.success && res.data.nearestPincode) {
                                                         const nearestPin = res.data.nearestPincode;
-                                                        const nearestPin = res.data.nearestPincode;
                                                         setNearestPincodeInfo(res.data);
                                                         setShowingNearestResults(true);
-                                                        // Update the input field for display
-                                                        setToPincode(nearestPin);
-                                                        // Pass pincode directly — don't rely on React state (stale closure)
-                                                        await calculateQuotes(nearestPin);
-                                                        // Scroll to results
-                                                        setTimeout(() => {
-                                                            const target = document.getElementById("first-results") || document.getElementById("results");
-                                                            if (target) {
-                                                                target.scrollIntoView({ behavior: "smooth", block: "start" });
-                                                                setTimeout(() => {
-                                                                    window.scrollBy({ top: -120, behavior: 'smooth' });
-                                                                }, 400);
-                                                            }
-                                                        }, 350);
                                                         // Update the input field for display
                                                         setToPincode(nearestPin);
                                                         // Pass pincode directly — don't rely on React state (stale closure)
