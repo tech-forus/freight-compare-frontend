@@ -33,6 +33,7 @@ import TestLab from './pages/TestLab';
 import MyVendors from './pages/MyVendors';
 import DashboardPage from './pages/DashboardPage';
 import RecentSearchesPage from './pages/RecentSearchesPage';
+import CalculationDetailsPage from './pages/CalculationDetailsPage';
 // ⬇️ NEW: buy page (supports /buy-subscription-plan and /buy-subscription-plan/:vendorSlug)
 import BuySubscriptionPage from './pages/BuySubscriptionPage';
 import VendorDetailsPage from './pages/VendorDetailsPage';
@@ -394,6 +395,7 @@ function App() {
 
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/calculate" element={<CalculatorPage />} />
+            <Route path="/calculation-details" element={<CalculationDetailsPage />} />
 
             {/* --- PUBLIC ROUTES --- */}
             <Route

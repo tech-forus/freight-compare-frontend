@@ -27,6 +27,7 @@ import {
     MapPin,
     Navigation,
     X,
+    Database,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -316,10 +317,20 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         nearestPincode: string;
         originalPincode: string;
         distance: number;
+        distanceKm?: number | null;
         servedBy: string[];
+        transporterCount?: number;
     } | null>(null);
     const [isSearchingNearest, setIsSearchingNearest] = useState(false);
     const [showingNearestResults, setShowingNearestResults] = useState(false);
+
+    // Smart Shield anomaly detection state
+    const [smartShieldData, setSmartShieldData] = useState<{
+        overallScore: number;
+        summary: { totalQuotes: number; errors: number; warnings: number; infos: number; cleanQuotes: number };
+        cohortFlags: Array<{ code: string; severity: string; message: string; companyName?: string }>;
+        quoteFlags: Record<string, { flags: Array<{ code: string; severity: string; message: string; field?: string }>; score: number }>;
+    } | null>(null);
 
     // Form state
     // Form state initialized with storage data to prevent race conditions
@@ -1038,7 +1049,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     };
 
     // -------------------- Calculate Quotes (with CACHE) --------------------
-    const calculateQuotes = async () => {
+    const calculateQuotes = async (overrideToPincode?: string) => {
         if (isCalculating) return;
 
         // 📰 Smart News Popup: Shows unless user clicked "Don't show again"
@@ -1127,24 +1138,27 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             }
         }
 
-        const [okFrom, okTo] = await Promise.all([
-            validatePincodeField("from"),
-            validatePincodeField("to"),
-        ]);
-        if (!okFrom || !okTo || !isFromPincodeValid || !isToPincodeValid) {
-            setIsCalculating(false);
-            if (!okFrom && !okTo) setError("Origin and Destination pincodes are invalid.");
-            else if (!okFrom) setError("Origin pincode is invalid.");
-            else if (!okTo) setError("Destination pincode is invalid.");
-            else setError("Selected pincodes are not serviceable.");
-            return;
-        }
+        // Skip validation when called with override (e.g. from nearest-serviceable — backend already validated)
+        if (!overrideToPincode) {
+            const [okFrom, okTo] = await Promise.all([
+                validatePincodeField("from"),
+                validatePincodeField("to"),
+            ]);
+            if (!okFrom || !okTo || !isFromPincodeValid || !isToPincodeValid) {
+                setIsCalculating(false);
+                if (!okFrom && !okTo) setError("Origin and Destination pincodes are invalid.");
+                else if (!okFrom) setError("Origin pincode is invalid.");
+                else if (!okTo) setError("Destination pincode is invalid.");
+                else setError("Selected pincodes are not serviceable.");
+                return;
+            }
 
-        // 🚫 Same pincode check
-        if (isSamePincode) {
-            setIsCalculating(false);
-            setError("Origin and Destination pincodes cannot be the same.");
-            return;
+            // 🚫 Same pincode check
+            if (isSamePincode) {
+                setIsCalculating(false);
+                setError("Origin and Destination pincodes cannot be the same.");
+                return;
+            }
         }
 
         // ✅ Invoice value: allow blank (use minimum value of 1), only validate limits if user entered something
@@ -1179,10 +1193,12 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             }
         }
 
+        const effectiveToPincode = overrideToPincode || toPincode;
+
         const requestParams = {
             modeoftransport: modeOfTransport,
             fromPincode,
-            toPincode,
+            toPincode: effectiveToPincode,
             shipment_details: shipmentPayload,
         };
 
@@ -1212,7 +1228,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     userogpincode: customer?.pincode,
                     modeoftransport: modeOfTransport,
                     fromPincode,
-                    toPincode,
+                    toPincode: effectiveToPincode,
                     shipment_details: shipmentPayload,
                     invoiceValue: inv,
                 },
@@ -1221,13 +1237,18 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
             // ❌ Check for route not found error from backend
             if (resp.data.error === 'NO_ROUTE_FOUND' || resp.data.error === 'NO_ROAD_ROUTE') {
-                setError(`No road route exists between ${fromPincode} and ${toPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
+                setError(`No road route exists between ${fromPincode} and ${effectiveToPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
                 return;
             }
 
             if (resp.data.error === 'CALCULATION_FAILED') {
-                setError(`Unable to calculate distance between ${fromPincode} and ${toPincode}. Please try again later.`);
+                setError(`Unable to calculate distance between ${fromPincode} and ${effectiveToPincode}. Please try again later.`);
                 return;
+            }
+
+            // Check for graceful degradation: backend returned 200 but had internal errors
+            if (resp.data.debug?.error) {
+                console.warn('[Calculate] Backend had internal errors, results may be incomplete:', resp.data.debug.errorMessage);
             }
 
             // PERFORMANCE FIX: Use distance from backend response (eliminates separate Google Maps API call)
@@ -1299,7 +1320,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             // PERFORMANCE FIX: Use distanceKmOverride from backend (no separate distance API call needed)
             const { ftlQuote, wheelseyeQuote } = await buildFtlAndWheelseyeQuotes({
                 fromPincode,
-                toPincode,
+                toPincode: effectiveToPincode,
                 shipment: shipmentPayload,
                 totalWeight,
                 token,
@@ -1349,6 +1370,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             tied = tied.map(normalizeETA);
             others = others.map(normalizeETA);
 
+            // Capture Smart Shield anomaly data from backend
+            if (resp.data.smartShield) {
+                setSmartShieldData(resp.data.smartShield);
+            } else {
+                setSmartShieldData(null);
+            }
+
             // Batch state updates
             setData(tied);
             setHiddendata(others);
@@ -1359,7 +1387,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     params: requestParams,
                     data: tied,
                     hiddendata: others,
-                    form: { fromPincode, toPincode, modeOfTransport, boxes },
+                    form: { fromPincode, toPincode: effectiveToPincode, modeOfTransport, boxes },
                 });
             }, 0);
 
@@ -1380,14 +1408,14 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
                     const [fromGeo, toGeo] = await Promise.all([
                         apiGetPincode(fromPincode),
-                        apiGetPincode(toPincode),
+                        apiGetPincode(effectiveToPincode),
                     ]);
 
                     await saveSearchHistory({
                         fromPincode,
                         fromCity: fromGeo?.city || "",
                         fromState: fromGeo?.state || "",
-                        toPincode,
+                        toPincode: effectiveToPincode,
                         toCity: toGeo?.city || "",
                         toState: toGeo?.state || "",
                         modeOfTransport,
@@ -1413,7 +1441,13 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             if (e.response?.status === 401) {
                 setError("Authentication failed. Please log out and log back in.");
             } else if (e.response?.status === 400 && (e.response?.data?.error === 'NO_ROUTE_FOUND' || e.response?.data?.error === 'NO_ROAD_ROUTE')) {
-                setError(`No road route exists between ${fromPincode} and ${toPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
+                setError(`No road route exists between ${fromPincode} and ${effectiveToPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
+            } else if (e.response?.status === 500) {
+                // On server error, still show empty results so "Your Vendors" section renders
+                // with "Find nearest serviceable pincode" and "Add a vendor" buttons
+                setError(e.response?.data?.message || "An internal server error occurred. Results may be incomplete.");
+                setData([]);
+                setHiddendata([]);
             } else if (e.response?.data?.message) {
                 setError(e.response.data.message);
             } else {
@@ -2462,29 +2496,35 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 try {
                                                     const customerId = getCustomer()?._id || getCustomer()?.id;
                                                     const res = await axios.get(`${API_BASE_URL}/api/utsf/nearest-serviceable`, {
-                                                        params: { pincode: toPincode, fromPincode, customerId },
-                                                        headers: { Authorization: `Bearer ${token}` }
+                                                        params: {
+                                                            pincode: toPincode,
+                                                            fromPincode,
+                                                            customerId,
+                                                            _t: Date.now() // Cache-bust to prevent 304 stale responses
+                                                        },
+                                                        headers: {
+                                                            Authorization: `Bearer ${token}`,
+                                                            'Cache-Control': 'no-cache'
+                                                        }
                                                     });
                                                     if (res.data.success && res.data.nearestPincode) {
+                                                        const nearestPin = res.data.nearestPincode;
                                                         setNearestPincodeInfo(res.data);
                                                         setShowingNearestResults(true);
-                                                        // Swap destination and recalculate
-                                                        setToPincode(res.data.nearestPincode);
-                                                        // Wait for state update, then calculate + scroll to results
-                                                        setTimeout(async () => {
-                                                            await calculateQuotes();
-                                                            // Scroll to results after calculation completes
-                                                            setTimeout(() => {
-                                                                const target = document.getElementById("first-results") || document.getElementById("results");
-                                                                if (target) {
-                                                                    // Scroll to start, then adjust up slightly to show context
-                                                                    target.scrollIntoView({ behavior: "smooth", block: "start" });
-                                                                    setTimeout(() => {
-                                                                        window.scrollBy({ top: -120, behavior: 'smooth' });
-                                                                    }, 400);
-                                                                }
-                                                            }, 350);
-                                                        }, 100);
+                                                        // Update the input field for display
+                                                        setToPincode(nearestPin);
+                                                        // Pass pincode directly — don't rely on React state (stale closure)
+                                                        await calculateQuotes(nearestPin);
+                                                        // Scroll to results
+                                                        setTimeout(() => {
+                                                            const target = document.getElementById("first-results") || document.getElementById("results");
+                                                            if (target) {
+                                                                target.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                setTimeout(() => {
+                                                                    window.scrollBy({ top: -120, behavior: 'smooth' });
+                                                                }, 400);
+                                                            }
+                                                        }, 350);
                                                     } else {
                                                         toast.error(res.data.message || 'No serviceable pincode found nearby');
                                                     }
@@ -2516,7 +2556,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     <span className="font-bold text-amber-900">{nearestPincodeInfo.nearestPincode}</span>
                                                                     {' '}instead of{' '}
                                                                     <span className="line-through text-amber-500">{nearestPincodeInfo.originalPincode}</span>
-                                                                    <span className="ml-2 text-amber-500">(±{nearestPincodeInfo.distance} away)</span>
+                                                                    <span className="ml-2 text-amber-500">
+                                                                        ({nearestPincodeInfo.distanceKm
+                                                                            ? `~${nearestPincodeInfo.distanceKm}km away`
+                                                                            : `±${nearestPincodeInfo.distance} away`})
+                                                                    </span>
                                                                 </p>
                                                                 {nearestPincodeInfo.servedBy.length > 0 && (
                                                                     <p className="text-[11px] text-amber-600 mt-1">
@@ -2525,16 +2569,64 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                 )}
                                                             </div>
                                                             <button
-                                                                onClick={() => {
+                                                                onClick={async () => {
+                                                                    const origPin = nearestPincodeInfo.originalPincode;
                                                                     setShowingNearestResults(false);
                                                                     setNearestPincodeInfo(null);
-                                                                    setToPincode(nearestPincodeInfo.originalPincode);
-                                                                    setTimeout(() => calculateQuotes(), 100);
+                                                                    setToPincode(origPin);
+                                                                    await calculateQuotes(origPin);
                                                                 }}
                                                                 className="text-xs text-amber-700 hover:text-amber-900 underline flex-shrink-0"
                                                             >
                                                                 Reset to original
                                                             </button>
+                                                        </motion.div>
+                                                    )}
+
+                                                    {/* SMART SHIELD BANNER */}
+                                                    {smartShieldData && (smartShieldData.summary.errors > 0 || smartShieldData.summary.warnings > 0) && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: -10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            className={`mb-4 rounded-xl p-4 border ${smartShieldData.summary.errors > 0
+                                                                ? 'bg-red-50 border-red-200'
+                                                                : 'bg-amber-50 border-amber-200'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-start gap-3">
+                                                                <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${smartShieldData.overallScore >= 0.8
+                                                                    ? 'bg-green-100 text-green-700'
+                                                                    : smartShieldData.overallScore >= 0.5
+                                                                        ? 'bg-amber-100 text-amber-700'
+                                                                        : 'bg-red-100 text-red-700'
+                                                                    }`}>
+                                                                    {Math.round(smartShieldData.overallScore * 100)}
+                                                                </div>
+                                                                <div className="flex-grow">
+                                                                    <p className="text-sm font-semibold text-slate-800">
+                                                                        Smart Shield: {smartShieldData.summary.cleanQuotes}/{smartShieldData.summary.totalQuotes} quotes passed all checks
+                                                                    </p>
+                                                                    {smartShieldData.summary.errors > 0 && (
+                                                                        <p className="text-xs text-red-600 mt-0.5">
+                                                                            {smartShieldData.summary.errors} error{smartShieldData.summary.errors > 1 ? 's' : ''} detected in pricing data
+                                                                        </p>
+                                                                    )}
+                                                                    {smartShieldData.summary.warnings > 0 && (
+                                                                        <p className="text-xs text-amber-600 mt-0.5">
+                                                                            {smartShieldData.summary.warnings} warning{smartShieldData.summary.warnings > 1 ? 's' : ''} — some values may need review
+                                                                        </p>
+                                                                    )}
+                                                                    {smartShieldData.cohortFlags.length > 0 && (
+                                                                        <div className="mt-2 space-y-1">
+                                                                            {smartShieldData.cohortFlags.slice(0, 3).map((flag, i) => (
+                                                                                <p key={i} className="text-[11px] text-slate-600">
+                                                                                    {flag.severity === 'error' ? '\u274C' : '\u26A0\uFE0F'} {flag.message}
+                                                                                </p>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </motion.div>
                                                     )}
 
@@ -2554,6 +2646,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                         isFastest={item === fastestQuote}
                                                                         vendorStatusMap={vendorStatusMap}
                                                                         onOpenRatingModal={openRatingModal}
+                                                                        shieldFlags={smartShieldData?.quoteFlags?.[item.companyName] || null}
+                                                                        boxes={boxes}
                                                                     />
                                                                 ))}
                                                             </div>
@@ -2620,6 +2714,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                             isFastest={item === fastestQuote}
                                                                             vendorStatusMap={vendorStatusMap}
                                                                             onOpenRatingModal={openRatingModal}
+                                                                            shieldFlags={smartShieldData?.quoteFlags?.[(item as any).companyName] || null}
+                                                                            boxes={boxes}
                                                                         />
                                                                     ))}
                                                                 </div>
@@ -3051,11 +3147,14 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
                         {chargeItems.map((item) => {
                             const value = getChargeValue(item.keys);
-                            return value > 0 ? (
+                            // UTSF vendors: show all charge rows (even ₹0) for full transparency
+                            // MongoDB vendors: only show non-zero charges (existing behavior)
+                            const isUtsf = quote.source === 'utsf';
+                            return (value > 0 || isUtsf) ? (
                                 <div key={item.label} className="flex justify-between">
                                     <span className="text-slate-500">{item.label}:</span>
-                                    <span className="font-medium text-slate-800">
-                                        {formatCurrency(value)}
+                                    <span className={`font-medium ${value > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                                        {value > 0 ? formatCurrency(value) : '—'}
                                     </span>
                                 </div>
                             ) : null;
@@ -3118,6 +3217,22 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
                             {quote.destinationPincode ?? quote.destination ?? "-"}
                         </span>
                     </div>
+                    {quote.source === 'utsf' && quote.zone && (
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Zone:</span>
+                            <span className="font-medium text-blue-700 font-mono text-xs bg-blue-50 px-2 py-0.5 rounded">
+                                {quote.zone}
+                            </span>
+                        </div>
+                    )}
+                    {quote.source === 'utsf' && quote.unitPrice > 0 && (
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Rate/Kg:</span>
+                            <span className="font-medium text-slate-800">
+                                {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.unitPrice)}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* ✅ VEHICLE DETAILS SECTION FOR FTL VENDORS */}
@@ -3355,6 +3470,8 @@ const VendorResultCard = ({
     isFastest,
     vendorStatusMap,
     onOpenRatingModal,
+    shieldFlags,
+    boxes,
 }: {
     quote: any;
     isBestValue?: boolean;
@@ -3373,6 +3490,8 @@ const VendorResultCard = ({
             damageLoss: number;
         }) => void;
     }) => void;
+    shieldFlags?: { flags: Array<{ code: string; severity: string; message: string; field?: string }>; score: number } | null;
+    boxes: BoxDetails[];
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [currentRating, setCurrentRating] = useState<number>(
@@ -3565,6 +3684,28 @@ const VendorResultCard = ({
                         {/* Verification Badge - placed before other badges */}
                         <VerificationBadge status={getVerificationStatus(quote, vendorStatusMap)} />
 
+                        {/* UTSF Badge - distinguish UTSF transporters from normal ones */}
+                        {quote.source === 'utsf' && (
+                            <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
+                                <Database size={10} />
+                                UTSF
+                            </span>
+                        )}
+
+                        {/* Smart Shield per-vendor indicator */}
+                        {shieldFlags && shieldFlags.flags.filter(f => f.severity !== 'info').length > 0 && (
+                            <span
+                                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full cursor-help ${shieldFlags.flags.some(f => f.severity === 'error')
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                    }`}
+                                title={shieldFlags.flags.filter(f => f.severity !== 'info').map(f => f.message).join('\n')}
+                            >
+                                {shieldFlags.flags.some(f => f.severity === 'error') ? '\u26D4' : '\u26A0\uFE0F'}
+                                {' '}Shield {Math.round(shieldFlags.score * 100)}%
+                            </span>
+                        )}
+
                         <div className="flex items-center gap-2">
                             {(isFastest ||
                                 quote.companyName === "Wheelseye FTL" ||
@@ -3707,6 +3848,18 @@ const VendorResultCard = ({
                             />
                         </button>
                     </div>
+
+                    {/* Detailed Breakdown Button (New Feature) */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/calculation-details', { state: { quote: { ...quote, boxes } } });
+                        }}
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                        title="View Detailed Calculation Breakdown"
+                    >
+                        <CalculatorIcon size={18} />
+                    </button>
 
                     {/* CTA Button */}
                     <button
