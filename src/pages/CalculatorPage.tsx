@@ -335,14 +335,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         quoteFlags: Record<string, { flags: Array<{ code: string; severity: string; message: string; field?: string }>; score: number }>;
     } | null>(null);
 
-    // Smart Shield anomaly detection state
-    const [smartShieldData, setSmartShieldData] = useState<{
-        overallScore: number;
-        summary: { totalQuotes: number; errors: number; warnings: number; infos: number; cleanQuotes: number };
-        cohortFlags: Array<{ code: string; severity: string; message: string; companyName?: string }>;
-        quoteFlags: Record<string, { flags: Array<{ code: string; severity: string; message: string; field?: string }>; score: number }>;
-    } | null>(null);
-
     // Form state
     // Form state initialized with storage data to prevent race conditions
     const [modeOfTransport, setModeOfTransport] = useState<"Road" | "Air" | "Rail" | "Ship">(() => {
@@ -654,13 +646,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         }),
         [boxes, shipmentType]
     );
-
-    // 🔧 Clear error when user fills in required fields
-    useEffect(() => {
-        if (error && !hasBoxValidationErrors && !hasPincodeIssues) {
-            setError("");
-        }
-    }, [boxes, hasBoxValidationErrors, hasPincodeIssues]);
 
     // 🔧 Clear error when user fills in required fields
     useEffect(() => {
@@ -1061,7 +1046,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     // -------------------- Calculate Quotes (with CACHE) --------------------
     const calculateQuotes = async (overrideToPincode?: string) => {
-    const calculateQuotes = async (overrideToPincode?: string) => {
         if (isCalculating) return;
 
         // 📰 Smart News Popup: Shows unless user clicked "Don't show again"
@@ -1164,27 +1148,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 else setError("Selected pincodes are not serviceable.");
                 return;
             }
-        // Skip validation when called with override (e.g. from nearest-serviceable — backend already validated)
-        if (!overrideToPincode) {
-            const [okFrom, okTo] = await Promise.all([
-                validatePincodeField("from"),
-                validatePincodeField("to"),
-            ]);
-            if (!okFrom || !okTo || !isFromPincodeValid || !isToPincodeValid) {
-                setIsCalculating(false);
-                if (!okFrom && !okTo) setError("Origin and Destination pincodes are invalid.");
-                else if (!okFrom) setError("Origin pincode is invalid.");
-                else if (!okTo) setError("Destination pincode is invalid.");
-                else setError("Selected pincodes are not serviceable.");
-                return;
-            }
 
-            // 🚫 Same pincode check
-            if (isSamePincode) {
-                setIsCalculating(false);
-                setError("Origin and Destination pincodes cannot be the same.");
-                return;
-            }
             // 🚫 Same pincode check
             if (isSamePincode) {
                 setIsCalculating(false);
@@ -1224,8 +1188,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 return;
             }
         }
-
-        const effectiveToPincode = overrideToPincode || toPincode;
 
         const effectiveToPincode = overrideToPincode || toPincode;
 
@@ -1274,19 +1236,12 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             // ❌ Check for route not found error from backend
             if (resp.data.error === 'NO_ROUTE_FOUND' || resp.data.error === 'NO_ROAD_ROUTE') {
                 setError(`No road route exists between ${fromPincode} and ${effectiveToPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
-                setError(`No road route exists between ${fromPincode} and ${effectiveToPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
                 return;
             }
 
             if (resp.data.error === 'CALCULATION_FAILED') {
                 setError(`Unable to calculate distance between ${fromPincode} and ${effectiveToPincode}. Please try again later.`);
-                setError(`Unable to calculate distance between ${fromPincode} and ${effectiveToPincode}. Please try again later.`);
                 return;
-            }
-
-            // Check for graceful degradation: backend returned 200 but had internal errors
-            if (resp.data.debug?.error) {
-                console.warn('[Calculate] Backend had internal errors, results may be incomplete:', resp.data.debug.errorMessage);
             }
 
             // Check for graceful degradation: backend returned 200 but had internal errors
@@ -1421,13 +1376,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 setSmartShieldData(null);
             }
 
-            // Capture Smart Shield anomaly data from backend
-            if (resp.data.smartShield) {
-                setSmartShieldData(resp.data.smartShield);
-            } else {
-                setSmartShieldData(null);
-            }
-
             // Batch state updates
             setData(tied);
             setHiddendata(others);
@@ -1438,7 +1386,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     params: requestParams,
                     data: tied,
                     hiddendata: others,
-                    form: { fromPincode, toPincode: effectiveToPincode, modeOfTransport, boxes },
                     form: { fromPincode, toPincode: effectiveToPincode, modeOfTransport, boxes },
                 });
             }, 0);
@@ -1495,13 +1442,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             if (e.response?.status === 401) {
                 setError("Authentication failed. Please log out and log back in.");
             } else if (e.response?.status === 400 && (e.response?.data?.error === 'NO_ROUTE_FOUND' || e.response?.data?.error === 'NO_ROAD_ROUTE')) {
-                setError(`No road route exists between ${fromPincode} and ${effectiveToPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
-            } else if (e.response?.status === 500) {
-                // On server error, still show empty results so "Your Vendors" section renders
-                // with "Find nearest serviceable pincode" and "Add a vendor" buttons
-                setError(e.response?.data?.message || "An internal server error occurred. Results may be incomplete.");
-                setData([]);
-                setHiddendata([]);
                 setError(`No road route exists between ${fromPincode} and ${effectiveToPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
             } else if (e.response?.status === 500) {
                 // On server error, still show empty results so "Your Vendors" section renders
@@ -2622,11 +2562,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                             ? `~${nearestPincodeInfo.distanceKm}km away`
                                                                             : `±${nearestPincodeInfo.distance} away`})
                                                                     </span>
-                                                                    <span className="ml-2 text-amber-500">
-                                                                        ({nearestPincodeInfo.distanceKm
-                                                                            ? `~${nearestPincodeInfo.distanceKm}km away`
-                                                                            : `±${nearestPincodeInfo.distance} away`})
-                                                                    </span>
                                                                 </p>
                                                                 {nearestPincodeInfo.servedBy.length > 0 && (
                                                                     <p className="text-[11px] text-amber-600 mt-1">
@@ -2637,12 +2572,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                             <button
                                                                 onClick={async () => {
                                                                     const origPin = nearestPincodeInfo.originalPincode;
-                                                                onClick={async () => {
-                                                                    const origPin = nearestPincodeInfo.originalPincode;
                                                                     setShowingNearestResults(false);
                                                                     setNearestPincodeInfo(null);
-                                                                    setToPincode(origPin);
-                                                                    await calculateQuotes(origPin);
                                                                     setToPincode(origPin);
                                                                     await calculateQuotes(origPin);
                                                                 }}
