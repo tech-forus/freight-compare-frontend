@@ -3152,14 +3152,8 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
                             // MongoDB vendors: only show non-zero charges (existing behavior)
                             const isUtsf = quote.source === 'utsf';
                             return (value > 0 || isUtsf) ? (
-                            // UTSF vendors: show all charge rows (even ₹0) for full transparency
-                            // MongoDB vendors: only show non-zero charges (existing behavior)
-                            const isUtsf = quote.source === 'utsf';
-                            return (value > 0 || isUtsf) ? (
                                 <div key={item.label} className="flex justify-between">
                                     <span className="text-slate-500">{item.label}:</span>
-                                    <span className={`font-medium ${value > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
-                                        {value > 0 ? formatCurrency(value) : '—'}
                                     <span className={`font-medium ${value > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
                                         {value > 0 ? formatCurrency(value) : '—'}
                                     </span>
