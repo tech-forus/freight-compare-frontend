@@ -475,7 +475,7 @@ export const useVendorBasics = (
             basics.address,
             'Address',
             getConstraint('address', 'minLength', 1) as number,
-            getConstraint('address', 'maxLength', 150) as number,
+            150, // Hardcoded max length to prevent config issues
             getField('address')?.required ?? true
           );
           break;

@@ -718,7 +718,7 @@ interface CompactChargeCardProps {
 const BLOCKED = new Set(['e', 'E', '+', '-']);
 
 const zeroToBlank = (val: number | null | undefined): string | number => {
-  if (val === 0 || val === null || val === undefined) return '';
+  if (val === null || val === undefined) return '';
   return val;
 };
 

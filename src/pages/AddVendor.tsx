@@ -324,6 +324,11 @@ export const AddVendor: React.FC = () => {
 
   // Page-level state
   const [transportMode, setTransportMode] = useState<'road' | 'air' | 'rail' | 'ship'>('road');
+
+  // ✅ SYNC: Ensure vendorBasics knows about transportMode (for validation)
+  useEffect(() => {
+    vendorBasics.setField('transportMode', transportMode);
+  }, [transportMode, vendorBasics.setField]);
   const [priceChartFile, setPriceChartFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -384,9 +389,19 @@ export const AddVendor: React.FC = () => {
   }, []);
 
   const goNext = useCallback(() => {
+    // ✅ VALIDATION: Block Step 3 -> 4 if fields are invalid
+    if (currentStep === 3) {
+      const isValid = vendorBasics.validateAll();
+      if (!isValid) {
+        toast.error('Please fix errors in Company Details before proceeding');
+        // Scroll to error if needed (optional)
+        return;
+      }
+    }
+
     setCurrentStep(prev => Math.min(prev + 1, 4) as 1 | 2 | 3 | 4);
     topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  }, [currentStep, vendorBasics]);
 
   const goBack = useCallback(() => {
     setCurrentStep(prev => Math.max(prev - 1, 1) as 1 | 2 | 3 | 4);
@@ -699,6 +714,7 @@ export const AddVendor: React.FC = () => {
       isComplete: boolean;
     }>;
     priceMatrix: Record<string, Record<string, string | number>>;
+    serviceability?: Array<{ pincode: string; zone: string; state: string; city: string; isODA: boolean; active: boolean }>;
   }) => {
     console.log('[ZoneSelection] Received from wizard:', data);
 
@@ -719,6 +735,7 @@ export const AddVendor: React.FC = () => {
         selectedZones: zoneCodes.map(z => ({ zoneCode: z, zoneName: z })),
         zones: data.zones,
         priceMatrix: data.priceMatrix,
+        serviceability: data.serviceability || [],
         step: 3, // Jump to price matrix step
         lastUpdated: new Date().toISOString(),
         autoAssigned: true,
@@ -742,6 +759,9 @@ export const AddVendor: React.FC = () => {
           selectedZones: zoneCodes.map(z => ({ zoneCode: z, zoneName: z })),
           zones: data.zones,
           priceMatrix: data.priceMatrix,
+          // Store serviceability from Zone Wizard for calculator compatibility
+          serviceability: data.serviceability || [],
+          serviceabilityChecksum: '',
         }));
       }
 
@@ -1592,12 +1612,21 @@ export const AddVendor: React.FC = () => {
 
     // Validate (logs inside validateAll will tell us what failed)
     console.log('[STEP 2] Running validateAll...');
-    const ok = validateAll();
-    console.log('[STEP 2] validateAll result =', ok);
-    if (!ok) {
-      emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
-      toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
-      return;
+
+    // ✅ DRAFT LOGIC: Skip validation if saving as draft
+    const isDraft = saveMode === 'draft';
+    let ok = true;
+
+    if (!isDraft) {
+      ok = validateAll();
+      console.log('[STEP 2] validateAll result =', ok);
+      if (!ok) {
+        emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
+        toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
+        return;
+      }
+    } else {
+      console.log('[STEP 2] Skipping validation for DRAFT mode');
     }
 
     // Show full-screen overlay loading immediately

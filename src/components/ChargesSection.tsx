@@ -439,6 +439,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               errors={errors.appointmentCharges || {}}
               onFieldChange={(field, value) => setCardField('appointmentCharges', field, value)}
               onFieldBlur={(field) => validateCardField('appointmentCharges', field)}
+              required={isRequired('appointmentCharges')}
             />
 
             <CompactChargeCard
@@ -449,6 +450,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               errors={errors.rovCharges || {}}
               onFieldChange={(field, value) => setCardField('rovCharges', field, value)}
               onFieldBlur={(field) => validateCardField('rovCharges', field)}
+              required={isRequired('rovCharges')}
             />
 
             {/* SPANS RIGHT COLUMN */}
@@ -461,7 +463,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
                 errors={errors.handlingCharges || {}}
                 onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
                 onFieldBlur={(field) => validateCardField('handlingCharges', field)}
-                required={true}
+                required={isRequired('handlingCharges')}
               />
             </div>
 
@@ -479,7 +481,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               errors={errors.codCharges || {}}
               onFieldChange={(field, value) => setCardField('codCharges', field, value)}
               onFieldBlur={(field) => validateCardField('codCharges', field)}
-              required={true}
+              required={isRequired('codCharges')}
               allowVariable={true}
             />
 
@@ -496,7 +498,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               errors={errors.toPayCharges || {}}
               onFieldChange={(field, value) => setCardField('toPayCharges', field, value)}
               onFieldBlur={(field) => validateCardField('toPayCharges', field)}
-              required={true}
+              required={isRequired('toPayCharges')}
               allowVariable={true}
             />
 

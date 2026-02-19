@@ -28,7 +28,6 @@ import {
     Navigation,
     X,
     Database,
-    Database,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1195,7 +1194,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             modeoftransport: modeOfTransport,
             fromPincode,
             toPincode: effectiveToPincode,
-            toPincode: effectiveToPincode,
             shipment_details: shipmentPayload,
         };
 
@@ -1226,7 +1224,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     modeoftransport: modeOfTransport,
                     fromPincode,
                     toPincode: effectiveToPincode,
-                    toPincode: effectiveToPincode,
+
                     shipment_details: shipmentPayload,
                     invoiceValue: inv,
                 },
@@ -1319,7 +1317,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             const { ftlQuote, wheelseyeQuote } = await buildFtlAndWheelseyeQuotes({
                 fromPincode,
                 toPincode: effectiveToPincode,
-                toPincode: effectiveToPincode,
+
                 shipment: shipmentPayload,
                 totalWeight,
                 token,
@@ -1416,7 +1414,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                         fromCity: fromGeo?.city || "",
                         fromState: fromGeo?.state || "",
                         toPincode: effectiveToPincode,
-                        toPincode: effectiveToPincode,
+
                         toCity: toGeo?.city || "",
                         toState: toGeo?.state || "",
                         modeOfTransport,
@@ -2589,20 +2587,18 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         <motion.div
                                                             initial={{ opacity: 0, y: -10 }}
                                                             animate={{ opacity: 1, y: 0 }}
-                                                            className={`mb-4 rounded-xl p-4 border ${
-                                                                smartShieldData.summary.errors > 0
-                                                                    ? 'bg-red-50 border-red-200'
-                                                                    : 'bg-amber-50 border-amber-200'
-                                                            }`}
+                                                            className={`mb-4 rounded-xl p-4 border ${smartShieldData.summary.errors > 0
+                                                                ? 'bg-red-50 border-red-200'
+                                                                : 'bg-amber-50 border-amber-200'
+                                                                }`}
                                                         >
                                                             <div className="flex items-start gap-3">
-                                                                <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${
-                                                                    smartShieldData.overallScore >= 0.8
-                                                                        ? 'bg-green-100 text-green-700'
-                                                                        : smartShieldData.overallScore >= 0.5
-                                                                            ? 'bg-amber-100 text-amber-700'
-                                                                            : 'bg-red-100 text-red-700'
-                                                                }`}>
+                                                                <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${smartShieldData.overallScore >= 0.8
+                                                                    ? 'bg-green-100 text-green-700'
+                                                                    : smartShieldData.overallScore >= 0.5
+                                                                        ? 'bg-amber-100 text-amber-700'
+                                                                        : 'bg-red-100 text-red-700'
+                                                                    }`}>
                                                                     {Math.round(smartShieldData.overallScore * 100)}
                                                                 </div>
                                                                 <div className="flex-grow">
@@ -3460,6 +3456,10 @@ const getVerificationStatus = (
 
     // PRIORITY 2: Fallback to quote data (from initial calculation)
     // isVerified === true means admin explicitly marked as verified
+    // Exception: plain "VL Cargo" (without Delhivery) is NOT verified — only "VL Cargo (Delhivery)" is
+    if (companyName === 'vl cargo') {
+        return 'unverified';
+    }
     if (quote.isVerified === true) {
         return 'verified';
     }
@@ -3710,11 +3710,10 @@ const VendorResultCard = ({
                         {/* Smart Shield per-vendor indicator */}
                         {shieldFlags && shieldFlags.flags.filter(f => f.severity !== 'info').length > 0 && (
                             <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full cursor-help ${
-                                    shieldFlags.flags.some(f => f.severity === 'error')
-                                        ? 'bg-red-100 text-red-700'
-                                        : 'bg-amber-100 text-amber-700'
-                                }`}
+                                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full cursor-help ${shieldFlags.flags.some(f => f.severity === 'error')
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                    }`}
                                 title={shieldFlags.flags.filter(f => f.severity !== 'info').map(f => f.message).join('\n')}
                             >
                                 {shieldFlags.flags.some(f => f.severity === 'error') ? '\u26D4' : '\u26A0\uFE0F'}
