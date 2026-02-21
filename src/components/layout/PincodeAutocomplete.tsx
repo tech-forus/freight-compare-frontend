@@ -361,10 +361,10 @@ const PincodeAutocomplete: React.FC<PincodeAutocompleteProps> = ({
             aria-expanded={isOpen}
             aria-haspopup="listbox"
             className={`block w-full py-2 pl-10 pr-10 bg-white border rounded-lg text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-1 transition ${showError
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                : showSuccess
-                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+              : showSuccess
+                ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'
               }`}
           />
 
@@ -396,8 +396,8 @@ const PincodeAutocomplete: React.FC<PincodeAutocompleteProps> = ({
                   key={`${suggestion.pincode}-${suggestion.city}`}
                   onClick={() => handleSuggestionSelect(suggestion)}
                   className={`px-4 py-3 cursor-pointer transition-colors ${index === selectedIndex
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'hover:bg-slate-50 text-slate-700'
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'hover:bg-slate-50 text-slate-700'
                     }`}
                   role="option"
                   aria-selected={index === selectedIndex}
@@ -438,9 +438,9 @@ const PincodeAutocomplete: React.FC<PincodeAutocompleteProps> = ({
 
       {/* Error message */}
       {showError && (
-        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-          <AlertCircle size={14} />
-          {error || formatError}
+        <p className="absolute -bottom-5 left-0 text-[11px] text-red-600 mt-1 flex items-center gap-1 w-full truncate">
+          <AlertCircle size={12} className="shrink-0" />
+          <span className="truncate">{error || formatError}</span>
         </p>
       )}
     </div>

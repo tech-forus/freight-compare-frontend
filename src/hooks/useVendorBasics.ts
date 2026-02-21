@@ -86,7 +86,7 @@ export interface UseVendorBasicsReturn {
   // setField now accepts string | number | null to allow rating (number) and null defaults
   setField: (field: keyof VendorBasics, value: string | number | null) => void;
   validateField: (field: keyof VendorBasics) => boolean;
-  validateAll: () => boolean;
+  validateAll: () => { isValid: boolean; errors: VendorBasicsErrors };
   reset: () => void;
   loadFromDraft: (draft: Partial<VendorBasics>) => void;
 
@@ -357,7 +357,7 @@ export const useVendorBasics = (
   /**
    * Validate all fields
    */
-  const validateAll = useCallback((): boolean => {
+  const validateAll = useCallback((): { isValid: boolean; errors: VendorBasicsErrors } => {
     const fields: (keyof VendorBasics)[] = [
       'companyName',
       'contactPersonName',
@@ -520,7 +520,7 @@ export const useVendorBasics = (
       emitDebug('BASICS_VALIDATION_PASSED');
     }
 
-    return isValid;
+    return { isValid, errors: newErrors };
   }, [basics, getField, getConstraint]);
 
   /**

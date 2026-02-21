@@ -547,10 +547,10 @@ export const validateGST = (gst: string): string => {
   //    Numeric digits 01–35
   const stateCode = gstUpper.substring(0, 2);
   const validStateCodes = new Set([
-    '01','02','03','04','05','06','07','08','09','10',
-    '11','12','13','14','15','16','17','18','19','20',
-    '21','22','23','24','25','26','27','28','29','30',
-    '31','32','33','34','35', '38','97','99',
+    '01', '02', '03', '04', '05', '06', '07', '08', '09', '10',
+    '11', '12', '13', '14', '15', '16', '17', '18', '19', '20',
+    '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
+    '31', '32', '33', '34', '35', '38', '97', '99',
   ]);
   if (!validStateCodes.has(stateCode)) {
     return 'Invalid state code in GST (must be between 01 and 38, 97, or 99)';
@@ -784,39 +784,43 @@ export const validateAddress = (address: string): string => {
 
 // Charge card schema (for redesigned charges)
 const ChargeCardSchema = z.object({
-  unit: z.enum(['per kg', 'per piece', 'per box']),
+  unit: z.enum(['per kg', 'per piece', 'per box', 'per shipment']),
   currency: z.enum(['INR', 'PERCENT']),
   mode: z.enum(['FIXED', 'VARIABLE']),
   fixedAmount: z.number().min(1).max(5000).optional(),
-  variableRange: z.enum(['0%', '0.1% - 1%', '1.25% - 2.5%', '3% - 4%', '4% - 5%']).optional(),
+  variableRange: z.union([z.string(), z.number()]).optional(),
   weightThreshold: z.number().min(1).max(20000).optional(), // Only required for handlingCharges
 });
 
 // Charges schema (mixed: simple numbers + card structures)
 const ChargesSchema = z.object({
   // MANDATORY: Only docket and fuel surcharge are required
-  docketCharges: z.number().min(0, 'Docket charges must be >= 0'),
+  docketCharges: z.number().min(0, 'Docket charges must be >= 0').nullable().optional(),
   fuelSurchargePct: z
     .number()
     .min(0, 'Fuel surcharge must be >= 0')
-    .max(50, 'Fuel surcharge must be <= 50'),
+    .max(50, 'Fuel surcharge must be <= 50')
+    .nullable()
+    .optional(),
 
   // OPTIONAL: All other basic charges
-  minWeightKg: z.number().min(0, 'Min weight must be >= 0').optional(),
-  minCharges: z.number().min(0, 'Min charges must be >= 0').optional(),
-  hamaliCharges: z.number().min(0, 'Hamali charges must be >= 0').optional(),
-  greenTax: z.number().min(0, 'Green tax must be >= 0').optional(),
-  miscCharges: z.number().min(0, 'Misc charges must be >= 0').optional(),
-  daccCharges: z.number().min(0, 'DACC charges must be >= 0').optional(),
+  minWeightKg: z.number().min(0, 'Min weight must be >= 0').nullable().optional(),
+  minCharges: z.number().min(0, 'Min charges must be >= 0').nullable().optional(),
+  hamaliCharges: z.number().min(0, 'Hamali charges must be >= 0').nullable().optional(),
+  greenTax: z.number().min(0, 'Green tax must be >= 0').nullable().optional(),
+  miscCharges: z.number().min(0, 'Misc charges must be >= 0').nullable().optional(),
+  daccCharges: z.number().min(0, 'DACC charges must be >= 0').nullable().optional(),
 
   // --- UPDATED INVOICE FIELDS ---
   invoiceValueSurcharge: z
     .number()
     .min(0, 'Invoice Value Surcharge must be >= 0')
+    .nullable()
     .optional(),
   invoiceValueMinAmount: z
     .number()
     .min(0, 'Invoice Value Min Amount must be >= 0')
+    .nullable()
     .optional(),
   // ------------------------------
 
@@ -878,19 +882,19 @@ export const TemporaryTransporterSchema = z.object({
     .min(1, 'Email is required'),
 
   gstin: z
-  .string()
-  .refine(
-    (val) => {
-      if (!val || val === '') return true; // Empty is allowed (optional field)
-      const error = validateGST(val);
-      return error === ''; // Pass if no error
-    },
-    {
-      message: 'Invalid GST number (checksum verification failed)',
-    }
-  )
-  .optional()
-  .or(z.literal('')),
+    .string()
+    .refine(
+      (val) => {
+        if (!val || val === '') return true; // Empty is allowed (optional field)
+        const error = validateGST(val);
+        return error === ''; // Pass if no error
+      },
+      {
+        message: 'Invalid GST number (checksum verification failed)',
+      }
+    )
+    .optional()
+    .or(z.literal('')),
 
   transportMode: z.enum(['road', 'air', 'rail', 'ship'], {
     errorMap: () => ({ message: 'Invalid transport mode' }),

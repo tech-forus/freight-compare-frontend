@@ -1201,7 +1201,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
         // helper to normalize ETA to integer days, min 1
         const normalizeETA = (q: any) => {
-            const raw = Number(q?.estimatedTime ?? q?.transitDays ?? q?.eta ?? 0);
+            const raw = Number(q?.estimatedTime ?? q?.est_time ?? q?.transitDays ?? q?.eta ?? 0);
             const normalized = Math.max(
                 1,
                 Math.ceil(Number.isFinite(raw) ? raw : 0)
@@ -1611,7 +1611,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 onValidationChange={setIsFromPincodeValid}
                                             />
                                         </div>
-                                        <div className="flex items-center justify-center w-6 h-9 shrink-0 text-slate-300">
+                                        <div className="flex items-center justify-center w-6 h-9 shrink-0 text-slate-300 mt-7">
                                             <ChevronRight size={18} />
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -1631,20 +1631,23 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 onValidationChange={setIsToPincodeValid}
                                             />
                                         </div>
+                                        <div className="flex items-center justify-center w-6 h-9 shrink-0 text-slate-300 mt-7">
+                                            <ChevronRight size={18} />
+                                        </div>
                                         {/* Invoice Value - Inline */}
-                                        <div className="flex-1 min-w-0">
-                                            <label className="block text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1.5 whitespace-nowrap">Invoice Value</label>
+                                        <div className="flex-1 min-w-0 relative">
+                                            <label htmlFor="invoiceValue" className="block text-sm font-medium text-slate-600 mb-1.5 whitespace-nowrap">Invoice Value</label>
                                             <div className="relative group">
-                                                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-xs">₹</span>
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 flex items-center justify-center font-medium">₹</div>
                                                 <input
                                                     id="invoiceValue"
                                                     type="text"
                                                     inputMode="numeric"
-                                                    pattern="\d*"
+                                                    pattern="\\d*"
                                                     placeholder="50000"
                                                     value={invoiceValue}
                                                     onChange={(e) => {
-                                                        const value = e.target.value.replace(/\D/g, "");
+                                                        const value = e.target.value.replace(/\\D/g, "");
                                                         if (value === "") {
                                                             setInvoiceValue("");
                                                             setInvoiceError(null);
@@ -1660,16 +1663,22 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                         }
                                                     }}
                                                     onBlur={(e) => {
-                                                        const raw = e.currentTarget.value.replace(/\D/g, "");
+                                                        const raw = e.currentTarget.value.replace(/\\D/g, "");
                                                         if (raw === "") return;
                                                         let num = Number(raw);
                                                         if (num < INVOICE_MIN) num = INVOICE_MIN;
                                                         if (num > INVOICE_MAX) num = INVOICE_MAX;
                                                         setInvoiceValue(String(num));
                                                     }}
-                                                    className={`w-full py-1.5 pl-3 pr-1 text-sm bg-transparent border-b border-slate-200 focus:border-blue-600 focus:outline-none transition-colors placeholder-slate-300 font-medium text-slate-700 ${invoiceError ? 'border-red-300' : ''}`}
+                                                    className={`block w-full py-2 pl-9 pr-3 bg-white border rounded-lg text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-1 transition text-slate-700 ${invoiceError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : invoiceValue && !invoiceError ? 'border-green-500 focus:border-green-500 focus:ring-green-500' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'}`}
                                                 />
                                             </div>
+                                            {invoiceError && (
+                                                <p className="absolute -bottom-5 left-0 text-[11px] text-red-600 mt-1 flex items-center gap-1 w-full truncate">
+                                                    <AlertCircle size={12} className="shrink-0" />
+                                                    <span className="truncate">{invoiceError}</span>
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -1701,7 +1710,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                 {/* Header Row */}
                                 <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Packing</span>
+                                        <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Packaging Details</span>
 
                                         {/* Mode Toggle - Styled as segmented control */}
                                         <div className="flex text-[11px]">
@@ -1813,6 +1822,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                 icon={<PackageSearch size={14} />}
                                                                 className="text-sm py-1.5"
                                                                 autoComplete="off"
+                                                                maxLength={30}
                                                             />
                                                             <AnimatePresence>
                                                                 {openPresetDropdownIndex === index && (
@@ -2603,17 +2613,23 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                 </div>
                                                                 <div className="flex-grow">
                                                                     <p className="text-sm font-semibold text-slate-800">
-                                                                        Smart Shield: {smartShieldData.summary.cleanQuotes}/{smartShieldData.summary.totalQuotes} quotes passed all checks
+                                                                        Smart Shield ({Math.round(smartShieldData.overallScore * 100)}% Trust Score)
+                                                                    </p>
+                                                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                                                                        AI continuously verifies market rates. 100% means perfect pricing integrity.
+                                                                        Vendor scores drop for hidden fees or price anomalies.
                                                                     </p>
                                                                     {smartShieldData.summary.errors > 0 && (
-                                                                        <p className="text-xs text-red-600 mt-0.5">
-                                                                            {smartShieldData.summary.errors} error{smartShieldData.summary.errors > 1 ? 's' : ''} detected in pricing data
+                                                                        <p className="text-xs text-red-600 mt-1.5 font-medium">
+                                                                            {smartShieldData.summary.errors} critical error{smartShieldData.summary.errors > 1 ? 's' : ''} filtered
                                                                         </p>
                                                                     )}
                                                                     {smartShieldData.summary.warnings > 0 && (
-                                                                        <p className="text-xs text-amber-600 mt-0.5">
-                                                                            {smartShieldData.summary.warnings} warning{smartShieldData.summary.warnings > 1 ? 's' : ''} — some values may need review
-                                                                        </p>
+                                                                        <div className="mt-1.5">
+                                                                            <p className="text-xs text-amber-600 font-medium">
+                                                                                {smartShieldData.summary.warnings} pricing warning{smartShieldData.summary.warnings > 1 ? 's' : ''} detected
+                                                                            </p>
+                                                                        </div>
                                                                     )}
                                                                     {smartShieldData.cohortFlags.length > 0 && (
                                                                         <div className="mt-2 space-y-1">
@@ -2646,6 +2662,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                         vendorStatusMap={vendorStatusMap}
                                                                         onOpenRatingModal={openRatingModal}
                                                                         shieldFlags={smartShieldData?.quoteFlags?.[item.companyName] || null}
+                                                                        boxes={boxes}
                                                                     />
                                                                 ))}
                                                             </div>
@@ -2713,6 +2730,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                             vendorStatusMap={vendorStatusMap}
                                                                             onOpenRatingModal={openRatingModal}
                                                                             shieldFlags={smartShieldData?.quoteFlags?.[(item as any).companyName] || null}
+                                                                            boxes={boxes}
                                                                         />
                                                                     ))}
                                                                 </div>
@@ -3072,9 +3090,8 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
 
     const getChargeValue = (keys: string[]) => {
         for (const key of keys) {
-            if (quote[key] !== undefined && quote[key] > 0) {
-                return quote[key];
-            }
+            const val = quote[key] !== undefined ? quote[key] : quote.breakdown?.[key];
+            if (val !== undefined && val > 0) return val;
         }
         return 0;
     };
@@ -3214,22 +3231,6 @@ const BifurcationDetails = ({ quote }: { quote: any }) => {
                             {quote.destinationPincode ?? quote.destination ?? "-"}
                         </span>
                     </div>
-                    {quote.source === 'utsf' && quote.zone && (
-                        <div className="flex justify-between">
-                            <span className="text-slate-500">Zone:</span>
-                            <span className="font-medium text-blue-700 font-mono text-xs bg-blue-50 px-2 py-0.5 rounded">
-                                {quote.zone}
-                            </span>
-                        </div>
-                    )}
-                    {quote.source === 'utsf' && quote.unitPrice > 0 && (
-                        <div className="flex justify-between">
-                            <span className="text-slate-500">Rate/Kg:</span>
-                            <span className="font-medium text-slate-800">
-                                {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.unitPrice)}
-                            </span>
-                        </div>
-                    )}
                     {quote.source === 'utsf' && quote.zone && (
                         <div className="flex justify-between">
                             <span className="text-slate-500">Zone:</span>
@@ -3488,11 +3489,13 @@ const VendorResultCard = ({
     vendorStatusMap,
     onOpenRatingModal,
     shieldFlags,
+    boxes,
 }: {
     quote: any;
     isBestValue?: boolean;
     isFastest?: boolean;
     vendorStatusMap: Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }>;
+    boxes?: BoxDetails[];
     onOpenRatingModal: (config: {
         vendorId: string;
         vendorName: string;

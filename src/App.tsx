@@ -1,5 +1,6 @@
 // src/App.tsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 
 // Pincode context provider
@@ -187,11 +188,22 @@ const AdminLandingRedirect: React.FC = () => {
   return <AdminWelcomePage />;
 };
 
+
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+
 function App() {
   return (
     <AuthProvider>
       <PincodeProvider>
         <Router>
+          <ScrollToTop />
           <Toaster />
           <Routes>
             {/* --- PROTECTED ROUTES --- */}

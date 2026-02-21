@@ -101,8 +101,8 @@ const BLOCKED_KEYS = new Set(['e', 'E', '+', '-']);
 interface SimpleChargeFieldProps {
   label: string;
   name: string;
-  value: number;
-  onChange: (value: number) => void;
+  value: number | null;
+  onChange: (value: number | null) => void;
   onBlur: () => void;
   error?: string;
   min?: number;
@@ -136,13 +136,13 @@ const SimpleChargeField: React.FC<SimpleChargeFieldProps> = ({
   const handleTextChange = (raw: string) => {
     const sanitized = sanitizeDecimalString(raw, precision, integerOnly);
     if (!sanitized) {
-      onChange(0);
+      onChange(null);
       return;
     }
 
     const num = Number(sanitized);
     if (!Number.isFinite(num)) {
-      onChange(0);
+      onChange(null);
       return;
     }
 
@@ -233,12 +233,12 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
   const handleFuelSurchargeChange = (rawValue: string) => {
     const sanitized = sanitizeDecimalString(rawValue, 0, true);
     if (sanitized === '') {
-      setCharge('fuelSurchargePct', 0);
+      setCharge('fuelSurchargePct', null);
       return;
     }
     const num = Number(sanitized);
     if (!Number.isFinite(num)) {
-      setCharge('fuelSurchargePct', 0);
+      setCharge('fuelSurchargePct', null);
       return;
     }
     const clamped = Math.min(Math.max(num, 0), 50);
@@ -261,7 +261,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             <SimpleChargeField
               label={getLabel('docketCharges', 'Docket Charges')}
               name="docketCharges"
-              value={chargeValues.docketCharges ?? 0}
+              value={chargeValues.docketCharges ?? null}
               onChange={(val) => setCharge('docketCharges', val)}
               onBlur={() => validateField('docketCharges')}
               error={errors.docketCharges}
@@ -277,7 +277,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             <SimpleChargeField
               label="Min Chargeable Wt"
               name="minWeightKg"
-              value={chargeValues.minWeightKg ?? 0}
+              value={chargeValues.minWeightKg ?? null}
               onChange={(val) => setCharge('minWeightKg', val)}
               onBlur={() => validateField('minWeightKg')}
               error={errors.minWeightKg}
@@ -293,7 +293,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             <SimpleChargeField
               label={getLabel('minimumCharges', 'Minimum Charges')}
               name="minCharges"
-              value={chargeValues.minCharges ?? 0}
+              value={chargeValues.minCharges ?? null}
               onChange={(val) => setCharge('minCharges', val)}
               onBlur={() => validateField('minCharges')}
               error={errors.minCharges}
@@ -357,7 +357,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             <SimpleChargeField
               label={getLabel('hamaliCharges', 'Hamali Charges')}
               name="hamaliCharges"
-              value={chargeValues.hamaliCharges ?? 0}
+              value={chargeValues.hamaliCharges ?? null}
               onChange={(val) => setCharge('hamaliCharges', val)}
               onBlur={() => validateField('hamaliCharges')}
               error={errors.hamaliCharges}
@@ -373,7 +373,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             <SimpleChargeField
               label={getLabel('greenTax', 'Green Tax / NGT')}
               name="greenTax"
-              value={chargeValues.greenTax ?? 0}
+              value={chargeValues.greenTax ?? null}
               onChange={(val) => setCharge('greenTax', val)}
               onBlur={() => validateField('greenTax')}
               error={errors.greenTax}
@@ -389,7 +389,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             <SimpleChargeField
               label={getLabel('miscCharges', 'Misc / AOC Charges')}
               name="miscCharges"
-              value={chargeValues.miscCharges ?? 0}
+              value={chargeValues.miscCharges ?? null}
               onChange={(val) => setCharge('miscCharges', val)}
               onBlur={() => validateField('miscCharges')}
               error={errors.miscCharges}
@@ -405,7 +405,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             <SimpleChargeField
               label={getLabel('daccCharges', 'DACC Charges')}
               name="daccCharges"
-              value={chargeValues.daccCharges ?? 0}
+              value={chargeValues.daccCharges ?? null}
               onChange={(val) => setCharge('daccCharges', val)}
               onBlur={() => validateField('daccCharges')}
               error={errors.daccCharges}

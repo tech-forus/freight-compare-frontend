@@ -88,22 +88,20 @@ const StepRow: React.FC<StepRowProps> = ({ step, label, icon, done, active, item
 
   return (
     <div
-      className={`rounded-lg transition-all ${
-        active
-          ? 'bg-green-50 border border-green-200 p-3'
-          : 'px-3 py-2'
-      }`}
+      className={`rounded-lg transition-all ${active
+        ? 'bg-green-50 border border-green-200 p-3'
+        : 'px-3 py-2'
+        }`}
     >
       {/* Header */}
       <div className="flex items-center gap-2.5">
         <div
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-            allDone
-              ? 'bg-green-500 text-white'
-              : active
+          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${allDone
+            ? 'bg-green-500 text-white'
+            : active
               ? 'bg-green-500 text-white'
               : 'bg-slate-200 text-slate-500'
-          }`}
+            }`}
         >
           {allDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : step}
         </div>
@@ -162,11 +160,6 @@ export const VendorSidePanel: React.FC<VendorSidePanelProps> = ({
   vendorMode,
   warnings = [],
 }) => {
-  // ── Completion calc ──
-  const allChecks = [hasCompanyInfo, hasContactInfo, hasGST, zonesCount > 0, hasPricing, hasCharges];
-  const doneCount = allChecks.filter(Boolean).length;
-  const completionPct = Math.round((doneCount / allChecks.length) * 100);
-
   // ── Per-step items ──
   const stepData: StepRowProps[] = [
     {
@@ -214,6 +207,12 @@ export const VendorSidePanel: React.FC<VendorSidePanelProps> = ({
       ],
     },
   ];
+
+  // ── Completion calc (based on 4 steps) ──
+  // Each step contributes 25% to the total progress
+  const completedSteps = stepData.filter(s => s.done).length;
+  const totalSteps = stepData.length;
+  const completionPct = Math.round((completedSteps / totalSteps) * 100);
 
   // ── Action items (blockers) ──
   const actionItems: string[] = [];
@@ -274,11 +273,11 @@ export const VendorSidePanel: React.FC<VendorSidePanelProps> = ({
                 {completionPct === 100
                   ? 'Ready to save!'
                   : completionPct >= 60
-                  ? 'Almost there'
-                  : 'Getting started'}
+                    ? 'Almost there'
+                    : 'Getting started'}
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                {doneCount} of {allChecks.length} requirements met
+                {completedSteps} of {totalSteps} steps completed
               </p>
               {vendorName && (
                 <div className="mt-2 flex items-center gap-1.5">

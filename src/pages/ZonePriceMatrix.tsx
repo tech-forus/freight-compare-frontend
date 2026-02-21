@@ -19,17 +19,26 @@ const SPECIAL_ZONES = ["X1", "X2", "X3"];
 const SPECIAL_ZONE_INFO: Record<string, string> = { 'X1': 'Andaman & Nicobar Islands', 'X2': 'Lakshadweep', 'X3': 'Leh Ladakh' };
 
 const REGION_ORDER: RegionGroup[] = ["North", "Central", "East", "West", "South", "Northeast", "Special"];
-const ZONE_TYPE_INFO: Record<string, { type: string; description: string }> = {
-  'N1': { type: 'limited', description: 'Metro cities (Delhi NCR, Jaipur)' },
-  'N2': { type: 'full', description: 'Tier 2 North' }, 'N3': { type: 'full', description: 'Extended North' },
-  'N4': { type: 'full', description: 'Remote North' }, 'C1': { type: 'limited', description: 'Metro (Indore, Bhopal)' },
-  'C2': { type: 'full', description: 'All MP & Chhattisgarh' }, 'E1': { type: 'limited', description: 'Metro (Kolkata, Patna)' },
-  'E2': { type: 'full', description: 'All East' }, 'W1': { type: 'limited', description: 'Metro (Mumbai, Pune)' },
-  'W2': { type: 'full', description: 'All West' }, 'S1': { type: 'limited', description: 'Metro (Bangalore, Chennai)' },
-  'S2': { type: 'full', description: 'Tier 2 South' }, 'S3': { type: 'full', description: 'Kerala & TN' },
-  'S4': { type: 'full', description: 'Remote Kerala' }, 'NE1': { type: 'limited', description: 'Metro (Guwahati)' },
-  'NE2': { type: 'full', description: 'All NE states' }, 'X1': { type: 'special', description: 'Andaman Nicobar' },
-  'X2': { type: 'special', description: 'Lakshadweep' }, 'X3': { type: 'special', description: 'Leh Ladakh' },
+const ZONE_TYPE_INFO: Record<string, { type: string; description: string; category?: string }> = {
+  'N1': { type: 'limited', category: 'N1', description: 'Metro cities (Delhi NCR, Jaipur)' },
+  'N2': { type: 'full', category: 'N2', description: 'Tier 2 North' },
+  'N3': { type: 'full', category: 'N2', description: 'Extended North' },
+  'N4': { type: 'full', category: 'N2', description: 'Remote North' },
+  'C1': { type: 'limited', category: 'N1', description: 'Metro (Indore, Bhopal)' },
+  'C2': { type: 'full', category: 'N2', description: 'All MP & Chhattisgarh' },
+  'E1': { type: 'limited', category: 'N1', description: 'Metro (Kolkata, Patna)' },
+  'E2': { type: 'full', category: 'N2', description: 'All East' },
+  'W1': { type: 'limited', category: 'N1', description: 'Metro (Mumbai, Pune)' },
+  'W2': { type: 'full', category: 'N2', description: 'All West' },
+  'S1': { type: 'limited', category: 'N1', description: 'Metro (Bangalore, Chennai)' },
+  'S2': { type: 'full', category: 'N2', description: 'Tier 2 South' },
+  'S3': { type: 'full', category: 'N2', description: 'Kerala & TN' },
+  'S4': { type: 'full', category: 'N2', description: 'Remote Kerala' },
+  'NE1': { type: 'limited', category: 'N1', description: 'Metro (Guwahati)' },
+  'NE2': { type: 'full', category: 'N2', description: 'All NE states' },
+  'X1': { type: 'special', category: 'N2', description: 'Andaman Nicobar' },
+  'X2': { type: 'special', category: 'N2', description: 'Lakshadweep' },
+  'X3': { type: 'special', category: 'N2', description: 'Leh Ladakh' },
 };
 const MAX_ZONES = 19;
 
@@ -826,8 +835,8 @@ const ZonePriceMatrix: React.FC = () => {
               onClick={handleBulkPaste}
               disabled={!bulkPasteText.trim()}
               className={`flex-1 px-6 py-3 rounded-xl font-semibold ${bulkPasteText.trim()
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-slate-300 text-slate-500 cursor-not-allowed"
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-slate-300 text-slate-500 cursor-not-allowed"
                 }`}
             >
               Apply Prices
@@ -898,7 +907,7 @@ const ZonePriceMatrix: React.FC = () => {
                         const info = ZONE_TYPE_INFO[zone];
                         const isSpec = isSpecialRegion;
                         return (
-                          <div key={zone} onClick={() => toggleZoneSelection(zone)} className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${isSel ? (isSpec ? "bg-purple-50 border-purple-500" : "bg-blue-50 border-blue-500") : canSel ? "bg-white border-slate-200 hover:border-slate-300" : "bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed"}`}>
+                          <div key={zone} onClick={() => toggleZoneSelection(zone)} className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${isSel ? (isSpec ? "bg-purple-50 border-purple-500" : "bg-blue-50 border-blue-500") : canSel ? "bg-white border-slate-200 hover:border-slate-300" : "bg-white border-slate-100 opacity-50 cursor-not-allowed"}`}>
                             <div className="flex items-center justify-between mb-2">
                               <span className={`text-lg font-bold ${isSel ? (isSpec ? "text-purple-700" : "text-blue-700") : "text-slate-700"}`}>{zone}</span>
                               {isSel && <CheckCircle className={`h-5 w-5 ${isSpec ? "text-purple-500" : "text-blue-500"}`} />}

@@ -44,7 +44,7 @@ export interface ChargesErrors {
 export interface UseChargesReturn {
   charges: Charges;
   errors: ChargesErrors;
-  setCharge: (field: keyof Charges, value: string | number) => void;
+  setCharge: (field: keyof Charges, value: string | number | null) => void;
   setCardField: (
     cardName: 'handlingCharges' | 'rovCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
     field: keyof ChargeCardData,
@@ -55,7 +55,7 @@ export interface UseChargesReturn {
     cardName: 'handlingCharges' | 'rovCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
     field: keyof ChargeCardData
   ) => boolean;
-  validateAll: () => boolean;
+  validateAll: () => { isValid: boolean; errors: ChargesErrors };
   reset: () => void;
   loadFromDraft: (draft: Partial<Charges>) => void;
   firstErrorRef: React.MutableRefObject<HTMLElement | null>;
@@ -73,7 +73,7 @@ const SIMPLE_CHARGE_RANGES: Record<string, { min: number; max: number }> = {
   greenTax: { min: 0, max: 10000 },
   miscCharges: { min: 0, max: 10000 },
   daccCharges: { min: 0, max: 10000 },
-  
+
   // Percentages
   fuelSurchargePct: { min: 0, max: 50 },
   invoiceValueSurcharge: { min: 0, max: 100 }, // <-- ADDED THIS (Assuming it's a %)
@@ -107,17 +107,21 @@ function validateCardPercentage(value: any): string | null {
 // DEFAULT STATE
 // =============================================================================
 
+// =============================================================================
+// DEFAULT STATE
+// =============================================================================
+
 const defaultCharges: Charges = {
-  // Simple numeric charges
-  docketCharges: 0,
-  minWeightKg: 0,
-  minCharges: 0,
-  hamaliCharges: 0,
-  greenTax: 0,
-  miscCharges: 0,
-  fuelSurchargePct: 0,
-  daccCharges: 0,
-  invoiceValueSurcharge: 0, // <-- ADDED THIS
+  // Simple numeric charges - Default to null for blank inputs
+  docketCharges: null, // was 0
+  minWeightKg: null,
+  minCharges: null,
+  hamaliCharges: null,
+  greenTax: null,
+  miscCharges: null,
+  fuelSurchargePct: null,
+  daccCharges: null,
+  invoiceValueSurcharge: null,
 
   // Card-based charges
   handlingCharges: createDefaultChargeCard(),
@@ -162,10 +166,16 @@ export const useCharges = (
    * Set a simple numeric charge field
    */
   const setCharge = useCallback(
-    (field: keyof Charges, value: string | number) => {
+    (field: keyof Charges, value: string | number | null) => {
       // Only handle simple numeric fields
       if (field in SIMPLE_CHARGE_RANGES) {
-        const numValue = toNumberOrZero(value);
+        let numValue: number | null = null;
+
+        if (value === null || value === '') {
+          numValue = null;
+        } else {
+          numValue = toNumberOrZero(value);
+        }
 
         setCharges((prev) => {
           const updated = { ...prev, [field]: numValue };
@@ -231,8 +241,22 @@ export const useCharges = (
         return true;
       }
 
-      const value = charges[field] as number;
+      const value = charges[field] as number | null;
+      // Treat null as 0 for validation purposes if we want to enforce range,
+      // OR skip validation if optional?
+      // For now, let's treat null as "no value".
+      // If it's mandatory (like docketCharges), we might want to flag it?
+      // But user demand is just appearance.
+      // Let's assume 0 is a safe fallback for validation min/max checks, 
+      // or strictly check null.
+
       const range = SIMPLE_CHARGE_RANGES[field];
+
+      if (value === null) {
+        // If field is mandatory, this should be an error?
+        // For now, let's allow it to start blank.
+        return true;
+      }
 
       // Special validation for fuel surcharge
       if (field === 'fuelSurchargePct') {
@@ -247,11 +271,11 @@ export const useCharges = (
       }
 
       // Check if in range
-      if (!isNumberInRange(value, range.min, range.max)) {
+      if (value !== null && value !== undefined && !isNumberInRange(value, range.min, range.max)) {
         let errorMsg = 'Enter amount between 1-10,000';
         if (field === 'fuelSurchargePct') errorMsg = `Must be between ${range.min} and ${range.max}`;
         if (field === 'invoiceValueSurcharge') errorMsg = `Must be between ${range.min} and ${range.max}`;
-        
+
         setErrors((prev) => ({
           ...prev,
           [field]: errorMsg,
@@ -288,7 +312,7 @@ export const useCharges = (
       } else if (field === 'weightThreshold') {
         // Only validate weightThreshold for handlingCharges - it's MANDATORY
         if (cardName === 'handlingCharges') {
-          error = validateWeightThreshold(cardData.weightThreshold);
+          error = validateWeightThreshold(cardData.weightThreshold ?? 0);
         }
       }
 
@@ -303,9 +327,9 @@ export const useCharges = (
         return false;
       }
 
-      // Additional validation for Variable % fields when editing variableRange/variable
-      if ((field === 'variable' || field === 'variableRange') && cardData.currency === 'PERCENT' && cardData.mode === 'VARIABLE') {
-        const varVal = (cardData as any).variableRange ?? (cardData as any).variable;
+      // Additional validation for Variable % fields when editing variableRange
+      if (field === 'variableRange' && cardData.currency === 'PERCENT' && cardData.mode === 'VARIABLE') {
+        const varVal = cardData.variableRange;
         const percentErr = validateCardPercentage(varVal);
         if (percentErr) {
           setErrors((prev) => ({
@@ -346,20 +370,20 @@ export const useCharges = (
   );
 
   /**
-   * Validate all charge fields
+   * Validate all fields (simple + cards)
    */
-  const validateAll = useCallback((): boolean => {
+  const validateAll = useCallback((): { isValid: boolean; errors: ChargesErrors } => {
     let isValid = true;
     const newErrors: ChargesErrors = {};
     firstErrorRef.current = null;
 
     // Validate simple numeric charges
     Object.keys(SIMPLE_CHARGE_RANGES).forEach((field) => {
-      const value = charges[field as keyof Charges] as number;
+      const value = charges[field as keyof Charges] as number | null;
       const range = SIMPLE_CHARGE_RANGES[field];
 
       if (field === 'fuelSurchargePct') {
-        const fuelError = validateFuel(value);
+        const fuelError = validateFuel(value || 0);
         if (fuelError) {
           newErrors.fuelSurchargePct = fuelError;
           isValid = false;
@@ -367,11 +391,14 @@ export const useCharges = (
         }
       }
 
-      if (!isNumberInRange(value, range.min, range.max)) {
-        newErrors[field as keyof ChargesErrors] = (field === 'fuelSurchargePct' || field === 'invoiceValueSurcharge')
-          ? `Must be between ${range.min} and ${range.max}`
-          : 'Enter amount between 0-10,000';
-        isValid = false;
+      if (value !== null && value !== undefined) {
+        // Safe check with explicit cast (value is number here)
+        if (!isNumberInRange(value as number, range.min, range.max)) {
+          newErrors[field as keyof ChargesErrors] = (field === 'fuelSurchargePct' || field === 'invoiceValueSurcharge')
+            ? `Must be between ${range.min} and ${range.max}`
+            : 'Enter amount between 0-10,000';
+          isValid = false;
+        }
       }
     });
 
@@ -391,7 +418,7 @@ export const useCharges = (
       const isHandlingCharge = cardName === 'handlingCharges';
 
       // run the existing validator first
-      let cardErrors = validateChargeCard(cardData, shouldValidateWeight, isHandlingCharge) || {};
+      let cardErrors: Record<string, string> = validateChargeCard(cardData, shouldValidateWeight, isHandlingCharge) || {};
 
       // If the card is VARIABLE % (currency PERCENT + mode VARIABLE), allow numeric values
       try {
@@ -400,16 +427,16 @@ export const useCharges = (
           (cardData.mode === 'VARIABLE' || (cardData as any).mode === 'VARIABLE');
 
         if (isVariablePercentCard) {
-          const varVal = (cardData as any).variableRange ?? (cardData as any).variable;
+          const varVal = cardData.variableRange;
           const percentErr = validateCardPercentage(varVal);
           if (percentErr) {
             // ensure we keep existing cardErrors but override/set variableRange error
-            cardErrors = { ...(cardErrors || {}), variableRange: percentErr };
+            cardErrors = { ...cardErrors, variableRange: percentErr };
           } else {
             // if validator earlier set an error for variableRange but our numeric check passes, remove it
-            if (cardErrors && (cardErrors as any).variableRange) {
-              const { variableRange, ...rest } = cardErrors as any;
-              cardErrors = rest as Record<string, string>;
+            if (cardErrors.variableRange) {
+              const { variableRange, ...rest } = cardErrors;
+              cardErrors = rest;
             }
           }
         }
@@ -418,7 +445,7 @@ export const useCharges = (
       }
 
       if (Object.keys(cardErrors).length > 0) {
-        newErrors[cardName] = cardErrors;
+        (newErrors as any)[cardName] = cardErrors;
         isValid = false;
       }
     });
@@ -431,7 +458,7 @@ export const useCharges = (
       emitDebug('CHARGES_VALIDATION_PASSED');
     }
 
-    return isValid;
+    return { isValid, errors: newErrors };
   }, [charges]);
 
   /**

@@ -7,158 +7,216 @@ export interface TermsSection {
 
 export const termsSections: TermsSection[] = [
   {
-    title: "1. ACCEPTANCE OF TERMS",
+    title: "1. Definitions",
     content: (
       <>
-        <p>By creating an account on <strong>freightcompare.ai</strong>, you:</p>
-        <ul className="list-disc ml-5 mt-1 space-y-1">
-          <li>Confirm you are a legally authorized business/user</li>
-          <li>Agree to all Terms, Privacy Policy, and platform rules</li>
-          <li>Enter into a legally binding agreement</li>
-        </ul>
-        <p className="mt-2 font-medium">If you do not agree → you must not sign up or use the platform.</p>
-      </>
-    ),
-  },
-  {
-    title: "2. PLATFORM NATURE",
-    content: (
-      <>
-        <p><strong>freightcompare.ai</strong> is a freight comparison platform, rate discovery engine, shipment booking interface, and logistics SaaS tool.</p>
-        <p className="mt-2">We are <strong>NOT</strong> a transporter, courier company, freight carrier, or customs broker. We only connect users with transporters. All shipments are executed by third-party carriers.</p>
-      </>
-    ),
-  },
-  {
-    title: "3. USER ELIGIBILITY",
-    content: (
-      <>
-        <p>You confirm:</p>
-        <ul className="list-disc ml-5 mt-1 space-y-1">
-          <li>You are ≥18 years old</li>
-          <li>You are authorized to book shipments</li>
-          <li>Your company details are accurate</li>
-          <li>GST & KYC details are valid</li>
-        </ul>
-        <p className="mt-2 font-medium">Fake accounts → immediate termination.</p>
-      </>
-    ),
-  },
-  {
-    title: "4. ACCOUNT RESPONSIBILITY",
-    content: (
-      <p>You are responsible for login credentials, API keys, team member access, and all bookings from your account. Any misuse → your liability.</p>
-    ),
-  },
-  {
-    title: "5. RATE ACCURACY DISCLAIMER",
-    content: (
-      <>
-        <p>Rates shown on the platform are indicative, API-based, and subject to change. Final charges may vary due to weight differences, volumetric changes, ODA/remote area, fuel surcharge, or carrier revision.</p>
-        <p className="mt-2 font-medium">freightcompare.ai is not liable for rate mismatch.</p>
-      </>
-    ),
-  },
-  {
-    title: "6. SHIPMENT LIABILITY",
-    content: (
-      <p>We are <strong>NOT</strong> responsible for damage, loss, delay, theft, misrouting, or customs issues. Liability lies with the selected transporter/courier partner. Users must check carrier T&Cs.</p>
-    ),
-  },
-  {
-    title: "7. PROHIBITED SHIPMENTS",
-    content: (
-      <>
-        <p>You must <strong>NOT</strong> ship: illegal goods, hazardous materials, drugs, explosives, cash, precious metals, or restricted items.</p>
-        <p className="mt-2 font-medium">Violation → account termination + legal action.</p>
-      </>
-    ),
-  },
-  {
-    title: "8. PAYMENT TERMS",
-    content: (
-      <p>Users agree that wallet or prepaid system may be required, platform fees apply, subscription plans apply, credit terms may be revoked, and non-payment → account suspension.</p>
-    ),
-  },
-  {
-    title: "9. PLATFORM FEES",
-    content: (
-      <p>freightcompare.ai may charge subscription fees, transaction fees, API usage fees, and premium feature fees. Fees are non-refundable unless stated.</p>
-    ),
-  },
-  {
-    title: "10. DATA & PRIVACY",
-    content: (
-      <p>We collect shipment data, pricing data, and usage data. We may use data for optimization, analytics, ML models, and platform improvement. We never sell sensitive data.</p>
-    ),
-  },
-  {
-    title: "11. API & AUTOMATION TERMS",
-    content: (
-      <p>If using API: rate limits apply, abuse → access revoked, scraping prohibited, reverse engineering prohibited.</p>
-    ),
-  },
-  {
-    title: "12. SERVICE AVAILABILITY",
-    content: (
-      <p>Platform uptime is not guaranteed. We are not liable for server downtime, API downtime, carrier downtime, or data mismatch.</p>
-    ),
-  },
-  {
-    title: "13. LIMITATION OF LIABILITY",
-    content: (
-      <p>Maximum liability of freightcompare.ai is limited to the amount paid to the platform in the last 30 days. We are not liable for business loss, shipment loss, reputation damage, or indirect damages.</p>
-    ),
-  },
-  {
-    title: "14. INDEMNITY",
-    content: (
-      <p>You agree to indemnify freightcompare.ai against misdeclared shipments, illegal goods, payment fraud, carrier disputes, and customs violations.</p>
-    ),
-  },
-  {
-    title: "15. ACCOUNT TERMINATION",
-    content: (
-      <p>We may suspend/terminate your account for fraud, abuse, non-payment, suspicious activity, or legal orders — without prior notice.</p>
-    ),
-  },
-  {
-    title: "16. INTELLECTUAL PROPERTY",
-    content: (
-      <p>All platform elements — algorithms, rate engine, UI, data, and code — belong to freightcompare.ai. Copying is prohibited.</p>
-    ),
-  },
-  {
-    title: "17. DISPUTE RESOLUTION",
-    content: (
-      <p>All disputes are governed by Indian law, with arbitration first. Jurisdiction: Delhi.</p>
-    ),
-  },
-  {
-    title: "18. FORCE MAJEURE",
-    content: (
-      <p>We are not liable for natural disasters, war, API outages, or government actions.</p>
-    ),
-  },
-  {
-    title: "19. MODIFICATION OF TERMS",
-    content: (
-      <p>We may update terms anytime. Continued usage = acceptance.</p>
-    ),
-  },
-  {
-    title: "20. FINAL DECLARATION",
-    content: (
-      <>
-        <p>By ticking "I Agree" you confirm:</p>
-        <ul className="list-none ml-1 mt-1 space-y-1">
-          <li>✔ You understand platform is aggregator</li>
-          <li>✔ You accept carrier liability</li>
-          <li>✔ You accept rate variability</li>
-          <li>✔ You accept payment obligations</li>
-          <li>✔ You accept arbitration clause</li>
+        <p>Capitalized terms used in these Terms shall have the following meanings unless otherwise specified:</p>
+        <ul className="list-disc ml-5 mt-2 space-y-2">
+          <li><strong>Account:</strong> A user profile created on the Platform for accessing services.</li>
+          <li><strong>Content:</strong> Any data, information, text, images, files, rates, vendor details, or other materials uploaded, submitted, or displayed by Users on the Platform.</li>
+          <li><strong>Data Fiduciary:</strong> As defined under the DPDPA, refers to Us as the entity determining the purpose and means of processing Personal Data.</li>
+          <li><strong>Data Principal:</strong> As defined under the DPDPA, refers to You or any individual whose Personal Data is processed.</li>
+          <li><strong>GST:</strong> Goods and Services Tax as per the GST Act, applicable at 18% for SaaS services unless otherwise specified.</li>
+          <li><strong>Intermediary:</strong> As defined under Section 2(w) of the IT Act, the Platform acts as an intermediary facilitating user interactions without endorsing or modifying Content.</li>
+          <li><strong>Personal Data:</strong> As defined under the DPDPA, any data about an identified or identifiable individual.</li>
+          <li><strong>Platform:</strong> The FreightCompare.ai website (freightcompare.ai), mobile applications, and associated services for freight rate comparison, vendor onboarding, and related features.</li>
+          <li><strong>Prohibited Activities:</strong> Activities listed in Section 6, including but not limited to illegal goods transport, GST fraud, and data scraping.</li>
+          <li><strong>Services:</strong> Rate comparison, vendor uploading, serviceability checks, Excel imports/exports, UTSF engine access, and other features described in Section 4.</li>
+          <li><strong>Synthetically Generated Information (SGI):</strong> As per the IT Rules 2026 amendments, any AI-generated or manipulated content, including deepfakes or altered rates.</li>
+          <li><strong>User:</strong> Any individual or entity accessing the Platform, including Guests, Customers, Vendors, Admins, or Super Admins.</li>
+          <li><strong>Vendor:</strong> A transporter or logistics provider onboarded on the Platform, including temporary/private vendors.</li>
         </ul>
       </>
     ),
   },
+  {
+    title: "2. Eligibility and Account Registration",
+    content: (
+      <div className="space-y-3">
+        <p><strong>2.1 Eligibility:</strong> You must be at least 18 years old and capable of forming a legally binding contract under Indian law (Indian Contract Act, 1872). If representing an entity, You warrant full authorization.</p>
+        <p><strong>2.2 Registration:</strong> To access certain Services, You must create an Account by providing accurate information, including company name, GSTIN, email, phone, and address. You agree to verify Your GSTIN via government APIs and comply with GST registration thresholds (₹20 lakhs annual turnover, or ₹10 lakhs for special category states).</p>
+        <p><strong>2.3 Account Security:</strong> You are responsible for maintaining the confidentiality of Your login credentials. Notify Us immediately of any unauthorized access at [support@freightcompare.ai]. We are not liable for losses due to unauthorized use.</p>
+        <p><strong>2.4 Verification:</strong> We may require OTP verification, GSTIN validation, or other checks. False information may lead to Account suspension.</p>
+      </div>
+    ),
+  },
+  {
+    title: "3. Acceptance of Terms and Electronic Contracting",
+    content: (
+      <p>By clicking "I Agree" during signup or using the Platform, You electronically accept these Terms, which shall have the same legal effect as a physical signature under the IT Act (Section 10A on electronic contracts).</p>
+    ),
+  },
+  {
+    title: "4. Description of Services",
+    content: (
+      <>
+        <p>The Platform provides B2B SaaS services for freight/logistics rate comparison in India, including:</p>
+        <ul className="list-disc ml-5 mt-2 space-y-1">
+          <li>Rate calculation and comparison across vendors.</li>
+          <li>Vendor onboarding wizard for uploading transporters (public or temporary/private).</li>
+          <li>UTSF (Unified Transporter Serviceability Framework) for pincode serviceability checks.</li>
+          <li>Excel upload/download for box configurations, pricing matrices, and packing lists.</li>
+          <li>Admin panels for vendor approval, user management, and form building.</li>
+          <li>Subscription-based access (Starter, Pro, Enterprise plans) with token limits for calculations.</li>
+          <li>Anomaly detection (Smart Shield) for quote fraud.</li>
+        </ul>
+        <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-md">
+          <p className="font-semibold">Important Disclaimer:</p>
+          <p className="text-sm mt-1">The Platform does not facilitate actual bookings, shipments, or payments. All vendor contacts occur outside the Platform. Rates are user-contributed or integrated (e.g., Wheelseye FTL) and may not be real-time or guaranteed accurate. We do not endorse vendors or rates.</p>
+        </div>
+      </>
+    ),
+  },
+  {
+    title: "5. License and Access",
+    content: (
+      <div className="space-y-3">
+        <p><strong>5.1 Grant of License:</strong> Subject to these Terms, We grant You a limited, non-exclusive, non-transferable, revocable license to access and use the Platform for Your internal business purposes.</p>
+        <p><strong>5.2 Restrictions:</strong> You shall not: (a) reverse-engineer, decompile, or modify the Platform; (b) use for competitive purposes; (c) exceed subscription limits; or (d) automate scraping (prohibited under IT Act Section 43 on unauthorized access).</p>
+        <p><strong>5.3 Service Levels:</strong> We aim for 99% uptime but provide no warranties. Downtime may occur for maintenance (notified in advance).</p>
+      </div>
+    ),
+  },
+  {
+    title: "6. User Obligations and Prohibited Activities",
+    content: (
+      <div className="space-y-4">
+        <div>
+          <p><strong>6.1 User Obligations:</strong></p>
+          <ul className="list-disc ml-5 mt-1 space-y-1">
+            <li>Provide accurate, lawful Content (e.g., valid GSTINs, rates from legitimate sources).</li>
+            <li>Comply with all laws, including GST filing, e-way bill generation, and transport regulations.</li>
+            <li>Obtain necessary consents for uploading third-party data (e.g., vendor details) per DPDPA.</li>
+            <li>Pay applicable fees and GST on subscriptions.</li>
+            <li>Report suspicious activities via [report@freightcompare.ai].</li>
+          </ul>
+        </div>
+        <div>
+          <p><strong>6.2 Prohibited Activities:</strong> You shall not use the Platform for:</p>
+          <ul className="list-disc ml-5 mt-1 space-y-1">
+            <li>Uploading or comparing rates for illegal/prohibited goods (e.g., narcotics under NDPS Act, arms under Arms Act, hazardous waste under Hazardous Waste Rules, wildlife under Wildlife Protection Act).</li>
+            <li>GST fraud, fake invoicing, shell entities, or bogus ITC claims (violating GST Act Sections 122-132).</li>
+            <li>Onboarding fake vendors or manipulating rates for collusion/bid-rigging (antitrust under Competition Act, 2002).</li>
+            <li>Data scraping, automated queries, or competitive intelligence gathering.</li>
+            <li>Uploading SGI (e.g., AI-generated fake rates) without labeling, per IT Rules 2026.</li>
+            <li>Criminal exploitation, such as smuggling routes, stolen goods transport, or money laundering (abetment under Bharatiya Nyaya Sanhita).</li>
+            <li>Harassing, defamatory, or unlawful Content.</li>
+            <li>Bypassing auth gates or spamming calculations.</li>
+          </ul>
+        </div>
+        <p className="font-semibold text-red-600">Violation may result in immediate termination, Content removal, and reporting to authorities (e.g., GSTN, police).</p>
+      </div>
+    ),
+  },
+  {
+    title: "7. Vendor Onboarding and User-Generated Content",
+    content: (
+      <div className="space-y-3">
+        <p><strong>7.1 Onboarding Process:</strong> Vendors must provide accurate details (GSTIN, zones, pricing). We may verify but do not guarantee accuracy.</p>
+        <p><strong>7.2 Temporary Transporters:</strong> User-uploaded private vendors are Your responsibility; We act as intermediary only.</p>
+        <p><strong>7.3 Content Ownership:</strong> You retain ownership of Your Content but grant Us a perpetual, royalty-free license to use, store, and display it for Platform operations.</p>
+        <p><strong>7.4 Moderation and Takedown:</strong> Per IT Rules, We exercise due diligence to prevent unlawful Content. We will remove prohibited Content within 3 hours of government/court orders or 36 hours of user complaints. Grievance Officer: [Name/Email, e.g., grievance@freightcompare.ai]. Annual user notifications on rules compliance.</p>
+      </div>
+    ),
+  },
+  {
+    title: "8. Intellectual Property",
+    content: (
+      <div className="space-y-3">
+        <p><strong>8.1 Our IP:</strong> The Platform, UTSF engine, designs, and trademarks are Our property, protected under Copyright Act, 1957, and Trademarks Act, 1999. No unauthorized use.</p>
+        <p><strong>8.2 Infringement:</strong> Report IP claims to [ip@freightcompare.ai]. We comply with takedown notices per IT Act Section 79.</p>
+      </div>
+    ),
+  },
+  {
+    title: "9. Fees, Payments, and GST Compliance",
+    content: (
+      <div className="space-y-3">
+        <p><strong>9.1 Subscription Plans:</strong> As detailed on /pricing (e.g., Starter: ₹999/month, Pro: ₹2,499/quarterly). Tokens for calculations; overages charged extra.</p>
+        <p><strong>9.2 Payments:</strong> Via integrated gateways (e.g., Razorpay). All fees exclusive of GST (18% for OIDAR services).</p>
+        <p><strong>9.3 GST Obligations:</strong> You warrant GST compliance. We collect and remit GST for domestic users; foreign users may pay under Reverse Charge Mechanism (RCM). Invoices include GSTIN. Non-payment leads to suspension.</p>
+        <p><strong>9.4 Refunds:</strong> No refunds except for technical errors, at Our discretion.</p>
+      </div>
+    ),
+  },
+  {
+    title: "10. Data Protection and Privacy",
+    content: (
+      <div className="space-y-3 border-l-2 border-indigo-200 pl-4">
+        <p><strong>10.1 Compliance with DPDPA:</strong> We are a Data Fiduciary. Our Privacy Policy details Personal Data processing.</p>
+        <p><strong>10.2 Consent and Notice:</strong> By using the Platform, You consent to processing Personal Data for Services. Notices per DPDPA Section 5: (i) Data collected (e.g., GSTIN, pincodes); (ii) Purposes (rate comparison, analytics); (iii) Rights (access, correction, erasure under Sections 11-13). Access in English or Eighth Schedule languages.</p>
+        <p><strong>10.3 Data Security:</strong> We implement technical measures (e.g., encryption) per DPDPA Section 8. Breaches notified within 72 hours.</p>
+        <p><strong>10.4 Data Processors:</strong> Engaged via valid contracts; no unauthorized sub-processing.</p>
+        <p><strong>10.5 Transfers:</strong> No transfers to restricted countries per DPDPA Section 16. Use India-standard clauses for cross-border.</p>
+        <p><strong>10.6 Rights:</strong> Exercise via [dpo@freightcompare.ai]. Complaints to Data Protection Board.</p>
+        <p><strong>10.7 Data Retention:</strong> As per IT Rules (180 days for logs); delete upon request unless legally required.</p>
+      </div>
+    ),
+  },
+  {
+    title: "11. Intermediary Status and Limitations",
+    content: (
+      <div className="space-y-3">
+        <p><strong>11.1 Safe Harbor:</strong> Per IT Act Section 79 and IT Rules, We are an intermediary and not liable for User Content, provided We observe due diligence (e.g., no initiation/modification of Content, prompt takedowns).</p>
+        <p><strong>11.2 No Warranties:</strong> Services "as-is." No guarantees on rate accuracy, vendor performance, or savings. Disclaim liability for external transactions.</p>
+      </div>
+    ),
+  },
+  {
+    title: "12. Limitation of Liability",
+    content: (
+      <p>To the fullest extent permitted by law, We shall not be liable for indirect, consequential, or punitive damages, including loss of profits, data, or business opportunities. Liability capped at fees paid in the preceding 12 months. No liability for force majeure (e.g., strikes, natural disasters).</p>
+    ),
+  },
+  {
+    title: "13. Indemnification",
+    content: (
+      <p>You agree to indemnify Us against claims arising from Your breach of Terms, unlawful Content, GST non-compliance, or misuse (including legal fees).</p>
+    ),
+  },
+  {
+    title: "14. Termination",
+    content: (
+      <div className="space-y-3">
+        <p><strong>14.1 By Us:</strong> For breach, non-payment, or legal requirements, with/without notice.</p>
+        <p><strong>14.2 By You:</strong> Cancel subscription anytime; no refunds for partial periods.</p>
+        <p><strong>14.3 Effects:</strong> Upon termination, access revoked; data deleted per retention policy.</p>
+      </div>
+    ),
+  },
+  {
+    title: "15. Governing Law and Dispute Resolution",
+    content: (
+      <div className="space-y-3">
+        <p><strong>15.1 Governing Law:</strong> Laws of India, without conflict principles.</p>
+        <p><strong>15.2 Jurisdiction:</strong> Exclusive jurisdiction of courts in Delhi, India.</p>
+        <p><strong>15.3 Arbitration:</strong> Disputes resolved via arbitration under Arbitration and Conciliation Act, 1996 (as amended), in Delhi, by a sole arbitrator appointed by Us. English language; costs to losing party.</p>
+        <p><strong>15.4 Grievances:</strong> Contact Grievance Officer per IT Rules.</p>
+      </div>
+    ),
+  },
+  {
+    title: "16. Miscellaneous",
+    content: (
+      <div className="space-y-3">
+        <p><strong>16.1 Severability:</strong> Invalid provisions severed; remainder enforceable.</p>
+        <p><strong>16.2 Amendments:</strong> Posted on Platform; binding after 15 days.</p>
+        <p><strong>16.3 Assignment:</strong> We may assign rights; You may not without consent.</p>
+        <p><strong>16.4 Entire Agreement:</strong> Supersedes prior agreements.</p>
+        <p><strong>16.5 Force Majeure:</strong> No liability for delays beyond control.</p>
+        <p><strong>16.6 Notices:</strong> Via email or Platform.</p>
+        <p><strong>16.7 Waiver:</strong> No waiver unless written.</p>
+        <p><strong>16.8 Contact:</strong> For questions, email [tech@foruselectric.com].</p>
+      </div>
+    ),
+  },
+  {
+    title: "Final Declaration",
+    content: (
+      <div className="mt-4 p-4 bg-slate-100 rounded-lg text-sm text-slate-700">
+        <p>By using the Platform, You acknowledge reading and agreeing to these Terms. For Super Admins/Admins: Additional role-specific terms apply (e.g., hardcoded email checks for access).</p>
+        <p className="mt-3 font-semibold">Forus Electric Private Limited</p>
+      </div>
+    ),
+  }
 ];

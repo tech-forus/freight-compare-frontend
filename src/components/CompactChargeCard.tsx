@@ -717,9 +717,34 @@ interface CompactChargeCardProps {
 
 const BLOCKED = new Set(['e', 'E', '+', '-']);
 
-const zeroToBlank = (val: number | null | undefined): string | number => {
+const zeroToBlank = (val: number | null | undefined): string => {
   if (val === null || val === undefined) return '';
-  return val;
+  return String(val);
+};
+
+// Helper to parse integer-only change
+const handleIntegerChange = (
+  raw: string,
+  onFieldChange: (field: any, value: any) => void,
+  field: string,
+  min: number,
+  max: number
+) => {
+  // Strip all non-digits
+  const stripped = raw.replace(/[^\d]/g, '');
+  if (stripped === '') {
+    onFieldChange(field, null);
+    return;
+  }
+  // Remove leading zeros, but keep a single zero
+  const clean = stripped.replace(/^0+([1-9])/, '$1');
+  const num = parseInt(clean, 10);
+  if (isNaN(num)) {
+    onFieldChange(field, null);
+    return;
+  }
+  const clamped = Math.min(Math.max(num, min), max);
+  onFieldChange(field, clamped);
 };
 
 function sanitizeDecimalString(raw: string, precision = 2) {
@@ -906,20 +931,22 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
           </label>
           <div className="relative">
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={zeroToBlank(data.fixedAmount ?? null)}
-              onChange={(e) => {
-                const val = Number(e.target.value || 0);
-                const min = cardName === 'handlingCharges' ? 1 : 0;
-                const clamped = Math.min(Math.max(val, min), 5000);
-                onFieldChange('fixedAmount', clamped);
-              }}
+              onChange={(e) => handleIntegerChange(
+                e.target.value,
+                onFieldChange,
+                'fixedAmount',
+                cardName === 'handlingCharges' ? 1 : 0,
+                5000
+              )}
               onBlur={() => onFieldBlur('fixedAmount')}
               className={`w-full border rounded-md shadow-sm pl-3 pr-8 py-1.5 text-sm text-slate-700 placeholder-slate-400
                 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white
                 ${errors.fixedAmount ? 'border-red-500 focus:border-red-600' : 'border-slate-300'}`}
-              placeholder=" "
-              onKeyDown={(e) => BLOCKED.has(e.key) && e.preventDefault()}
+              placeholder=""
+              onKeyDown={(e) => (BLOCKED.has(e.key) || e.key === '.') && e.preventDefault()}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">₹</span>
           </div>

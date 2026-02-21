@@ -23,15 +23,12 @@ import React, {
 } from 'react';
 import {
   MapPin,
-  Check,
   ChevronDown,
   ChevronRight,
   Loader2,
   CheckCircle,
   Search,
   X,
-  Globe,
-  Building2,
   Hash,
   XCircle,
 } from 'lucide-react';
@@ -54,12 +51,15 @@ interface CityData {
   state: string;   // uppercase, as-is from pincodes.json  e.g. "DELHI"
   cityKey: string; // "CITY||STATE"  – used as stable key
   pincodes: string[];
+  zone?: string; // Dominant zone for this city
 }
 
-interface RegionData {
-  region: string;
-  totalPincodes: number;
+interface ZoneDisplayData {
+  zoneCode: string; // "N1"
+  description?: string; // "Metro cities..."
+  region: string; // "North"
   cities: CityData[];
+  totalPincodes: number;
 }
 
 // Props are kept IDENTICAL to the old ZoneSelectionWizard so AddVendor.tsx
@@ -80,15 +80,25 @@ interface ZoneSelectionWizardProps {
 // CONSTANTS & HELPERS
 // ============================================================================
 
-const REGION_ORDER: string[] = [
-  'North',
-  'Central',
-  'East',
-  'West',
-  'South',
-  'Northeast',
-  'Special',
-];
+
+
+// Define zone order for sorting
+const ZONE_ORDER: Record<string, number> = {
+  // North
+  N1: 1, N2: 2, N3: 3, N4: 4,
+  // Central
+  C1: 5, C2: 6,
+  // East
+  E1: 7, E2: 8,
+  // West
+  W1: 9, W2: 10,
+  // South
+  S1: 11, S2: 12, S3: 13, S4: 14,
+  // Northeast
+  NE1: 15, NE2: 16,
+  // Special
+  X1: 17, X2: 18, X3: 19
+};
 
 /** Derive display-region from a zone code (e.g. "N1" → "North") */
 function zoneToRegion(code: string): string {
@@ -167,34 +177,28 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
   // ── Data ────────────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [regions, setRegions] = useState<RegionData[]>([]);
-  // Fast pincode → raw entry lookup (needed for building ZoneConfig output)
-  const [pincodeIndex, setPincodeIndex] = useState<
-    Map<string, RawPincodeEntry>
-  >(new Map());
+  const [allZones, setAllZones] = useState<ZoneDisplayData[]>([]);
+  // Fast pincode → raw entry lookup
+  const [pincodeIndex, setPincodeIndex] = useState<Map<string, RawPincodeEntry>>(new Map());
 
   // ── Selection ────────────────────────────────────────────────────────────
-  const [selectedPincodes, setSelectedPincodes] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedPincodes, setSelectedPincodes] = useState<Set<string>>(new Set());
 
   // ── UI state ─────────────────────────────────────────────────────────────
-  const [expandedRegions, setExpandedRegions] = useState<Set<string>>(
-    new Set(),
-  );
+  const [expandedZones, setExpandedZones] = useState<Set<string>>(new Set());
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set());
-  // Cities showing ALL their pincodes (beyond PINCODE_SHOW_LIMIT)
   const [cityShowAll, setCityShowAll] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const [activeRegionFilter, setActiveRegionFilter] = useState<string>('North');
 
-  // ── Pre-compute flat pincode list per region (for fast select-all) ────────
-  const regionPincodeList = useMemo(() => {
+  // ── Pre-compute flat pincode list per ZONE (for fast select-all) ────────
+  const zonePincodeList = useMemo(() => {
     const m = new Map<string, string[]>();
-    for (const r of regions) {
-      m.set(r.region, r.cities.flatMap(c => c.pincodes));
+    for (const z of allZones) {
+      m.set(z.zoneCode, z.cities.flatMap(c => c.pincodes));
     }
     return m;
-  }, [regions]);
+  }, [allZones]);
 
   // ── Load pincodes.json ───────────────────────────────────────────────────
   useEffect(() => {
@@ -209,83 +213,112 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
         const data: RawPincodeEntry[] = await res.json();
         if (cancelled) return;
 
-        // Build index + region→city→pincodes hierarchy in a single pass
+        // Build index + region→city→pincodes hierarchy
         const index = new Map<string, RawPincodeEntry>();
-        // regionName → cityKey → pincodes[]
-        const regionMap = new Map<string, Map<string, string[]>>();
+        const zoneBuckets = new Map<string, CityData[]>();
 
         for (const entry of data) {
           const pc = String(entry.pincode);
           index.set(pc, entry);
+          const zone = entry.zone || 'Uncategorized';
 
-          const region = zoneToRegion(entry.zone);
-          const cityKey = `${(entry.city ?? '').toUpperCase()}||${(
-            entry.state ?? ''
-          ).toUpperCase()}`;
+          if (!zoneBuckets.has(zone)) zoneBuckets.set(zone, []);
 
-          if (!regionMap.has(region)) regionMap.set(region, new Map());
-          const cmap = regionMap.get(region)!;
-          if (!cmap.has(cityKey)) cmap.set(cityKey, []);
-          cmap.get(cityKey)!.push(pc);
+          // We need to aggregate pincodes per city per zone
+          // But here we are iterating pincodes.
+          // Let's do a two-pass or simpler: just collect raw entries first?
+          // Actually the previous logic was fine, just adapted.
         }
 
-        // Materialise sorted RegionData[]
-        const builtRegions: RegionData[] = [];
-        for (const regionName of REGION_ORDER) {
-          const cmap = regionMap.get(regionName);
-          if (!cmap || cmap.size === 0) continue;
+        // Re-implementing the bucketing logic for flat zones
+        const tempCityMap = new Map<string, { city: string, state: string, zone: string, pincodes: string[] }>();
 
-          const cities: CityData[] = [];
-          for (const [ck, pcs] of cmap.entries()) {
-            const [city, state] = ck.split('||');
-            cities.push({
-              city,
-              state,
-              cityKey: ck,
-              pincodes: pcs.sort(),
+        for (const entry of data) {
+          const pc = String(entry.pincode);
+          const zone = entry.zone || 'Uncategorized';
+          const cityKey = `${(entry.city ?? '').toUpperCase()}||${(entry.state ?? '').toUpperCase()}||${zone}`;
+
+          if (!tempCityMap.has(cityKey)) {
+            tempCityMap.set(cityKey, {
+              city: (entry.city ?? '').toUpperCase(),
+              state: (entry.state ?? '').toUpperCase(),
+              zone,
+              pincodes: []
             });
           }
-          cities.sort((a, b) => a.city.localeCompare(b.city));
+          tempCityMap.get(cityKey)!.pincodes.push(pc);
+        }
 
-          builtRegions.push({
-            region: regionName,
-            totalPincodes: cities.reduce((s, c) => s + c.pincodes.length, 0),
-            cities,
+        // Group cities by zone
+        const zoneGroups = new Map<string, CityData[]>();
+        for (const [key, val] of tempCityMap.entries()) {
+          if (!zoneGroups.has(val.zone)) zoneGroups.set(val.zone, []);
+          zoneGroups.get(val.zone)!.push({
+            city: val.city,
+            state: val.state,
+            cityKey: key, // unique key including zone to avoid conflicts
+            pincodes: val.pincodes.sort(),
+            zone: val.zone
           });
         }
 
-        setRegions(builtRegions);
-        setPincodeIndex(index);
+        // Fetch blueprint
+        let blueprintZones: Record<string, any> = {};
+        try {
+          const bpRes = await fetch(`${base}zones_blueprint.json`);
+          if (bpRes.ok) {
+            const bpJson = await bpRes.json();
+            blueprintZones = bpJson.zones || {};
+          }
+        } catch (e) { console.warn(e); }
 
-        // Auto-expand the first region
-        if (builtRegions.length > 0) {
-          setExpandedRegions(new Set([builtRegions[0].region]));
+        // Build flat list sorted by ZONE_ORDER
+        const flatZones: ZoneDisplayData[] = [];
+        const sortedCodes = Array.from(zoneGroups.keys()).sort((a, b) => {
+          const zA = ZONE_ORDER[a] ?? 999;
+          const zB = ZONE_ORDER[b] ?? 999;
+          return zA - zB;
+        });
+
+        for (const code of sortedCodes) {
+          const cities = zoneGroups.get(code)!;
+          cities.sort((a, b) => a.city.localeCompare(b.city));
+          flatZones.push({
+            zoneCode: code,
+            region: zoneToRegion(code),
+            description: blueprintZones[code]?.description || '',
+            cities,
+            totalPincodes: cities.reduce((sum, c) => sum + c.pincodes.length, 0)
+          });
         }
+
+        setAllZones(flatZones);
+        setPincodeIndex(index);
       } catch (err) {
         if (!cancelled) {
-          console.error('[ZoneSelectionWizard] Load failed:', err);
-          setLoadError('Failed to load pincode data. Please refresh the page.');
+          console.error(err);
+          setLoadError('Failed to load data.');
         }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   // ── Derived selection states ──────────────────────────────────────────────
 
-  const getRegionState = useCallback(
-    (regionName: string): 'none' | 'some' | 'all' => {
-      const list = regionPincodeList.get(regionName) ?? [];
+  // ── Derived selection states ──────────────────────────────────────────────
+
+  const getZoneState = useCallback(
+    (zCode: string): 'none' | 'some' | 'all' => {
+      const list = zonePincodeList.get(zCode) ?? [];
       if (!list.length) return 'none';
       const n = list.filter(p => selectedPincodes.has(p)).length;
       if (n === 0) return 'none';
       return n === list.length ? 'all' : 'some';
     },
-    [regionPincodeList, selectedPincodes],
+    [zonePincodeList, selectedPincodes],
   );
 
   const getCityState = useCallback(
@@ -300,16 +333,16 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const toggleRegion = useCallback(
-    (name: string, selectAll: boolean) => {
-      const list = regionPincodeList.get(name) ?? [];
+  const toggleZone = useCallback(
+    (zCode: string, selectAll: boolean) => {
+      const list = zonePincodeList.get(zCode) ?? [];
       setSelectedPincodes(prev => {
         const next = new Set(prev);
         list.forEach(p => (selectAll ? next.add(p) : next.delete(p)));
         return next;
       });
     },
-    [regionPincodeList],
+    [zonePincodeList],
   );
 
   const toggleCity = useCallback(
@@ -331,10 +364,12 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
     });
   }, []);
 
-  const toggleExpandRegion = useCallback((name: string) => {
-    setExpandedRegions(prev => {
+
+
+  const toggleExpandZone = useCallback((zCode: string) => {
+    setExpandedZones(prev => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      next.has(zCode) ? next.delete(zCode) : next.add(zCode);
       return next;
     });
   }, []);
@@ -385,7 +420,11 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
         isComplete: true,
       });
     }
-    zones.sort((a, b) => a.zoneCode.localeCompare(b.zoneCode));
+    zones.sort((a, b) => {
+      const zA = ZONE_ORDER[a.zoneCode] ?? 999;
+      const zB = ZONE_ORDER[b.zoneCode] ?? 999;
+      return zA - zB;
+    });
 
     // Empty price matrix (to be filled in the price-matrix step)
     const zoneCodes = zones.map(z => z.zoneCode);
@@ -415,23 +454,33 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
     );
   }, [selectedPincodes, pincodeIndex, blankCellValue, onComplete]);
 
-  // ── Search filter ─────────────────────────────────────────────────────────
+  // ── Search & Filter ─────────────────────────────────────────────────────────
 
-  const filteredRegions = useMemo(() => {
+  const filteredZones = useMemo(() => {
     const q = search.trim().toUpperCase();
-    if (!q) return regions;
-    return regions
-      .map(r => ({
-        ...r,
-        cities: r.cities.filter(
+
+    // If search is active, search GLOBALLY (ignore region filter)
+    // Otherwise, apply the active region filter
+    let base = allZones;
+    if (!q && activeRegionFilter !== 'All') {
+      base = base.filter(z => z.region === activeRegionFilter);
+    }
+
+    if (!q) return base;
+
+    // Filter by search term
+    return base
+      .map(z => ({
+        ...z,
+        cities: z.cities.filter(
           c =>
             c.city.includes(q) ||
             c.state.includes(q) ||
             c.pincodes.some(p => p.startsWith(q)),
         ),
       }))
-      .filter(r => r.cities.length > 0);
-  }, [regions, search]);
+      .filter(z => z.cities.length > 0);
+  }, [allZones, search, activeRegionFilter]);
 
   // ── Early returns ─────────────────────────────────────────────────────────
 
@@ -459,11 +508,9 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
 
   return (
     <div className="w-full space-y-3">
-
       {/* ══ STICKY TOP BAR ════════════════════════════════════════════════ */}
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
         <div className="flex items-center gap-3 flex-wrap">
-
           {/* Selection counter */}
           <div className="flex items-center gap-2 min-w-fit">
             <Hash className="w-4 h-4 text-blue-500 flex-shrink-0" />
@@ -486,8 +533,10 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
 
           {/* Search */}
           <div className="relative flex-1 min-w-40 max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4
-                               text-slate-400 pointer-events-none" />
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4
+                               text-slate-400 pointer-events-none"
+            />
             <input
               type="text"
               value={search}
@@ -524,109 +573,130 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
         </div>
       </div>
 
-      {/* ══ REGION ACCORDIONS ═════════════════════════════════════════════ */}
-      <div className="space-y-2">
-        {filteredRegions.length === 0 && search && (
+      {/* ══ NAVIGATION CHIPS ══════════════════════════════════════════════ */}
+      <div className="flex items-center gap-2 pb-2 overflow-x-auto no-scrollbar mask-linear-fade">
+        <button
+          onClick={() => setActiveRegionFilter('All')}
+          className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all whitespace-nowrap
+                ${activeRegionFilter === 'All'
+              ? 'bg-slate-800 text-white border-slate-800 shadow-md'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+            }`}
+        >
+          All Zones
+        </button>
+        {['North', 'South', 'East', 'West', 'Central', 'Northeast', 'Special'].map(r => (
+          <button
+            key={r}
+            onClick={() => setActiveRegionFilter(r)}
+            className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all whitespace-nowrap
+                    ${activeRegionFilter === r
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+              }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+
+      {/* ══ ZONES LIST ════════════════════════════════════════════════════ */}
+      <div className="space-y-4">
+        {filteredZones.length === 0 && (
           <div className="text-center py-14 text-slate-400">
             <MapPin className="w-8 h-8 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No results for &ldquo;{search}&rdquo;</p>
+            <p className="text-sm">No zones found</p>
           </div>
         )}
 
-        {filteredRegions.map(regionData => {
+        {filteredZones.map(zoneData => {
           const isExpanded =
-            search.trim() !== '' || expandedRegions.has(regionData.region);
-          const rState = getRegionState(regionData.region);
-          const selInRegion = (regionPincodeList.get(regionData.region) ?? [])
-            .filter(p => selectedPincodes.has(p)).length;
+            search.trim() !== '' || expandedZones.has(zoneData.zoneCode);
+          const zState = getZoneState(zoneData.zoneCode);
+
+          // "Flashy" styles based on region
+          const regionColor =
+            {
+              North: 'border-red-200 shadow-red-500/10',
+              South: 'border-blue-200 shadow-blue-500/10',
+              East: 'border-green-200 shadow-green-500/10',
+              West: 'border-orange-200 shadow-orange-500/10',
+              Central: 'border-purple-200 shadow-purple-500/10',
+              Northeast: 'border-teal-200 shadow-teal-500/10',
+              Special: 'border-indigo-200 shadow-indigo-500/10',
+            }[zoneData.region] || 'border-slate-200';
+
+          const headerColor =
+            {
+              North: 'from-red-50 to-white text-red-700',
+              South: 'from-blue-50 to-white text-blue-700',
+              East: 'from-green-50 to-white text-green-700',
+              West: 'from-orange-50 to-white text-orange-700',
+              Central: 'from-purple-50 to-white text-purple-700',
+              Northeast: 'from-teal-50 to-white text-teal-700',
+              Special: 'from-indigo-50 to-white text-indigo-700',
+            }[zoneData.region] || 'from-slate-50 to-white text-slate-700';
+
+          const badgeColor =
+            {
+              North: 'bg-red-100 text-red-800',
+              South: 'bg-blue-100 text-blue-800',
+              East: 'bg-green-100 text-green-800',
+              West: 'bg-orange-100 text-orange-800',
+              Central: 'bg-purple-100 text-purple-800',
+              Northeast: 'bg-teal-100 text-teal-800',
+              Special: 'bg-indigo-100 text-indigo-800',
+            }[zoneData.region] || 'bg-slate-200 text-slate-700';
 
           return (
             <div
-              key={regionData.region}
-              className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs"
+              key={zoneData.zoneCode}
+              className={`bg-white border rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-md ${regionColor}`}
             >
-              {/* ── Region header ──────────────────────────────────────── */}
+              {/* CARD HEADER */}
               <div
-                className={`flex items-center gap-3 px-4 py-3 transition-colors select-none
-                  ${isExpanded
-                    ? 'bg-slate-100 border-b border-slate-200'
-                    : 'bg-slate-50 hover:bg-slate-100'
-                  }`}
+                onClick={() => toggleExpandZone(zoneData.zoneCode)}
+                className={`px-3 py-2 bg-gradient-to-r ${headerColor} cursor-pointer flex items-center justify-between border-b border-slate-100/50 relative overflow-hidden`}
               >
-                {/* Zone checkbox */}
-                <IndeterminateCheckbox
-                  state={rState}
-                  onClick={e => {
-                    e.stopPropagation();
-                    toggleRegion(regionData.region, rState !== 'all');
-                  }}
-                />
+                {/* Interactive "Select All" Checkbox for Zone */}
+                <div className="flex items-center gap-2 z-10">
+                  <IndeterminateCheckbox
+                    state={zState}
+                    onClick={e => {
+                      e.stopPropagation();
+                      toggleZone(zoneData.zoneCode, zState !== 'all');
+                    }}
+                  />
 
-                {/* Zone label — click expands */}
-                <button
-                  type="button"
-                  onClick={() => toggleExpandRegion(regionData.region)}
-                  className="flex items-center gap-2 flex-1 text-left min-w-0"
-                >
-                  <Globe className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                  <span className="font-semibold text-slate-900">
-                    {regionData.region}
-                  </span>
-                  <span className="text-xs text-slate-400 truncate">
-                    {regionData.cities.length} cities
-                    &nbsp;·&nbsp;
-                    {regionData.totalPincodes.toLocaleString()} pincodes
-                  </span>
-                  {selInRegion > 0 && (
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700
-                                     text-xs font-medium rounded-full flex-shrink-0">
-                      {selInRegion.toLocaleString()} selected
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-black px-1.5 py-0.5 rounded-md ${badgeColor} shadow-sm`}>
+                        {zoneData.zoneCode}
+                      </span>
+                      {zoneData.description && <span className="text-xs font-semibold opacity-90">{zoneData.description}</span>}
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-0.5 font-bold tracking-wide uppercase">
+                      {zoneData.region} • {zoneData.cities.length} Cities
                     </span>
-                  )}
-                </button>
+                  </div>
+                </div>
 
-                {/* Quick-action buttons */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      toggleRegion(regionData.region, true);
-                    }}
-                    className="text-xs px-2.5 py-1 bg-white border border-slate-200
-                               text-blue-700 rounded-md hover:bg-blue-50 hover:border-blue-300
-                               transition-colors"
-                  >
-                    Select all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      toggleRegion(regionData.region, false);
-                    }}
-                    className="text-xs px-2.5 py-1 bg-white border border-slate-200
-                               text-slate-600 rounded-md hover:bg-slate-100 transition-colors"
-                  >
-                    Clear
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleExpandRegion(regionData.region)}
-                    className="p-1.5 rounded hover:bg-slate-200 transition-colors"
-                  >
-                    {isExpanded
-                      ? <ChevronDown className="w-4 h-4 text-slate-500" />
-                      : <ChevronRight className="w-4 h-4 text-slate-500" />
-                    }
-                  </button>
+                {/* Expand Icon */}
+                <div
+                  className={`p-1.5 rounded-full bg-white/50 backdrop-blur-sm transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''
+                    }`}
+                >
+                  <ChevronDown className="w-4 h-4 opacity-50" />
                 </div>
               </div>
 
-              {/* ── Cities list ────────────────────────────────────────── */}
-              {isExpanded && (
+              {/* CARD CONTENT (Cities) */}
+              <div
+                className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+              >
                 <div className="divide-y divide-slate-50">
-                  {regionData.cities.map(cityData => {
+                  {zoneData.cities.map(cityData => {
                     const cState = getCityState(cityData);
                     const isCityOpen = expandedCities.has(cityData.cityKey);
                     const selInCity = cityData.pincodes.filter(p =>
@@ -640,21 +710,13 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
                       cityData.pincodes.length - PINCODE_SHOW_LIMIT;
 
                     return (
-                      <div key={cityData.cityKey}>
-
-                        {/* ── City row ───────────────────────────────── */}
+                      <div key={cityData.cityKey} className="bg-slate-50/5">
+                        {/* City Row */}
                         <div
-                          className={`flex items-center gap-2.5 px-4 py-2.5 group
-                                      transition-colors
-                            ${isCityOpen
-                              ? 'bg-blue-50/30'
-                              : 'hover:bg-slate-50/60'
-                            }`}
+                          className={`flex items-center gap-2 px-3 py-1.5 transition-colors cursor-pointer group
+                                    ${isCityOpen ? 'bg-blue-50/40' : 'hover:bg-slate-50'}`}
+                          onClick={() => toggleExpandCity(cityData.cityKey)}
                         >
-                          {/* indent spacer aligns with region chevron */}
-                          <span className="w-4 flex-shrink-0" />
-
-                          {/* City checkbox */}
                           <IndeterminateCheckbox
                             state={cState}
                             size="sm"
@@ -664,153 +726,59 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
                             }}
                           />
 
-                          {/* City label */}
-                          <button
-                            type="button"
-                            onClick={() => toggleExpandCity(cityData.cityKey)}
-                            className="flex items-center gap-2 flex-1 text-left min-w-0"
-                          >
-                            <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span className="text-sm font-medium text-slate-800 truncate">
-                              {cityData.city}
-                            </span>
-                            <span className="text-xs text-slate-400 flex-shrink-0">
-                              {cityData.state}
-                            </span>
-                            <span className="text-xs text-slate-300 flex-shrink-0">
-                              · {cityData.pincodes.length}
-                            </span>
-                            {selInCity > 0 && (
-                              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700
-                                               text-xs rounded-full flex-shrink-0">
-                                {selInCity}/{cityData.pincodes.length}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-sm font-semibold text-slate-700 truncate">
+                                {cityData.city}
                               </span>
-                            )}
-                          </button>
-
-                          {/* City quick-actions (show on hover) */}
-                          <div className="flex items-center gap-1
-                                          opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation();
-                                toggleCity(cityData, true);
-                              }}
-                              className="text-xs px-1.5 py-0.5 text-blue-600
-                                         hover:bg-blue-50 rounded transition-colors"
-                            >
-                              All
-                            </button>
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation();
-                                toggleCity(cityData, false);
-                              }}
-                              className="text-xs px-1.5 py-0.5 text-slate-500
-                                         hover:bg-slate-100 rounded transition-colors"
-                            >
-                              None
-                            </button>
+                              <span className="text-xs text-slate-400 truncate">
+                                {cityData.state}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[11px] font-medium text-slate-500">
+                                {cityData.pincodes.length} pincodes
+                              </span>
+                              {selInCity > 0 && (
+                                <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 rounded-full">
+                                  {selInCity} selected
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Expand toggle */}
-                          <button
-                            type="button"
-                            onClick={() => toggleExpandCity(cityData.cityKey)}
-                            className="p-0.5 rounded hover:bg-slate-200 transition-colors flex-shrink-0"
-                          >
-                            {isCityOpen
-                              ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                              : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                            }
-                          </button>
+                          <ChevronRight
+                            className={`w-3.5 h-3.5 text-slate-300 transition-transform ${isCityOpen ? 'rotate-90' : ''
+                              }`}
+                          />
                         </div>
 
-                        {/* ── Pincodes grid ──────────────────────────── */}
+                        {/* Pincodes Grid */}
                         {isCityOpen && (
-                          <div className="pl-[3.75rem] pr-4 pb-3 pt-2 bg-slate-50/40">
-
-                            {/* Select all / none for this city */}
-                            <div className="flex gap-2 mb-2">
-                              <button
-                                type="button"
-                                onClick={() => toggleCity(cityData, true)}
-                                className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700
-                                           border border-blue-200 rounded-md
-                                           hover:bg-blue-100 transition-colors"
-                              >
-                                Select all pincodes
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => toggleCity(cityData, false)}
-                                className="text-xs px-2 py-0.5 bg-white text-slate-500
-                                           border border-slate-200 rounded-md
-                                           hover:bg-slate-100 transition-colors"
-                              >
-                                Clear
-                              </button>
-                            </div>
-
-                            {/* Pincode chips */}
+                          <div className="px-3 pb-3 pt-2 bg-slate-50/50 border-t border-dashed border-slate-200 ml-6 border-l-2 border-slate-200">
                             <div className="flex flex-wrap gap-1.5">
                               {visiblePincodes.map(pc => {
                                 const isSel = selectedPincodes.has(pc);
                                 return (
                                   <button
                                     key={pc}
-                                    type="button"
-                                    onClick={() => togglePincode(pc)}
-                                    className={`text-xs px-2.5 py-1 rounded-md border font-mono
-                                                transition-all duration-100
-                                      ${isSel
-                                        ? 'border-blue-400 bg-blue-500 text-white shadow-sm'
-                                        : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50'
-                                      }`}
+                                    onClick={(e) => { e.stopPropagation(); togglePincode(pc); }}
+                                    className={`text-xs font-medium px-2.5 py-1 rounded border shadow-sm transition-all
+                                                        ${isSel ? 'bg-blue-600 text-white border-blue-600 ring-1 ring-blue-600' : 'bg-white border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600 hover:shadow-md'}`}
                                   >
-                                    {isSel && (
-                                      <Check className="inline w-3 h-3 mr-0.5 -mt-0.5" />
-                                    )}
                                     {pc}
                                   </button>
-                                );
+                                )
                               })}
-
-                              {/* Show more / show less */}
                               {hiddenCount > 0 && !showAll && (
                                 <button
-                                  type="button"
-                                  onClick={() =>
-                                    setCityShowAll(prev => {
-                                      const n = new Set(prev);
-                                      n.add(cityData.cityKey);
-                                      return n;
-                                    })
-                                  }
-                                  className="text-xs px-2.5 py-1 rounded-md border border-dashed
-                                             border-slate-300 text-slate-500 hover:bg-slate-100
-                                             transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCityShowAll(s => new Set(s).add(cityData.cityKey));
+                                  }}
+                                  className="text-xs font-medium text-blue-600 hover:underline px-2"
                                 >
-                                  +{hiddenCount} more…
-                                </button>
-                              )}
-                              {showAll && hiddenCount > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setCityShowAll(prev => {
-                                      const n = new Set(prev);
-                                      n.delete(cityData.cityKey);
-                                      return n;
-                                    })
-                                  }
-                                  className="text-xs px-2.5 py-1 rounded-md border border-dashed
-                                             border-slate-300 text-slate-500 hover:bg-slate-100
-                                             transition-colors"
-                                >
-                                  Show less
+                                  +{hiddenCount} more...
                                 </button>
                               )}
                             </div>
@@ -820,33 +788,35 @@ const ZoneSelectionWizard: React.FC<ZoneSelectionWizardProps> = ({
                     );
                   })}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
       </div>
 
       {/* ══ BOTTOM CONFIRM (mirrors top bar for long lists) ═══════════════ */}
-      {selectedCount > 0 && (
-        <div className="flex items-center justify-between px-4 py-3
-                        bg-blue-50 border border-blue-200 rounded-xl">
-          <p className="text-sm text-blue-800 font-medium">
-            <span className="font-bold">{selectedCount.toLocaleString()}</span>
-            &nbsp;pincodes ready to apply
-          </p>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="px-5 py-2 bg-blue-600 text-white text-sm font-semibold
-                       rounded-lg hover:bg-blue-700 transition-colors
-                       flex items-center gap-2 shadow-sm"
-          >
-            <CheckCircle className="w-4 h-4" />
-            Apply &amp; Continue →
-          </button>
-        </div>
-      )}
-    </div>
+      {/* ══ BOTTOM CONFIRM (mirrors top bar for long lists) ═══════════════ */}
+      {
+        selectedCount > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <p className="text-sm text-blue-800 font-medium">
+              <span className="font-bold">{selectedCount.toLocaleString()}</span>
+              &nbsp;pincodes ready to apply
+            </p>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="px-5 py-2 bg-blue-600 text-white text-sm font-semibold
+                           rounded-lg hover:bg-blue-700 transition-colors
+                           flex items-center gap-2 shadow-sm"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Apply & Continue →
+            </button>
+          </div>
+        )
+      }
+    </div >
   );
 };
 

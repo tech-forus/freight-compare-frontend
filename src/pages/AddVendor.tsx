@@ -1,6 +1,6 @@
 // src/pages/AddVendor.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Cookies from 'js-cookie';
 import { persistDraft } from '../store/draftStore';
@@ -79,6 +79,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // UTSF encoder
 import { generateUTSF, downloadUTSF, validateUTSF } from '../services/utsfEncoder';
+import { getTemporaryTransporterById } from '../services/api';
 // ============================================================================
 // CONFIG / HELPERS
 // ============================================================================
@@ -168,6 +169,165 @@ interface VendorSearchResult {
   rating: number;
   zones: string[];
 }
+
+/**
+ * Validation Error Structure
+ */
+interface ValidationError {
+  step: string;
+  field: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+/**
+ * Validation Summary Modal Component
+ */
+const ValidationSummaryModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  errors: ValidationError[];
+}> = ({ isOpen, onClose, errors }) => {
+  if (!isOpen) return null;
+
+  // Group errors by Step
+  const groupedErrors = errors.reduce((acc, err) => {
+    if (!acc[err.step]) acc[err.step] = [];
+    acc[err.step].push(err);
+    return acc;
+  }, {} as Record<string, ValidationError[]>);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[80vh]"
+      >
+        {/* Header */}
+        <div className="bg-red-50 p-6 border-b border-red-100 flex items-center gap-4">
+          <div className="p-3 bg-red-100 rounded-full text-red-600">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-red-900">Validation Errors</h3>
+            <p className="text-red-700 text-sm mt-1">
+              Please fix the following {errors.length} error{errors.length !== 1 ? 's' : ''} to proceed.
+            </p>
+          </div>
+        </div>
+
+        {/* Scrollable List */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {Object.entries(groupedErrors).map(([step, stepErrors]) => (
+            <div key={step} className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1">
+                {step}
+              </h4>
+              <div className="space-y-2">
+                {stepErrors.map((err, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                    <XCircleIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">{err.field}</p>
+                      <p className="text-xs text-slate-500">{err.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-lg transition-colors"
+          >
+            Close & Fix
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+
+/**
+ * 
+ * Helper Component: Wizard Navigation Bar
+ * Relocated to top for better visibility/UX
+ *
+ */
+interface WizardNavProps {
+  onBack?: () => void;
+  onNext?: () => void;
+  backLabel?: string;
+  nextLabel?: string;
+  isNextDisabled?: boolean;
+  isSubmitting?: boolean;
+  showNext?: boolean;
+  showBack?: boolean;
+}
+
+const WizardNavigation: React.FC<WizardNavProps> = ({
+  onBack,
+  onNext,
+  backLabel = 'Back',
+  nextLabel = 'Next',
+  isNextDisabled = false,
+  isSubmitting = false,
+  showNext = true,
+  showBack = true,
+}) => {
+  return (
+    <div className="flex items-center justify-between mb-6 bg-white p-3 rounded-xl border border-slate-200 shadow-sm sticky top-20 z-30">
+      <div>
+        {showBack && onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors px-3 py-2 rounded-lg hover:bg-slate-100"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            {backLabel}
+          </button>
+        )}
+      </div>
+      <div>
+        {showNext && onNext && (
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={isNextDisabled || isSubmitting}
+            className={`
+                        flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm shadow-md transition-all
+                        ${isNextDisabled || isSubmitting
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg'
+              }
+                    `}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                {nextLabel}
+                <ChevronRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 
 /** Full vendor data returned by detail endpoint (used for autofill) */
 interface VendorSuggestion {
@@ -375,7 +535,13 @@ export const AddVendor: React.FC = () => {
   const [wizardValidation, setWizardValidation] = useState<ValidationResult | null>(null);
   const [wizardStatus, setWizardStatus] = useState<WizardStatus | null>(null);
 
+  // Validation Modal State
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+
+
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // ============================================================================
   // STEP WORKFLOW STATE
@@ -913,29 +1079,117 @@ export const AddVendor: React.FC = () => {
     if (mountRan.current) return;
     mountRan.current = true;
 
-    const draft = readDraft();
-    if (draft) {
-      emitDebug('DRAFT_LOADED_ON_MOUNT', draft);
-      try {
-        if (draft.basics && typeof vendorBasics.loadFromDraft === 'function') {
-          vendorBasics.loadFromDraft(draft.basics);
-          if (draft.basics.transportMode) setTransportMode(draft.basics.transportMode);
+    const draftId = searchParams.get('draftId');
+
+    if (draftId) {
+      // ── Cloud draft: fetch from MongoDB and hydrate all form sections ──
+      getTemporaryTransporterById(draftId).then((doc) => {
+        if (!doc) {
+          toast.error('Draft not found');
+          return;
         }
-        if (draft.geo && typeof pincodeLookup.loadFromDraft === 'function') {
-          pincodeLookup.loadFromDraft(draft.geo);
+        try {
+          const d = doc as any;
+
+          // Basics
+          vendorBasics.loadFromDraft({
+            companyName: d.companyName || '',
+            contactPersonName: d.contactPersonName || '',
+            vendorPhoneNumber: d.vendorPhone || '',
+            vendorEmailAddress: d.vendorEmail || '',
+            gstin: d.gstNo || '',
+            transportMode: d.transportMode || 'road',
+            subVendor: d.subVendor || '',
+            vendorCode: d.vendorCode || '',
+            address: d.address || '',
+            serviceMode: d.serviceMode || null,
+            companyRating: d.rating ?? null,
+            vendorRatings: d.vendorRatings,
+          });
+          if (d.transportMode) setTransportMode(d.transportMode);
+
+          // Geo
+          if (d.pincode || d.state) {
+            pincodeLookup.loadFromDraft({
+              pincode: String(d.pincode || ''),
+              state: d.state || '',
+              city: d.city || '',
+            });
+          }
+
+          // Volumetric
+          if (d.volumetricUnit || d.cftFactor != null) {
+            volumetric.loadFromDraft({
+              unit: d.volumetricUnit || 'cm',
+              cftFactor: d.cftFactor ?? null,
+            });
+          }
+
+          // Charges – map DB field names → hook field names
+          const pr = d.prices?.priceRate;
+          if (pr) {
+            charges.loadFromDraft({
+              docketCharges: pr.docketCharges ?? null,
+              minWeightKg: pr.minWeight ?? null,
+              minCharges: pr.minCharges ?? null,
+              greenTax: pr.greenTax ?? null,
+              fuelSurchargePct: pr.fuel ?? null,
+              daccCharges: pr.daccCharges ?? null,
+              miscCharges: pr.miscellanousCharges ?? null,
+              rovCharges: pr.rovCharges,
+              codCharges: pr.codCharges,
+              toPayCharges: pr.topayCharges,
+              handlingCharges: pr.handlingCharges,
+              appointmentCharges: pr.appointmentCharges,
+            } as any);
+          }
+
+          // Price matrix – restore into ZPM state + localStorage
+          const priceChart = d.prices?.priceChart;
+          if (priceChart && Object.keys(priceChart).length > 0) {
+            const zpmData = {
+              zones: d.selectedZones || [],
+              priceMatrix: priceChart,
+              timestamp: new Date().toISOString(),
+            };
+            localStorage.setItem(ZPM_KEY, JSON.stringify(zpmData));
+            setZpm(zpmData);
+          }
+
+          toast.success(`Draft "${doc.companyName}" restored`, { duration: 2000, id: 'draft-restored' });
+          emitDebug('CLOUD_DRAFT_LOADED', { id: draftId, companyName: doc.companyName });
+        } catch (err) {
+          emitDebugError('CLOUD_DRAFT_LOAD_ERROR', { err });
+          toast.error('Failed to restore cloud draft');
         }
-        if (draft.volumetric && typeof volumetric.loadFromDraft === 'function') {
-          volumetric.loadFromDraft(draft.volumetric);
+      });
+    } else {
+      // ── Local draft: restore from localStorage ──
+      const draft = readDraft();
+      if (draft) {
+        emitDebug('DRAFT_LOADED_ON_MOUNT', draft);
+        try {
+          if (draft.basics && typeof vendorBasics.loadFromDraft === 'function') {
+            vendorBasics.loadFromDraft(draft.basics);
+            if (draft.basics.transportMode) setTransportMode(draft.basics.transportMode);
+          }
+          if (draft.geo && typeof pincodeLookup.loadFromDraft === 'function') {
+            pincodeLookup.loadFromDraft(draft.geo);
+          }
+          if (draft.volumetric && typeof volumetric.loadFromDraft === 'function') {
+            volumetric.loadFromDraft(draft.volumetric);
+          }
+          if (draft.charges && typeof charges.loadFromDraft === 'function') {
+            charges.loadFromDraft(draft.charges);
+          }
+          toast.success('Draft restored', { duration: 1600, id: 'draft-restored' });
+        } catch (err) {
+          emitDebugError('DRAFT_LOAD_ERROR', { err });
+          toast.error('Failed to restore draft completely');
         }
-        if (draft.charges && typeof charges.loadFromDraft === 'function') {
-          charges.loadFromDraft(draft.charges);
-        }
-        toast.success('Draft restored', { duration: 1600, id: 'draft-restored' });
-      } catch (err) {
-        emitDebugError('DRAFT_LOAD_ERROR', { err });
-        toast.error('Failed to restore draft completely');
       }
     }
+
     loadZoneData(); // also load zone matrix from localStorage (legacy)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1144,86 +1398,107 @@ export const AddVendor: React.FC = () => {
   // ===== GLOBAL VALIDATION (with detailed debug + toasts + bypassValidation) =====
   // ===== GLOBAL VALIDATION (EXACT ERROR REPORTING) =====
   const validateAll = (): boolean => {
-    // We use a Set to automatically remove duplicate error messages
-    const uniqueErrors = new Set<string>();
-
     console.debug('[VALIDATION] Starting exact validation checks');
+    const allErrors: ValidationError[] = [];
 
-    // 1. EXACT LOCAL CHECKS (Run these FIRST to get specific messages)
+    // Helper to push errors
+    const addError = (step: string, field: string, message: string) => {
+      allErrors.push({ step, field, message, severity: 'error' });
+    };
+
+    // 1. EXACT LOCAL CHECKS (Step 3: Vendor Basics)
     try {
       const local = validateVendorBasicsLocal();
       if (!local.ok) {
-        local.errs.forEach(e => uniqueErrors.add(e));
+        local.errs.forEach(e => addError('Company Details', 'General', e));
       }
     } catch (err) {
       console.error('[VALIDATION] validateVendorBasicsLocal threw', err);
-      uniqueErrors.add('Error checking specific company details (check console).');
+      addError('Company Details', 'System', 'Error checking specific company details.');
     }
 
-    // 2. WIZARD / ZONE CHECKS (Extract specific zone errors)
+    // 2. HOOK STATE CHECKS (Step 3: Vendor Basics)
+    const vbResult = vendorBasics.validateAll(); // Now returns { isValid, errors }
+    if (!vbResult.isValid) {
+      Object.entries(vbResult.errors).forEach(([key, msg]) => {
+        // Map field keys to readable fields
+        const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        addError('Company Details', fieldName, msg as string);
+      });
+    }
+
+    // 3. WIZARD / ZONE CHECKS (Step 2: Serviceability)
     if (wizardData && !wizardValidation?.isValid) {
       if (wizardValidation?.errors && wizardValidation.errors.length > 0) {
-        // Add specific errors like "Zone NE2 is incomplete"
-        wizardValidation.errors.forEach(e => uniqueErrors.add(e));
+        wizardValidation.errors.forEach(e => addError('Serviceability & Pricing', 'Zone Configuration', e));
       } else {
-        uniqueErrors.add('Wizard configuration is invalid (check Zone setup).');
+        addError('Serviceability & Pricing', 'Zone Configuration', 'Wizard configuration is invalid.');
       }
     }
 
-    // 3. HOOK STATE CHECKS (Trigger Red Borders)
-    // We still run these functions because they turn the input borders red in the UI,
-    // but we only add a message if we haven't already caught a specific error for that section.
-
-    // Vendor Basics (UI Red Borders)
-    const vbOk = typeof vendorBasics.validateAll === 'function' ? vendorBasics.validateAll() : true;
-    // Note: We rely on 'validateVendorBasicsLocal' (step 1) for the text message, so we don't push a generic one here.
-
-    // Pincode (UI Red Borders + Message)
+    // 4. PINCODE CHECK (Step 3)
+    // Note: usePincodeLookup doesn't return detailed errors errors yet, just boolean.
+    // Keeping it simple for now as it usually has red borders.
     const plOk = typeof pincodeLookup.validateGeo === 'function' ? pincodeLookup.validateGeo() : true;
-    if (!plOk) uniqueErrors.add('Location/Pincode information is incomplete.');
+    if (!plOk) {
+      addError('Company Details', 'Location', 'Pincode or State information is missing/invalid.');
+    }
 
-    // Volumetric (UI Red Borders + Message)
+    // 5. VOLUMETRIC CHECK (Step 3)
     const volOk = typeof volumetric.validateVolumetric === 'function' ? volumetric.validateVolumetric() : true;
-    if (!volOk) uniqueErrors.add('Volumetric configuration is invalid.');
+    if (!volOk) {
+      addError('Company Details', 'Volumetric Config', 'Volumetric configuration is invalid.');
+    }
 
-    // Charges (UI Red Borders + Message)
-    const chOk = typeof charges.validateAll === 'function' ? charges.validateAll() : true;
-    if (!chOk) uniqueErrors.add('Charges configuration is invalid.');
+    // 6. CHARGES (Step 4)
+    const chResult = charges.validateAll(); // Now returns { isValid, errors }
+    if (!chResult.isValid) {
+      // Process Charges Errors
+      // Simple charges
+      Object.entries(chResult.errors).forEach(([key, val]) => {
+        if (typeof val === 'string') {
+          const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          addError('Charges', fieldName, val);
+        } else if (typeof val === 'object' && val !== null) {
+          // Nested card errors (e.g. handlingCharges: { fixed: "Error" })
+          const cardName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          Object.values(val).forEach((msg) => {
+            addError('Charges', cardName, msg as string);
+          });
+        }
+      });
+    }
 
-    // 4. Matrix Check (Essential)
+    // 7. MATRIX / SERVICEABILITY CHECK (Step 2)
     const hasWizardMatrix = wizardData?.priceMatrix && Object.keys(wizardData.priceMatrix).length > 0;
     const hasLegacyMatrix = zpm?.priceMatrix && Object.keys(zpm.priceMatrix).length > 0;
-
-    // ✅ NEW: Also accept pincode-authoritative serviceability as valid
     const hasServiceability = serviceabilityData?.serviceability && serviceabilityData.serviceability.length > 0;
 
     if (!hasWizardMatrix && !hasLegacyMatrix && !hasServiceability) {
-      uniqueErrors.add('Zone/Serviceability data is missing. Upload pincodes or configure zones via wizard.');
+      addError('Serviceability & Pricing', 'Data Missing', 'Zone/Serviceability data is missing. Upload pincodes or configure zones via wizard.');
     }
 
-    // 5. BYPASS CHECK
+    // 8. BYPASS CHECK
     const urlParams = new URLSearchParams(window.location.search);
     const bypass = urlParams.get('bypassValidation') === '1';
 
-    if (bypass && uniqueErrors.size > 0) {
-      console.warn('[VALIDATION] Bypassing errors:', Array.from(uniqueErrors));
+    if (bypass && allErrors.length > 0) {
+      console.warn('[VALIDATION] Bypassing errors:', allErrors);
       toast.success('Validation bypassed (Dev Mode)', { icon: '⚠️' });
       return true;
     }
 
-    // 6. FINAL VERDICT
-    if (uniqueErrors.size > 0) {
-      // Convert Set back to Array and show toasts
-      Array.from(uniqueErrors).forEach((msg) => {
-        toast.error(msg, { duration: 5000 });
-      });
-
-      emitDebugError('VALIDATION_FAILED', { errs: Array.from(uniqueErrors) });
+    // 9. FINAL VERDICT
+    if (allErrors.length > 0) {
+      setValidationErrors(allErrors);
+      setShowValidationModal(true);
+      emitDebugError('VALIDATION_FAILED', { errs: allErrors });
       return false;
     }
 
     return true;
   };
+
 
 
 
@@ -1564,6 +1839,9 @@ export const AddVendor: React.FC = () => {
         minimumAmount: Number(invoiceMinAmount || 0),
         description: 'Invoice Value Handling Charges',
       },
+
+      // ✅ Draft Mode Flag
+      isDraft: saveMode === 'draft',
     };
 
     console.log('🔍 FINAL PAYLOAD:', payloadForApi);
@@ -1582,8 +1860,8 @@ export const AddVendor: React.FC = () => {
   };
 
   // ===== Submit =====
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     emitDebug('SUBMIT_STARTED');
     console.debug('[SUBMIT] clicked - start');
     console.log('[STEP 0] handleSubmit fired, outputMode =', outputMode);
@@ -1677,7 +1955,7 @@ export const AddVendor: React.FC = () => {
         fd.append('zoneConfigurations', JSON.stringify(payloadForApi.zoneConfigurations));
         fd.append('priceRate', JSON.stringify(payloadForApi.prices.priceRate));
         fd.append('priceChart', JSON.stringify(payloadForApi.prices.priceChart));
-        if (priceChartFile) fd.append('priceChart', priceChartFile);
+        if (priceChartFile) fd.append('priceChartFile', priceChartFile);
 
         if (payloadForApi.serviceability && payloadForApi.serviceability.length > 0) {
           fd.append('serviceability', JSON.stringify(payloadForApi.serviceability));
@@ -2101,6 +2379,14 @@ export const AddVendor: React.FC = () => {
                 {/* STEP 3: COMPANY DETAILS                         */}
                 {/* ════════════════════════════════════════════════ */}
                 <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
+                  {/* Top Navigation for Step 3 */}
+                  <WizardNavigation
+                    onBack={goBack}
+                    backLabel="Back to Pricing"
+                    onNext={goNext}
+                    nextLabel="Next: Charges & Save"
+                  />
+
                   <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
                     <div className="p-5">
                       <CompanySection
@@ -2116,20 +2402,23 @@ export const AddVendor: React.FC = () => {
                       />
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <button type="button" onClick={goBack} className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
-                      ← Back to Pricing
-                    </button>
-                    <button type="button" onClick={goNext} className="px-5 py-2.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors">
-                      Next: Charges & Save →
-                    </button>
-                  </div>
+                  {/* Previously Bottom Navigation - Removed */}
+
                 </div>{/* END STEP 3 */}
 
                 {/* ════════════════════════════════════════════════ */}
                 {/* STEP 4: CHARGES & SAVE                          */}
                 {/* ════════════════════════════════════════════════ */}
                 <div style={{ display: currentStep === 4 ? 'block' : 'none' }}>
+                  {/* Top Navigation for Step 4 */}
+                  <WizardNavigation
+                    onBack={goBack}
+                    backLabel="Back to Company Details"
+                    onNext={handleSubmit}
+                    nextLabel={saveMode === 'active' ? 'Save Vendor' : 'Save Draft'}
+                    isSubmitting={isSubmitting}
+                  />
+
                   <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
                     <div className="p-5">
                       <ChargesSection charges={charges} />
@@ -2295,6 +2584,15 @@ export const AddVendor: React.FC = () => {
                     </div>
 
                     <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px] ${zoneConfigMode === 'matrix' ? 'p-2' : 'p-6'}`}>
+                      {/* Top Navigation for Step 2 */}
+                      <WizardNavigation
+                        onBack={goBack}
+                        backLabel="Back to Search"
+                        onNext={goNext}
+                        nextLabel="Next: Company Details"
+                        isNextDisabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
+                      />
+
                       <AnimatePresence mode="wait">
 
                         {/* MODE: PINCODE UPLOAD */}
@@ -2390,20 +2688,8 @@ export const AddVendor: React.FC = () => {
                       </AnimatePresence>
                     </div >
 
-                    {/* Navigation Buttons for Step 2 */}
-                    <div className="mt-8 flex items-center justify-between">
-                      <button type="button" onClick={goBack} className="text-slate-400 hover:text-slate-600 font-medium text-sm transition-colors">
-                        ← Back to Search
-                      </button>
-                      <button
-                        type="button"
-                        onClick={goNext}
-                        disabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
-                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 transition-all"
-                      >
-                        Next: Company Details →
-                      </button>
-                    </div >
+                    {/* Previously Bottom Navigation - Removed */}
+
 
                   </motion.div >
                 </div > {/* END STEP 2 */}
@@ -2487,7 +2773,7 @@ export const AddVendor: React.FC = () => {
                           <button
                             type="button"
                             onClick={goBack}
-                            className="text-slate-500 font-medium text-sm hover:text-slate-800 transition-colors"
+                            className="text-slate-500 font-medium text-sm hover:text-slate-800 transition-colors opacity-50 hover:opacity-100"
                           >
                             ← Back to Details
                           </button>
@@ -2612,6 +2898,17 @@ export const AddVendor: React.FC = () => {
       {/* Debug Panel */}
       <DebugFloat logs={debugLogs} />
       <ScrollToTop targetRef={topRef} when={scrollKey} offset={80} />
+
+      {/* Validation Summary Modal */}
+      <AnimatePresence>
+        {showValidationModal && (
+          <ValidationSummaryModal
+            isOpen={showValidationModal}
+            onClose={() => setShowValidationModal(false)}
+            errors={validationErrors}
+          />
+        )}
+      </AnimatePresence>
     </div >
   );
 };

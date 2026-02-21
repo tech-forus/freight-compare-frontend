@@ -26,7 +26,36 @@ const TransporterSignupPage: React.FC = () => {
 
                     {/* Scrollable T&C body */}
                     <div className="overflow-y-auto px-6 py-5 space-y-5 text-sm text-slate-700" style={{ maxHeight: '55vh' }}>
-                        <p className="text-xs text-slate-400 italic">Last updated: February 2026 · Platform: freightcompare.ai</p>
+                        <div className="space-y-3 mb-6">
+                            <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">
+                                Effective Date: February 20, 2026<br />
+                                Last Updated: February 20, 2026
+                            </p>
+                            <p className="text-sm">
+                                These Terms and Conditions ("Terms," "T&C," or "Agreement") govern your access to and use of the FreightCompare.ai platform (the "Platform"), including any websites, applications, APIs, or services provided by FreightCompare.ai, a product of Forus Electric Private Limited (hereinafter referred to as "We," "Us," "Our," or the "Company"), a company incorporated under the Companies Act, 2013, with its registered office at [Insert Registered Office Address, e.g., Okhla Phase 1, Delhi NCR, India].
+                            </p>
+                            <p className="text-sm">
+                                By accessing, registering for, or using the Platform, you ("User," "You," or "Your") agree to be bound by these Terms, our Privacy Policy, Acceptable Use Policy, and any other policies incorporated herein by reference. If You are accessing the Platform on behalf of an entity (e.g., a company or organization), You represent and warrant that You have the authority to bind that entity to these Terms.
+                            </p>
+                            <div className="text-sm">
+                                <p className="mb-2">These Terms are drafted in compliance with applicable Indian laws, including but not limited to:</p>
+                                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                                    <li>The Information Technology Act, 2000 (as amended) ("IT Act");</li>
+                                    <li>The Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021 (as amended through 2026, including amendments on synthetically generated information ("SGI"), 3-hour takedown requirements, and due diligence obligations) ("IT Rules");</li>
+                                    <li>The Digital Personal Data Protection Act, 2023 ("DPDPA");</li>
+                                    <li>The Goods and Services Tax Act, 2017 ("GST Act");</li>
+                                    <li>The Carriage by Road Act, 2007;</li>
+                                    <li>The Motor Vehicles Act, 1988 (as amended);</li>
+                                    <li>The Consumer Protection Act, 2019 (to the extent applicable to B2B services);</li>
+                                    <li>Relevant provisions of the Bharatiya Nyaya Sanhita, 2023 (Indian Penal Code equivalent) on abetment, fraud, and criminal misuse; and</li>
+                                    <li>Other regulatory frameworks governing logistics, data protection, and electronic commerce in India.</li>
+                                </ul>
+                            </div>
+                            <p className="text-sm font-medium text-slate-800 border-l-2 border-amber-500 pl-3">
+                                If You do not agree with any part of these Terms, You must not access or use the Platform. We reserve the right to amend these Terms at any time, with notice provided via the Platform or email. Continued use after amendments constitutes acceptance.
+                            </p>
+                        </div>
+
                         {termsSections.map((sec) => (
                             <div key={sec.title}>
                                 <h3 className="font-bold text-slate-800 mb-1">{sec.title}</h3>

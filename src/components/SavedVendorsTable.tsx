@@ -4,9 +4,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getTemporaryTransporters, deleteTemporaryTransporter } from '../services/api';
 import { TemporaryTransporter } from '../utils/validators';
-import { TableCellsIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { TableCellsIcon, TrashIcon, EyeIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth'; // <<-- ADDED
 
@@ -24,6 +25,7 @@ export const SavedVendorsTable: React.FC<{ refreshTrigger?: number }> = ({
   >(null);
 
   const { user } = useAuth(); // <<-- ADDED: get logged-in user
+  const navigate = useNavigate();
 
   /**
    * Load vendors from API
@@ -191,6 +193,16 @@ export const SavedVendorsTable: React.FC<{ refreshTrigger?: number }> = ({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-2">
+                      {(vendor as any).approvalStatus === 'draft' && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/addvendor?draftId=${vendor._id}`)}
+                          className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="Resume editing draft"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setSelectedVendor(vendor)}

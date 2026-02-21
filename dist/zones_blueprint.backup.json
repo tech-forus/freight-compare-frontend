@@ -6,22 +6,60 @@
     "locked": true
   },
   "regions": {
-    "North": ["N1", "N2", "N3", "N4"],
-    "Central": ["C1", "C2"],
-    "East": ["E1", "E2"],
-    "West": ["W1", "W2"],
-    "South": ["S1", "S2", "S3", "S4"],
-    "Northeast": ["NE1", "NE2"],
-    "Special": ["X1", "X2", "X3"]
+    "North": [
+      "N1",
+      "N2",
+      "N3",
+      "N4"
+    ],
+    "Central": [
+      "C1",
+      "C2"
+    ],
+    "East": [
+      "E1",
+      "E2"
+    ],
+    "West": [
+      "W1",
+      "W2"
+    ],
+    "South": [
+      "S1",
+      "S2",
+      "S3",
+      "S4"
+    ],
+    "Northeast": [
+      "NE1",
+      "NE2"
+    ],
+    "Special": [
+      "X1",
+      "X2",
+      "X3"
+    ]
   },
   "zoneOrder": [
-    "N1", "N2", "N3", "N4",
-    "C1", "C2",
-    "E1", "E2",
-    "W1", "W2",
-    "S1", "S2", "S3", "S4",
-    "NE1", "NE2",
-    "X1", "X2", "X3"
+    "N1",
+    "N2",
+    "N3",
+    "N4",
+    "C1",
+    "C2",
+    "E1",
+    "E2",
+    "W1",
+    "W2",
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "NE1",
+    "NE2",
+    "X1",
+    "X2",
+    "X3"
   ],
   "zones": {
     "N1": {
@@ -35,19 +73,29 @@
         },
         {
           "state": "Haryana",
-          "cities": ["Gurugram", "Faridabad"]
+          "cities": [
+            "Gurugram",
+            "Faridabad"
+          ]
         },
         {
           "state": "Uttar Pradesh",
-          "cities": ["Noida", "Ghaziabad"]
+          "cities": [
+            "Noida",
+            "Ghaziabad"
+          ]
         },
         {
           "state": "Punjab",
-          "cities": ["Mohali"]
+          "cities": [
+            "Mohali"
+          ]
         },
         {
           "state": "Rajasthan",
-          "cities": ["Jaipur"]
+          "cities": [
+            "Jaipur"
+          ]
         },
         {
           "state": "Chandigarh",
@@ -147,11 +195,16 @@
       "rawEntries": [
         {
           "state": "Madhya Pradesh",
-          "cities": ["Indore", "Bhopal"]
+          "cities": [
+            "Indore",
+            "Bhopal"
+          ]
         },
         {
           "state": "Chhattisgarh",
-          "cities": ["Raipur"]
+          "cities": [
+            "Raipur"
+          ]
         }
       ]
     },
@@ -177,19 +230,29 @@
       "rawEntries": [
         {
           "state": "Bihar",
-          "cities": ["Patna"]
+          "cities": [
+            "Patna"
+          ]
         },
         {
           "state": "Odisha",
-          "cities": ["Bhubaneswar"]
+          "cities": [
+            "Bhubaneswar"
+          ]
         },
         {
           "state": "Jharkhand",
-          "cities": ["Jamshedpur", "Ranchi"]
+          "cities": [
+            "Jamshedpur",
+            "Ranchi"
+          ]
         },
         {
           "state": "West Bengal",
-          "cities": ["Kolkata", "Siliguri"]
+          "cities": [
+            "Kolkata",
+            "Siliguri"
+          ]
         }
       ]
     },
@@ -223,11 +286,18 @@
       "rawEntries": [
         {
           "state": "Maharashtra",
-          "cities": ["Mumbai", "Pune", "Thane"]
+          "cities": [
+            "Mumbai",
+            "Pune",
+            "Thane"
+          ]
         },
         {
           "state": "Gujarat",
-          "cities": ["Ahmedabad", "Surat"]
+          "cities": [
+            "Ahmedabad",
+            "Surat"
+          ]
         },
         {
           "state": "Daman & Diu",
@@ -269,19 +339,29 @@
       "rawEntries": [
         {
           "state": "Karnataka",
-          "cities": ["Bangalore", "Bengaluru"]
+          "cities": [
+            "Bangalore",
+            "Bengaluru"
+          ]
         },
         {
           "state": "Telangana",
-          "cities": ["Hyderabad"]
+          "cities": [
+            "Hyderabad"
+          ]
         },
         {
           "state": "Tamil Nadu",
-          "cities": ["Chennai"]
+          "cities": [
+            "Chennai"
+          ]
         },
         {
           "state": "Andhra Pradesh",
-          "cities": ["Visakhapatnam", "Vijayawada"]
+          "cities": [
+            "Visakhapatnam",
+            "Vijayawada"
+          ]
         }
       ]
     },
@@ -349,11 +429,15 @@
       "rawEntries": [
         {
           "state": "Assam",
-          "cities": ["Guwahati"]
+          "cities": [
+            "Guwahati"
+          ]
         },
         {
           "state": "West Bengal",
-          "cities": ["Siliguri"]
+          "cities": [
+            "Siliguri"
+          ]
         }
       ]
     },
@@ -403,8 +487,27 @@
       "description": "Andaman & Nicobar Islands",
       "rawEntries": [
         {
-          "state": "Andaman & Nicobar Islands",
-          "cities": []
+          "state": "ANDAMAN & NICOBAR ISLANDS",
+          "cities": [
+            "ABERDEEN BAZAAR",
+            "BAMBOO FLAT",
+            "BARATANG",
+            "CAMPBELL BAY",
+            "CAR NICOBAR",
+            "DELANA",
+            "DIGLIPUR",
+            "GARACHARMA",
+            "GREAT NICOBAR",
+            "JUNGLIGHAT",
+            "KADAMTALA",
+            "MAYABUNDER",
+            "NANCOWRY",
+            "NIMBUDERA",
+            "NORTH AND MIDDLE ANDAMAN",
+            "PORT BLAIR",
+            "RANGAT",
+            "SHADIPUR"
+          ]
         }
       ]
     },
@@ -415,8 +518,10 @@
       "description": "Lakshadweep",
       "rawEntries": [
         {
-          "state": "Lakshadweep",
-          "cities": []
+          "state": "LAKSHADWEEP",
+          "cities": [
+            "KAVARATTI"
+          ]
         }
       ]
     },
@@ -427,260 +532,586 @@
       "description": "Leh Ladakh",
       "rawEntries": [
         {
-          "state": "Ladakh",
-          "cities": []
+          "state": "LADAKH",
+          "cities": [
+            "BATALIK",
+            "DRASS",
+            "KARGIL",
+            "LEH",
+            "LEH LADAKH",
+            "NUBRA",
+            "NYOMA",
+            "PANIKHAR",
+            "SANKOO"
+          ]
         }
       ]
     }
   },
   "stateIndex": {
     "DELHI": {
-      "zones": ["N1"],
+      "zones": [
+        "N1"
+      ],
       "capitalZones": [],
-      "preference": ["N1"]
+      "preference": [
+        "N1"
+      ]
     },
     "HARYANA": {
-      "zones": ["N1", "N2", "N3"],
-      "capitalZones": ["N1"],
-      "preference": ["N1", "N2", "N3"]
+      "zones": [
+        "N1",
+        "N2",
+        "N3"
+      ],
+      "capitalZones": [
+        "N1"
+      ],
+      "preference": [
+        "N1",
+        "N2",
+        "N3"
+      ]
     },
     "UTTAR PRADESH": {
-      "zones": ["N1", "N2", "N3"],
-      "capitalZones": ["N1"],
-      "preference": ["N1", "N2", "N3"]
+      "zones": [
+        "N1",
+        "N2",
+        "N3"
+      ],
+      "capitalZones": [
+        "N1"
+      ],
+      "preference": [
+        "N1",
+        "N2",
+        "N3"
+      ]
     },
     "PUNJAB": {
-      "zones": ["N1", "N2", "N3"],
-      "capitalZones": ["N1"],
-      "preference": ["N1", "N2", "N3"]
+      "zones": [
+        "N1",
+        "N2",
+        "N3"
+      ],
+      "capitalZones": [
+        "N1"
+      ],
+      "preference": [
+        "N1",
+        "N2",
+        "N3"
+      ]
     },
     "RAJASTHAN": {
-      "zones": ["N1", "N2", "N3"],
-      "capitalZones": ["N1"],
-      "preference": ["N1", "N2", "N3"]
+      "zones": [
+        "N1",
+        "N2",
+        "N3"
+      ],
+      "capitalZones": [
+        "N1"
+      ],
+      "preference": [
+        "N1",
+        "N2",
+        "N3"
+      ]
     },
     "CHANDIGARH": {
-      "zones": ["N1", "N2"],
+      "zones": [
+        "N1",
+        "N2"
+      ],
       "capitalZones": [],
-      "preference": ["N1", "N2"]
+      "preference": [
+        "N1",
+        "N2"
+      ]
     },
     "UTTARAKHAND": {
-      "zones": ["N2", "N3", "N4"],
+      "zones": [
+        "N2",
+        "N3",
+        "N4"
+      ],
       "capitalZones": [],
-      "preference": ["N2", "N3", "N4"]
+      "preference": [
+        "N2",
+        "N3",
+        "N4"
+      ]
     },
     "HIMACHAL PRADESH": {
-      "zones": ["N3", "N4"],
+      "zones": [
+        "N3",
+        "N4"
+      ],
       "capitalZones": [],
-      "preference": ["N3", "N4"]
+      "preference": [
+        "N3",
+        "N4"
+      ]
     },
     "JAMMU & KASHMIR": {
-      "zones": ["N3", "N4"],
+      "zones": [
+        "N3",
+        "N4"
+      ],
       "capitalZones": [],
-      "preference": ["N3", "N4"]
+      "preference": [
+        "N3",
+        "N4"
+      ]
     },
     "JAMMU AND KASHMIR": {
-      "zones": ["N3", "N4"],
+      "zones": [
+        "N3",
+        "N4"
+      ],
       "capitalZones": [],
-      "preference": ["N3", "N4"]
+      "preference": [
+        "N3",
+        "N4"
+      ]
     },
     "MADHYA PRADESH": {
-      "zones": ["C1", "C2"],
-      "capitalZones": ["C1"],
-      "preference": ["C1", "C2"]
+      "zones": [
+        "C1",
+        "C2"
+      ],
+      "capitalZones": [
+        "C1"
+      ],
+      "preference": [
+        "C1",
+        "C2"
+      ]
     },
     "CHHATTISGARH": {
-      "zones": ["C1", "C2"],
-      "capitalZones": ["C1"],
-      "preference": ["C1", "C2"]
+      "zones": [
+        "C1",
+        "C2"
+      ],
+      "capitalZones": [
+        "C1"
+      ],
+      "preference": [
+        "C1",
+        "C2"
+      ]
     },
     "CHATTISGARH": {
-      "zones": ["C1", "C2"],
-      "capitalZones": ["C1"],
-      "preference": ["C1", "C2"]
+      "zones": [
+        "C1",
+        "C2"
+      ],
+      "capitalZones": [
+        "C1"
+      ],
+      "preference": [
+        "C1",
+        "C2"
+      ]
     },
     "BIHAR": {
-      "zones": ["E1", "E2"],
-      "capitalZones": ["E1"],
-      "preference": ["E1", "E2"]
+      "zones": [
+        "E1",
+        "E2"
+      ],
+      "capitalZones": [
+        "E1"
+      ],
+      "preference": [
+        "E1",
+        "E2"
+      ]
     },
     "ODISHA": {
-      "zones": ["E1", "E2"],
-      "capitalZones": ["E1"],
-      "preference": ["E1", "E2"]
+      "zones": [
+        "E1",
+        "E2"
+      ],
+      "capitalZones": [
+        "E1"
+      ],
+      "preference": [
+        "E1",
+        "E2"
+      ]
     },
     "ORISSA": {
-      "zones": ["E1", "E2"],
-      "capitalZones": ["E1"],
-      "preference": ["E1", "E2"]
+      "zones": [
+        "E1",
+        "E2"
+      ],
+      "capitalZones": [
+        "E1"
+      ],
+      "preference": [
+        "E1",
+        "E2"
+      ]
     },
     "JHARKHAND": {
-      "zones": ["E1", "E2"],
-      "capitalZones": ["E1"],
-      "preference": ["E1", "E2"]
+      "zones": [
+        "E1",
+        "E2"
+      ],
+      "capitalZones": [
+        "E1"
+      ],
+      "preference": [
+        "E1",
+        "E2"
+      ]
     },
     "WEST BENGAL": {
-      "zones": ["E1", "E2", "NE1"],
-      "capitalZones": ["E1", "NE1"],
-      "preference": ["E1", "E2", "NE1"],
+      "zones": [
+        "E1",
+        "E2",
+        "NE1"
+      ],
+      "capitalZones": [
+        "E1",
+        "NE1"
+      ],
+      "preference": [
+        "E1",
+        "E2",
+        "NE1"
+      ],
       "specialCities": {
-        "SILIGURI": ["NE1", "E1"]
+        "SILIGURI": [
+          "NE1",
+          "E1"
+        ]
       }
     },
     "MAHARASHTRA": {
-      "zones": ["W1", "W2"],
-      "capitalZones": ["W1"],
-      "preference": ["W1", "W2"]
+      "zones": [
+        "W1",
+        "W2"
+      ],
+      "capitalZones": [
+        "W1"
+      ],
+      "preference": [
+        "W1",
+        "W2"
+      ]
     },
     "GUJARAT": {
-      "zones": ["W1", "W2"],
-      "capitalZones": ["W1"],
-      "preference": ["W1", "W2"]
+      "zones": [
+        "W1",
+        "W2"
+      ],
+      "capitalZones": [
+        "W1"
+      ],
+      "preference": [
+        "W1",
+        "W2"
+      ]
     },
     "GOA": {
-      "zones": ["W2"],
+      "zones": [
+        "W2"
+      ],
       "capitalZones": [],
-      "preference": ["W2"]
+      "preference": [
+        "W2"
+      ]
     },
     "DAMAN & DIU": {
-      "zones": ["W1", "W2"],
+      "zones": [
+        "W1",
+        "W2"
+      ],
       "capitalZones": [],
-      "preference": ["W1", "W2"]
+      "preference": [
+        "W1",
+        "W2"
+      ]
     },
     "DAMAN AND DIU": {
-      "zones": ["W1", "W2"],
+      "zones": [
+        "W1",
+        "W2"
+      ],
       "capitalZones": [],
-      "preference": ["W1", "W2"]
+      "preference": [
+        "W1",
+        "W2"
+      ]
     },
     "DADRA & NAGAR HAVELI": {
-      "zones": ["W2"],
+      "zones": [
+        "W2"
+      ],
       "capitalZones": [],
-      "preference": ["W2"]
+      "preference": [
+        "W2"
+      ]
     },
     "DADRA AND NAGAR HAVELI": {
-      "zones": ["W2"],
+      "zones": [
+        "W2"
+      ],
       "capitalZones": [],
-      "preference": ["W2"]
+      "preference": [
+        "W2"
+      ]
     },
     "DADRA NAGAR HAVELI": {
-      "zones": ["W2"],
+      "zones": [
+        "W2"
+      ],
       "capitalZones": [],
-      "preference": ["W2"]
+      "preference": [
+        "W2"
+      ]
     },
     "KARNATAKA": {
-      "zones": ["S1", "S2"],
-      "capitalZones": ["S1"],
-      "preference": ["S1", "S2"]
+      "zones": [
+        "S1",
+        "S2"
+      ],
+      "capitalZones": [
+        "S1"
+      ],
+      "preference": [
+        "S1",
+        "S2"
+      ]
     },
     "TELANGANA": {
-      "zones": ["S1", "S2"],
-      "capitalZones": ["S1"],
-      "preference": ["S1", "S2"]
+      "zones": [
+        "S1",
+        "S2"
+      ],
+      "capitalZones": [
+        "S1"
+      ],
+      "preference": [
+        "S1",
+        "S2"
+      ]
     },
     "TAMIL NADU": {
-      "zones": ["S1", "S2", "S3"],
-      "capitalZones": ["S1"],
-      "preference": ["S1", "S2", "S3"]
+      "zones": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "capitalZones": [
+        "S1"
+      ],
+      "preference": [
+        "S1",
+        "S2",
+        "S3"
+      ]
     },
     "TAMILNADU": {
-      "zones": ["S1", "S2", "S3"],
-      "capitalZones": ["S1"],
-      "preference": ["S1", "S2", "S3"]
+      "zones": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "capitalZones": [
+        "S1"
+      ],
+      "preference": [
+        "S1",
+        "S2",
+        "S3"
+      ]
     },
     "ANDHRA PRADESH": {
-      "zones": ["S1", "S2"],
-      "capitalZones": ["S1"],
-      "preference": ["S1", "S2"]
+      "zones": [
+        "S1",
+        "S2"
+      ],
+      "capitalZones": [
+        "S1"
+      ],
+      "preference": [
+        "S1",
+        "S2"
+      ]
     },
     "PUDUCHERRY": {
-      "zones": ["S2", "S3"],
+      "zones": [
+        "S2",
+        "S3"
+      ],
       "capitalZones": [],
-      "preference": ["S2", "S3"]
+      "preference": [
+        "S2",
+        "S3"
+      ]
     },
     "PONDICHERRY": {
-      "zones": ["S2", "S3"],
+      "zones": [
+        "S2",
+        "S3"
+      ],
       "capitalZones": [],
-      "preference": ["S2", "S3"]
+      "preference": [
+        "S2",
+        "S3"
+      ]
     },
     "KERALA": {
-      "zones": ["S3", "S4"],
+      "zones": [
+        "S3",
+        "S4"
+      ],
       "capitalZones": [],
-      "preference": ["S3", "S4"]
+      "preference": [
+        "S3",
+        "S4"
+      ]
     },
     "ASSAM": {
-      "zones": ["NE1", "NE2"],
-      "capitalZones": ["NE1"],
-      "preference": ["NE1", "NE2"]
+      "zones": [
+        "NE1",
+        "NE2"
+      ],
+      "capitalZones": [
+        "NE1"
+      ],
+      "preference": [
+        "NE1",
+        "NE2"
+      ]
     },
     "ARUNACHAL PRADESH": {
-      "zones": ["NE2"],
+      "zones": [
+        "NE2"
+      ],
       "capitalZones": [],
-      "preference": ["NE2"]
+      "preference": [
+        "NE2"
+      ]
     },
     "MANIPUR": {
-      "zones": ["NE2"],
+      "zones": [
+        "NE2"
+      ],
       "capitalZones": [],
-      "preference": ["NE2"]
+      "preference": [
+        "NE2"
+      ]
     },
     "MEGHALAYA": {
-      "zones": ["NE2"],
+      "zones": [
+        "NE2"
+      ],
       "capitalZones": [],
-      "preference": ["NE2"]
+      "preference": [
+        "NE2"
+      ]
     },
     "MIZORAM": {
-      "zones": ["NE2"],
+      "zones": [
+        "NE2"
+      ],
       "capitalZones": [],
-      "preference": ["NE2"]
+      "preference": [
+        "NE2"
+      ]
     },
     "NAGALAND": {
-      "zones": ["NE2"],
+      "zones": [
+        "NE2"
+      ],
       "capitalZones": [],
-      "preference": ["NE2"]
+      "preference": [
+        "NE2"
+      ]
     },
     "SIKKIM": {
-      "zones": ["NE2"],
+      "zones": [
+        "NE2"
+      ],
       "capitalZones": [],
-      "preference": ["NE2"]
+      "preference": [
+        "NE2"
+      ]
     },
     "TRIPURA": {
-      "zones": ["NE2"],
+      "zones": [
+        "NE2"
+      ],
       "capitalZones": [],
-      "preference": ["NE2"]
+      "preference": [
+        "NE2"
+      ]
     },
     "ANDAMAN & NICOBAR ISLANDS": {
-      "zones": ["X1"],
+      "zones": [
+        "X1"
+      ],
       "capitalZones": [],
-      "preference": ["X1"]
+      "preference": [
+        "X1"
+      ]
     },
     "ANDAMAN AND NICOBAR ISLANDS": {
-      "zones": ["X1"],
+      "zones": [
+        "X1"
+      ],
       "capitalZones": [],
-      "preference": ["X1"]
+      "preference": [
+        "X1"
+      ]
     },
     "ANDAMAN NICOBAR": {
-      "zones": ["X1"],
+      "zones": [
+        "X1"
+      ],
       "capitalZones": [],
-      "preference": ["X1"]
+      "preference": [
+        "X1"
+      ]
     },
     "LAKSHADWEEP": {
-      "zones": ["X2"],
+      "zones": [
+        "X2"
+      ],
       "capitalZones": [],
-      "preference": ["X2"]
+      "preference": [
+        "X2"
+      ]
     },
     "LAKSHWADEEP": {
-      "zones": ["X2"],
+      "zones": [
+        "X2"
+      ],
       "capitalZones": [],
-      "preference": ["X2"]
+      "preference": [
+        "X2"
+      ]
     },
     "LADAKH": {
-      "zones": ["X3"],
+      "zones": [
+        "X3"
+      ],
       "capitalZones": [],
-      "preference": ["X3"]
+      "preference": [
+        "X3"
+      ]
     },
     "LEH LADAKH": {
-      "zones": ["X3"],
+      "zones": [
+        "X3"
+      ],
       "capitalZones": [],
-      "preference": ["X3"]
+      "preference": [
+        "X3"
+      ]
     }
   }
 }
