@@ -50,7 +50,8 @@ import AdminWelcomePage from './pages/AdminWelcomePage';
 import UTSFManager from './pages/UTSFManager';
 import UTSFHealthMonitor from './pages/UTSFHealthMonitor';
 import TransporterSignupPage from './pages/TransporterSignupPage';
-import { getFirstAvailableRoute, hasPermission } from './config/adminPermissions';
+import AdminUpdatesPage from './pages/AdminUpdatesPage';
+// Unused imports removed
 
 export const PrivateRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -183,8 +184,13 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children, requiredPermis
 // Admin Landing - Shows welcome page with available features
 // Uses centralized permissions config for future-proofing
 const AdminLandingRedirect: React.FC = () => {
+  const { isSuperAdmin } = useAuth();
+
+  if (!isSuperAdmin) {
+    return <Navigate to="/admin-updates" replace />;
+  }
+
   // Always show the AdminWelcomePage which displays available features
-  // This is more user-friendly than auto-redirecting
   return <AdminWelcomePage />;
 };
 
@@ -313,6 +319,16 @@ function App() {
               element={
                 <AdminRoute>
                   <AdminLandingRedirect />
+                </AdminRoute>
+              }
+            />
+
+            {/* Admin Updates Page - for normal admins */}
+            <Route
+              path="/admin-updates"
+              element={
+                <AdminRoute>
+                  <AdminUpdatesPage />
                 </AdminRoute>
               }
             />

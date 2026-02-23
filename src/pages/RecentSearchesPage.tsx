@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+   import React, { useState, useEffect, useRef } from "react";
 import {
   Clock,
   Package,
@@ -46,6 +46,7 @@ import {
   deleteSearchHistoryEntry,
   clearAllSearchHistory,
   type SearchHistoryEntry,
+  type SearchHistoryPagination,
 } from "../services/api";
 import {
   generateBoxLibraryTemplate,
@@ -120,6 +121,8 @@ const RecentSearchesPage: React.FC = () => {
   // --- STATE ---
   const [libraries, setLibraries] = useState<BoxLibrary[]>([]);
   const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<SearchHistoryPagination | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"libraries" | "recent" | "completed">("libraries");
   const [isLoading, setIsLoading] = useState(true);
@@ -178,20 +181,23 @@ const RecentSearchesPage: React.FC = () => {
     }
   };
 
-  const loadSearchHistory = async () => {
+  const loadSearchHistory = async (page = 1) => {
     try {
-      const entries = await getSearchHistory();
-      setSearchHistory(entries);
+      const result = await getSearchHistory(page, 15);
+      setSearchHistory(result.data);
+      setPagination(result.pagination);
+      setCurrentPage(page);
     } catch (error) {
       console.error("Failed to load search history:", error);
       setSearchHistory([]);
+      setPagination(null);
     }
   };
 
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      await Promise.all([loadLibraries(), loadSearchHistory()]);
+      await Promise.all([loadLibraries(), loadSearchHistory(1)]);
       setIsLoading(false);
     };
     init();
@@ -526,6 +532,7 @@ const RecentSearchesPage: React.FC = () => {
     !s.isBooked && (
       (s.fromPincode || "").includes(searchTerm) ||
       (s.toPincode || "").includes(searchTerm) ||
+      (s.originalToPincode || "").includes(searchTerm) ||
       (s.fromCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.toCity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.boxes || []).some((b) => b.description?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -548,16 +555,14 @@ const RecentSearchesPage: React.FC = () => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "";
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffHours < 1) return "Just now";
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    const day = d.getDate();
+    const month = d.toLocaleString("en-IN", { month: "short" });
+    const year = d.getFullYear();
+    const hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+    return `${day} ${month} ${year} ${displayHour}:${minutes} ${ampm}`;
   };
 
   // --- RENDER ---
@@ -626,7 +631,7 @@ const RecentSearchesPage: React.FC = () => {
                   }`}
               >
                 <Clock size={16} className="inline mr-1.5" />
-                Recent ({filteredSearches.length})
+                Recent ({pagination ? pagination.total : filteredSearches.length})
               </button>
               <button
                 onClick={() => setActiveTab("completed")}
@@ -849,7 +854,7 @@ const RecentSearchesPage: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4" id="recent-searches-list">
                 {filteredSearches.map((search) => {
                   const isExpanded = expandedSearches.has(search._id);
                   return (
@@ -874,8 +879,18 @@ const RecentSearchesPage: React.FC = () => {
                               </span>
                               <ArrowRight size={14} className="text-slate-400 flex-shrink-0" />
                               <span className="font-bold text-slate-800">
-                                {formatLocation(search.toPincode, search.toCity, search.toState)}
+                                {search.originalToPincode
+                                  ? formatLocation(search.originalToPincode, search.toCity, search.toState)
+                                  : formatLocation(search.toPincode, search.toCity, search.toState)}
                               </span>
+                              {search.originalToPincode && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full border border-amber-200"
+                                  title={`No vendors at ${search.originalToPincode}. Results shown for nearest serviceable pincode: ${search.toPincode}`}
+                                >
+                                  Nearest: {search.toPincode}
+                                </span>
+                              )}
                             </div>
 
                             {/* Meta row */}
@@ -1040,6 +1055,58 @@ const RecentSearchesPage: React.FC = () => {
                     </motion.div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Pagination — outside the empty-state ternary so JSX structure stays valid */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-5 border-t border-slate-200">
+                <span className="text-sm text-slate-500">
+                  Showing{" "}
+                  <span className="font-semibold text-slate-700">
+                    {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold text-slate-700">{pagination.total}</span> searches
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => {
+                      loadSearchHistory(currentPage - 1);
+                      document.getElementById("recent-searches-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        loadSearchHistory(p);
+                        document.getElementById("recent-searches-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                        p === currentPage
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white border-slate-300 hover:bg-slate-100"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    disabled={currentPage === pagination.totalPages}
+                    onClick={() => {
+                      loadSearchHistory(currentPage + 1);
+                      document.getElementById("recent-searches-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </Card>

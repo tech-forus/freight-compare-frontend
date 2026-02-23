@@ -21,14 +21,26 @@ type CachedValue = {
   form?: FormState;
 };
 
-// ---------- Constants ----------
+// ---------- Constants & Helpers ----------
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
-const PREFIX = "fc:cmp:";
-const FORM_KEY = "fc:form";
-const LAST_KEY = "fc:last";
+
+function getUserId(): string {
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) return "guest";
+    const parsed = JSON.parse(raw);
+    return parsed?.customer?._id || parsed?._id || "guest";
+  } catch {
+    return "guest";
+  }
+}
+
+function getPrefix(): string { return `fc:cmp:${getUserId()}:`; }
+function getFormKey(): string { return `fc:form:${getUserId()}`; }
+function getLastKey(): string { return `fc:last:${getUserId()}`; }
+
 const mem = new Map<string, CachedValue>();
 
-// ---------- Helpers ----------
 function normalize(obj: any): any {
   if (Array.isArray(obj)) return obj.map(normalize);
   if (obj && typeof obj === "object") {
@@ -57,35 +69,37 @@ export function writeCompareCache(
   payload: Omit<CachedValue, "timestamp">
 ) {
   const value: CachedValue = { ...payload, timestamp: Date.now() };
-  mem.set(key, value);
+  const memKey = getPrefix() + key;
+  mem.set(memKey, value);
   try {
-    sessionStorage.setItem(PREFIX + key, JSON.stringify(value));
-    sessionStorage.setItem(LAST_KEY, key);
-  } catch {}
+    sessionStorage.setItem(memKey, JSON.stringify(value));
+    sessionStorage.setItem(getLastKey(), key);
+  } catch { }
 }
 
 export function readCompareCacheByKey(key: string): CachedValue | null {
   const now = Date.now();
-  const inMem = mem.get(key);
+  const memKey = getPrefix() + key;
+  const inMem = mem.get(memKey);
   if (inMem) {
     if (now - inMem.timestamp > TTL_MS) {
-      mem.delete(key);
+      mem.delete(memKey);
       try {
-        sessionStorage.removeItem(PREFIX + key);
-      } catch {}
+        sessionStorage.removeItem(memKey);
+      } catch { }
       return null;
     }
     return inMem;
   }
   try {
-    const raw = sessionStorage.getItem(PREFIX + key);
+    const raw = sessionStorage.getItem(memKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedValue;
     if (now - parsed.timestamp > TTL_MS) {
-      sessionStorage.removeItem(PREFIX + key);
+      sessionStorage.removeItem(memKey);
       return null;
     }
-    mem.set(key, parsed);
+    mem.set(memKey, parsed);
     return parsed;
   } catch {
     return null;
@@ -94,17 +108,16 @@ export function readCompareCacheByKey(key: string): CachedValue | null {
 
 export function readLastKey(): string | null {
   try {
-    return sessionStorage.getItem(LAST_KEY);
+    return sessionStorage.getItem(getLastKey());
   } catch {
     return null;
   }
 }
 
 // ---------- Form cache (persist user inputs) ----------
-// Load the full form state
 export function loadFormState(): FormState | null {
   try {
-    const s = sessionStorage.getItem(FORM_KEY);
+    const s = sessionStorage.getItem(getFormKey());
     return s ? (JSON.parse(s) as FormState) : null;
   } catch {
     return null;
@@ -126,8 +139,8 @@ export function saveFormState(
     const patch =
       typeof next === "function" ? (next as any)(prev) : next;
     const merged = { ...(prev ?? {}), ...(patch ?? {}) } as FormState;
-    sessionStorage.setItem(FORM_KEY, JSON.stringify(merged));
-  } catch {}
+    sessionStorage.setItem(getFormKey(), JSON.stringify(merged));
+  } catch { }
 }
 
 // ---------- Vacuum old result entries ----------
@@ -136,14 +149,18 @@ export function clearStaleCache() {
     const now = Date.now();
     for (let i = 0; i < sessionStorage.length; i++) {
       const k = sessionStorage.key(i)!;
-      if (k && k.startsWith(PREFIX)) {
+      // We check if it starts with "fc:cmp:" which covers all namespaces for cleanup
+      if (k && k.startsWith("fc:cmp:")) {
         const raw = sessionStorage.getItem(k);
         if (!raw) continue;
         try {
           const parsed = JSON.parse(raw) as CachedValue;
-          if (now - parsed.timestamp > TTL_MS) sessionStorage.removeItem(k);
-        } catch {}
+          if (now - parsed.timestamp > TTL_MS) {
+            sessionStorage.removeItem(k);
+            mem.delete(k);
+          }
+        } catch { }
       }
     }
-  } catch {}
+  } catch { }
 }

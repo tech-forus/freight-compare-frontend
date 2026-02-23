@@ -28,6 +28,7 @@ import {
     Navigation,
     X,
     Database,
+    ShieldCheck,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +36,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
+import ReCAPTCHA from "react-google-recaptcha";
 
 import { useAuth } from "../hooks/useAuth";
 import { useKeyboardNavigation } from "../hooks/useKeyboardNavigation";
@@ -301,6 +303,16 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     const [error, setError] = useState<string | null>(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
 
+    // Rate limit state
+    const [rateLimitRemaining, setRateLimitRemaining] = useState<number | null>(null);
+    const [isRateLimited, setIsRateLimited] = useState(false);
+    const [rateLimitRetrySeconds, setRateLimitRetrySeconds] = useState<number | null>(null);
+    const [showRateLimitModal, setShowRateLimitModal] = useState(false);
+
+    // CAPTCHA state
+    const [showCaptchaModal, setShowCaptchaModal] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
     // Results
     const [data, setData] = useState<QuoteAny[] | null>(null);
     const [hiddendata, setHiddendata] = useState<QuoteAny[] | null>(null);
@@ -318,9 +330,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         originalPincode: string;
         distance: number;
         distanceKm?: number | null;
-        distanceKm?: number | null;
         servedBy: string[];
-        transporterCount?: number;
         transporterCount?: number;
     } | null>(null);
     const [isSearchingNearest, setIsSearchingNearest] = useState(false);
@@ -542,7 +552,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     // Load recent routes from localStorage on mount
     useEffect(() => {
-        const saved = localStorage.getItem('freight_recent_routes');
+        const customerId = getCustomer()?._id || 'guest';
+        const saved = localStorage.getItem(`freight_recent_routes_${customerId}`);
         if (saved) {
             try {
                 setRecentRoutes(JSON.parse(saved));
@@ -550,7 +561,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 console.error('Failed to parse recent routes:', e);
             }
         }
-    }, []);
+    }, [user]);
 
     // Save a new recent route
     const saveRecentRoute = () => {
@@ -575,7 +586,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             .slice(0, 4); // Keep only last 4 routes
 
         setRecentRoutes(updated);
-        localStorage.setItem('freight_recent_routes', JSON.stringify(updated));
+        const customerId = getCustomer()?._id || 'guest';
+        localStorage.setItem(`freight_recent_routes_${customerId}`, JSON.stringify(updated));
     };
 
     // Load a recent route
@@ -1228,8 +1240,19 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     shipment_details: shipmentPayload,
                     invoiceValue: inv,
                 },
-                { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+                {
+                    headers: {
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        ...(captchaToken ? { 'x-captcha-token': captchaToken } : {})
+                    }
+                }
             );
+
+            // Read rate-limit headers from response
+            const rlRemaining = resp.headers['x-ratelimit-remaining'];
+            if (rlRemaining !== undefined) {
+                setRateLimitRemaining(parseInt(rlRemaining, 10));
+            }
 
             // ❌ Check for route not found error from backend
             if (resp.data.error === 'NO_ROUTE_FOUND' || resp.data.error === 'NO_ROAD_ROUTE') {
@@ -1403,9 +1426,12 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                             isTiedUp: !!q.isTiedUp,
                         }));
 
+                    // Skip saving if no vendor results — avoids dead history entries
+                    // that produce empty results when "Search Again" is clicked.
+                    if (allQuotes.length === 0) return;
+
                     const [fromGeo, toGeo] = await Promise.all([
                         apiGetPincode(fromPincode),
-                        apiGetPincode(effectiveToPincode),
                         apiGetPincode(effectiveToPincode),
                     ]);
 
@@ -1413,8 +1439,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                         fromPincode,
                         fromCity: fromGeo?.city || "",
                         fromState: fromGeo?.state || "",
+                        // When nearest serviceable pincode was used, toPincode is the nearest
+                        // (the one that actually has vendors). originalToPincode stores what
+                        // the user originally typed so it can be shown in Recent Searches.
                         toPincode: effectiveToPincode,
-
+                        originalToPincode: overrideToPincode ? toPincode : undefined,
                         toCity: toGeo?.city || "",
                         toState: toGeo?.state || "",
                         modeOfTransport,
@@ -1438,7 +1467,29 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             })();
         } catch (e: any) {
             if (e.response?.status === 401) {
-                setError("Authentication failed. Please log out and log back in.");
+                const code = e.response?.data?.code;
+                if (code === 'SESSION_REPLACED') {
+                    setError("You have been logged out because your account was signed into another device.");
+                } else {
+                    setError("Authentication failed. Please log out and log back in.");
+                }
+            } else if (e.response?.status === 428) {
+                // Security challenge required (every 5 searches)
+                setShowCaptchaModal(true);
+            } else if (e.response?.status === 429) {
+                // Rate limited
+                const retryAfter = e.response?.data?.retryAfterSeconds || 3600;
+                setIsRateLimited(true);
+                setRateLimitRemaining(0);
+                setRateLimitRetrySeconds(retryAfter);
+                setShowRateLimitModal(true);
+
+                // Auto-reset rate limit flag after retry period
+                setTimeout(() => {
+                    setIsRateLimited(false);
+                    setRateLimitRemaining(null);
+                    setShowRateLimitModal(false);
+                }, retryAfter * 1000);
             } else if (e.response?.status === 400 && (e.response?.data?.error === 'NO_ROUTE_FOUND' || e.response?.data?.error === 'NO_ROAD_ROUTE')) {
                 setError(`No road route exists between ${fromPincode} and ${effectiveToPincode}. This may be because the destination is an island or otherwise unreachable by road.`);
             } else if (e.response?.status === 500) {
@@ -2098,10 +2149,12 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                     saveRecentRoute();
                                     calculateQuotes();
                                 }}
-                                disabled={isCalculating}
+                                disabled={isCalculating || isRateLimited}
                                 className={`flex items-center gap-3 px-10 py-3.5 rounded-full text-base font-bold shadow-md transition-all ${isCalculating
                                     ? "bg-slate-100 text-slate-400 cursor-wait"
-                                    : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-300 hover:shadow-lg active:transform active:scale-95"
+                                    : isRateLimited
+                                        ? "bg-red-100 text-red-400 cursor-not-allowed"
+                                        : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-300 hover:shadow-lg active:transform active:scale-95"
                                     }`}
                             >
                                 {isCalculating ? (
@@ -2109,6 +2162,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                         <Loader2 size={20} className="animate-spin" />
                                         <span>Calculating...</span>
                                     </>
+                                ) : isRateLimited ? (
+                                    <span>Rate Limit Reached</span>
                                 ) : (
                                     <>
                                         <span>Calculate Freight Cost</span>
@@ -2116,7 +2171,109 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                     </>
                                 )}
                             </button>
+
+                            {/* Rate limit counter badge */}
+                            {rateLimitRemaining !== null && rateLimitRemaining > 0 && rateLimitRemaining <= 10 && (
+                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${rateLimitRemaining <= 5
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-blue-50 text-blue-600'
+                                    }`}>
+                                    {`${rateLimitRemaining}/15 searches remaining this hour`}
+                                </span>
+                            )}
                         </div>
+
+                        {/* Rate Limit Modal */}
+                        <AnimatePresence>
+                            {showRateLimitModal && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm"
+                                >
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                        className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center relative overflow-hidden"
+                                    >
+                                        <button
+                                            onClick={() => setShowRateLimitModal(false)}
+                                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                            <X size={20} />
+                                        </button>
+
+                                        <div className="mb-6 relative h-32 flex items-center justify-center">
+                                            {/* Beautiful Wiggling Truck SVG */}
+                                            <svg viewBox="0 0 200 100" className="w-full h-full">
+                                                {/* Moving road lines */}
+                                                <g>
+                                                    <motion.line
+                                                        x1="-35" y1="85"
+                                                        x2="235" y2="85"
+                                                        stroke="#E2E8F0"
+                                                        strokeWidth="4"
+                                                        strokeDasharray="20 15"
+                                                        animate={{ x: [0, -35] }}
+                                                        transition={{ repeat: Infinity, ease: "linear", duration: 0.5 }}
+                                                    />
+                                                </g>
+
+                                                {/* Truck Group */}
+                                                <motion.g
+                                                    animate={{ y: [0, -2, 0, -1, 0] }}
+                                                    transition={{ repeat: Infinity, duration: 0.8, ease: "easeInOut" }}
+                                                >
+                                                    {/* Shadow */}
+                                                    <ellipse cx="100" cy="85" rx="55" ry="3" fill="#cbd5e1" className="opacity-40" />
+
+                                                    {/* Cargo Box */}
+                                                    <rect x="40" y="25" width="80" height="50" rx="4" fill="#F1F5F9" />
+                                                    <rect x="40" y="25" width="80" height="50" rx="4" fill="none" stroke="#CBD5E1" strokeWidth="2" />
+
+                                                    {/* Cab */}
+                                                    <path d="M 120 40 L 140 40 C 145 40 148 44 150 50 L 155 75 L 120 75 Z" fill="#EF4444" />
+
+                                                    {/* Window */}
+                                                    <path d="M 125 45 L 138 45 C 141 45 143 47 144 50 L 146 60 L 125 60 Z" fill="#FFFFFF" />
+                                                    <path d="M 125 45 L 138 45 C 141 45 143 47 144 50 L 146 60 L 125 60 Z" fill="none" stroke="#E2E8F0" strokeWidth="1" />
+
+                                                    {/* Wheels */}
+                                                    <circle cx="60" cy="75" r="9" fill="#334155" />
+                                                    <circle cx="60" cy="75" r="3" fill="#E2E8F0" />
+
+                                                    <circle cx="105" cy="75" r="9" fill="#334155" />
+                                                    <circle cx="105" cy="75" r="3" fill="#E2E8F0" />
+
+                                                    <circle cx="135" cy="75" r="9" fill="#334155" />
+                                                    <circle cx="135" cy="75" r="3" fill="#E2E8F0" />
+
+                                                    {/* Wind lines for speed effect */}
+                                                    <motion.line x1="20" y1="40" x2="5" y2="40" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" animate={{ opacity: [0, 1, 0], x: [0, -10] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} />
+                                                    <motion.line x1="30" y1="55" x2="10" y2="55" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" animate={{ opacity: [0, 1, 0], x: [0, -15] }} transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }} />
+                                                    <motion.line x1="25" y1="70" x2="0" y2="70" stroke="#E2E8F0" strokeWidth="2" strokeLinecap="round" animate={{ opacity: [0, 1, 0], x: [0, -20] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.4 }} />
+                                                </motion.g>
+                                            </svg>
+                                        </div>
+
+                                        <h3 className="text-xl font-bold text-slate-800 mb-2">Rate Limit Reached</h3>
+                                        <p className="text-slate-500 text-sm mb-6">
+                                            You've reached your calculation limit. Please try again in <span className="font-bold text-red-500">{Math.ceil((rateLimitRetrySeconds || 3600) / 60)} minutes</span>.
+                                        </p>
+
+                                        <button
+                                            onClick={() => setShowRateLimitModal(false)}
+                                            className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl transition-colors active:scale-95"
+                                        >
+                                            Got it
+                                        </button>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Auth Gate Modal - Non-dismissable */}
                         <AnimatePresence>
@@ -2646,12 +2803,12 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                     )}
 
                                                     {/* YOUR VENDORS SECTION */}
-                                                    <section id="first-results">
-                                                        <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-blue-600 pl-4 py-2 bg-blue-50/50 rounded-r-lg">
-                                                            Your Vendors
-                                                        </h2>
+                                                    {realTiedUpVendors.length > 0 && (
+                                                        <section id="first-results">
+                                                            <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-blue-600 pl-4 py-2 bg-blue-50/50 rounded-r-lg">
+                                                                Your Vendors
+                                                            </h2>
 
-                                                        {realTiedUpVendors.length > 0 ? (
                                                             <div className="space-y-4">
                                                                 {realTiedUpVendors.map((item, index) => (
                                                                     <VendorResultCard
@@ -2666,54 +2823,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     />
                                                                 ))}
                                                             </div>
-                                                        ) : (
-                                                            /* EMPTY STATE: No user vendors serve this pincode */
-                                                            <motion.div
-                                                                initial={{ opacity: 0, y: 10 }}
-                                                                animate={{ opacity: 1, y: 0 }}
-                                                                className="bg-gradient-to-br from-slate-50 to-blue-50/30 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center"
-                                                            >
-                                                                <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                                                    <MapPin size={28} className="text-blue-500" />
-                                                                </div>
-                                                                <h3 className="text-lg font-bold text-slate-800">
-                                                                    None of your vendors serve pincode <span className="text-blue-600 font-mono">{toPincode}</span>
-                                                                </h3>
-                                                                <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
-                                                                    Your added vendors don't have coverage for this destination.
-                                                                    You can add a vendor that serves this area, or check if a nearby pincode is covered.
-                                                                </p>
-
-                                                                <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
-                                                                    <button
-                                                                        onClick={handleFindNearest}
-                                                                        disabled={isSearchingNearest}
-                                                                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${isSearchingNearest
-                                                                            ? 'bg-slate-100 text-slate-400 cursor-wait'
-                                                                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md active:scale-95'
-                                                                            }`}
-                                                                    >
-                                                                        {isSearchingNearest ? (
-                                                                            <><Loader2 size={16} className="animate-spin" /> Searching...</>
-                                                                        ) : (
-                                                                            <><Navigation size={16} /> Find nearest serviceable pincode</>
-                                                                        )}
-                                                                    </button>
-
-                                                                    <Link
-                                                                        to="/my-vendors"
-                                                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
-                                                                    >
-                                                                        <PlusCircle size={16} /> Add a vendor
-                                                                    </Link>
-                                                                </div>
-                                                            </motion.div>
-                                                        )}
-                                                    </section>
+                                                        </section>
+                                                    )}
 
                                                     {/* OUR VENDORS SECTION */}
                                                     {combinedOtherVendors.length > 0 && (() => {
-                                                        const isSubscribed = getCustomer()?.isSubscribed;
                                                         return (
                                                             <section>
                                                                 <h2 className="text-2xl font-extrabold text-slate-900 mb-5 border-l-[6px] border-slate-500 pl-4 py-2 bg-slate-50/50 rounded-r-lg">
@@ -2724,7 +2838,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     {combinedOtherVendors.map((item, index) => (
                                                                         <VendorResultCard
                                                                             key={`other-${index}`}
-                                                                            quote={{ ...item, isHidden: !isSubscribed || (item as any).isHidden }}
+                                                                            quote={{ ...item, isHidden: false }}
                                                                             isBestValue={processedBestValueQuotes.includes(item)}
                                                                             isFastest={item === fastestQuote}
                                                                             vendorStatusMap={vendorStatusMap}
@@ -2735,52 +2849,70 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                                     ))}
                                                                 </div>
 
-                                                                {!isSubscribed && (
-                                                                    <p className="mt-3 text-center text-sm text-slate-500">
-                                                                        Prices are visible. Subscribe to view vendor names & contact details.
-                                                                    </p>
-                                                                )}
                                                             </section>
                                                         );
                                                     })()}
 
-                                                    {realTiedUpVendors.length === 0 && combinedOtherVendors.length === 0 && (
-                                                        <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-300">
-                                                            <PackageSearch className="mx-auto h-12 w-12 text-slate-400" />
-                                                            <h3 className="mt-4 text-xl font-semibold text-slate-700">
-                                                                No Quotes Available
-                                                            </h3>
-                                                            <p className="mt-1 text-base text-slate-500">
-                                                                We couldn't find vendors for the details provided. This may happen if:
-                                                            </p>
-                                                            <ul className="mt-2 text-sm text-slate-500 text-left max-w-md mx-auto list-disc pl-6">
-                                                                <li>
-                                                                    No vendors have pricing configured for this route (zones: {fromPincode} → {toPincode})
-                                                                </li>
-                                                                <li>
-                                                                    The origin or destination pincode is not in any vendor's service area
-                                                                </li>
-                                                                <li>
-                                                                    Try adding vendors in "My Vendors" with zone pricing for these areas
-                                                                </li>
-                                                            </ul>
+                                                    {/* Find Nearest Section - Only show if NO real LTL/Parcel vendors exist across all lists */}
+                                                    {(() => {
+                                                        const allRealLTLVendors = [...realTiedUpVendors, ...otherVendors].filter(q => !isFtlOrWheel(q));
+                                                        if (allRealLTLVendors.length === 0) {
+                                                            const isCompletelyEmpty = tiedUpVendors.length === 0 && otherVendors.length === 0;
+                                                            return (
+                                                                <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-300 mt-6">
+                                                                    <PackageSearch className="mx-auto h-12 w-12 text-slate-400" />
+                                                                    <h3 className="mt-4 text-xl font-semibold text-slate-700">
+                                                                        {isCompletelyEmpty
+                                                                            ? "No Quotes Available"
+                                                                            : "No Part-Load (LTL) Coverage Found"}
+                                                                    </h3>
+                                                                    <p className="mt-1 text-base text-slate-500">
+                                                                        {isCompletelyEmpty
+                                                                            ? "We couldn't find vendors for the details provided."
+                                                                            : "Only FTL quotes are available for this route."}
+                                                                    </p>
 
-                                                            <button
-                                                                onClick={handleFindNearest}
-                                                                disabled={isSearchingNearest}
-                                                                className={`mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${isSearchingNearest
-                                                                    ? 'bg-slate-100 text-slate-400 cursor-wait'
-                                                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md active:scale-95'
-                                                                    }`}
-                                                            >
-                                                                {isSearchingNearest ? (
-                                                                    <><Loader2 size={16} className="animate-spin" /> Searching...</>
-                                                                ) : (
-                                                                    <><Navigation size={16} /> Find nearest serviceable pincode</>
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    )}
+                                                                    {isCompletelyEmpty && (
+                                                                        <ul className="mt-2 text-sm text-slate-500 text-left max-w-md mx-auto list-disc pl-6 mb-4">
+                                                                            <li>
+                                                                                No vendors have pricing configured for this route (zones: {fromPincode} → {toPincode})
+                                                                            </li>
+                                                                            <li>
+                                                                                The origin or destination pincode is not in any vendor's service area
+                                                                            </li>
+                                                                        </ul>
+                                                                    )}
+
+                                                                    <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3">
+                                                                        <button
+                                                                            onClick={handleFindNearest}
+                                                                            disabled={isSearchingNearest}
+                                                                            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${isSearchingNearest
+                                                                                ? 'bg-slate-100 text-slate-400 cursor-wait'
+                                                                                : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md active:scale-95'
+                                                                                }`}
+                                                                        >
+                                                                            {isSearchingNearest ? (
+                                                                                <><Loader2 size={16} className="animate-spin" /> Searching...</>
+                                                                            ) : (
+                                                                                <><Navigation size={16} /> Find nearest serviceable pincode</>
+                                                                            )}
+                                                                        </button>
+
+                                                                        {isCompletelyEmpty && (
+                                                                            <Link
+                                                                                to="/my-vendors"
+                                                                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                                                                            >
+                                                                                <PlusCircle size={16} /> Add a vendor
+                                                                            </Link>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                 </>
                                             );
                                         })()}
@@ -2878,6 +3010,65 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             </div >
 
 
+
+            {/* CAPTCHA Modal for rate limiting (every 5 requests) */}
+            <AnimatePresence>
+                {showCaptchaModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl max-w-sm w-full mx-auto"
+                        >
+                            <div className="text-center mb-6">
+                                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                                    <ShieldCheck className="w-6 h-6 text-blue-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">Security Check</h3>
+                                <p className="text-slate-600 text-sm">
+                                    Please complete the CAPTCHA challenge to continue searching.
+                                </p>
+                            </div>
+
+                            <div className="flex justify-center mb-6 bg-slate-50 p-2 rounded-xl">
+                                {import.meta.env.VITE_RECAPTCHA_SITE_KEY ? (
+                                    <ReCAPTCHA
+                                        sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                        onChange={(token) => {
+                                            if (token) {
+                                                setCaptchaToken(token);
+                                                setShowCaptchaModal(false);
+                                                // Retry calculation after a short delay
+                                                setTimeout(() => {
+                                                    calculateQuotes();
+                                                }, 500);
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="text-center py-4">
+                                        <p className="text-red-500 text-sm font-medium">CAPTCHA configuration missing.</p>
+                                        <p className="text-slate-400 text-xs mt-1">Please contact support.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={() => setShowCaptchaModal(false)}
+                                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Single Rating Modal at Page Level - prevents multiple instances and z-index/overflow issues */}
             < RatingFormModal
@@ -3547,9 +3738,6 @@ const VendorResultCard = ({
     const customerData = getCustomerData();
     const isOwner = (customerData?.name || '').toLowerCase().trim() === 'uttam goyal';
 
-    // --- Subscription logic commented out per requirement ---
-    // const isSubscribed = Boolean(getCustomerData()?.isSubscribed);
-    const isSubscribed = true; // Treat everyone as subscribed for now
     const isSpecialVendor =
         quote.companyName === "LOCAL FTL" || quote.companyName === "Wheelseye FTL";
 

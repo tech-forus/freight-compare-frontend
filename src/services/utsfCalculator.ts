@@ -6,6 +6,7 @@
  */
 
 import { API_BASE_URL } from '../config/api';
+import Cookies from 'js-cookie';
 
 export interface UTSFPriceResult {
   transporterId: string;
@@ -60,11 +61,19 @@ export async function calculateUTSFPrices(
   params: CalculateParams
 ): Promise<{ success: boolean; results?: UTSFPriceResult[]; error?: string; chargeableWeight?: number }> {
   try {
+    // Read auth token from cookie (same source as axiosSetup.ts)
+    const token = Cookies.get('authToken');
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/utsf/calculate`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(params),
     });
 

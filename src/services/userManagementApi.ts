@@ -27,6 +27,8 @@ export interface Customer {
   isTransporter: boolean;
   isAdmin: boolean;
   tokenAvailable: number;
+  rateLimitExempt?: boolean;
+  customRateLimit?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -131,6 +133,42 @@ export const updateCustomerSubscription = async (
   } catch (error: any) {
     console.error('Failed to update subscription:', error);
     throw new Error(error.response?.data?.message || 'Failed to update subscription');
+  }
+};
+
+/**
+ * Toggle customer rate limit exemption
+ */
+export const updateCustomerRateLimitExempt = async (
+  id: string,
+  rateLimitExempt: boolean
+): Promise<Customer> => {
+  try {
+    const response = await http.put(`/api/admin/management/customers/${id}/rate-limit-exempt`, {
+      rateLimitExempt,
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error('Failed to update rate limit exemption:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update rate limit exemption');
+  }
+};
+
+/**
+ * Update customer custom rate limit
+ */
+export const updateCustomerCustomRateLimit = async (
+  id: string,
+  customRateLimit: number
+): Promise<Customer> => {
+  try {
+    const response = await http.put(`/api/admin/management/customers/${id}/custom-rate-limit`, {
+      customRateLimit,
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error('Failed to update custom rate limit:', error);
+    throw new Error(error.response?.data?.message || 'Failed to update custom rate limit');
   }
 };
 

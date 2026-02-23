@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -11,17 +10,16 @@ import {
   X,
   Mail,
   Phone,
-  Building2,
   MapPin,
-  Calendar,
   Crown,
-  CheckCircle,
-  XCircle
+  Shield
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getAllCustomers,
   updateCustomerSubscription,
+  updateCustomerRateLimitExempt,
+  updateCustomerCustomRateLimit,
   deleteCustomer,
   Customer,
 } from '../services/userManagementApi';
@@ -29,7 +27,6 @@ import AdminLayout from '../components/admin/AdminLayout';
 
 const CustomerManagementPage: React.FC = () => {
   // Note: Permission check is handled by AdminRoute in App.tsx
-  const navigate = useNavigate();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +36,9 @@ const CustomerManagementPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [stats, setStats] = useState({ total: 0, subscribed: 0, unsubscribed: 0 });
+
+  // Rate Limit Values Options
+  const rateLimitOptions = [1, 2, 3, 4, 5, 10, 15];
 
   // Fetch customers
   useEffect(() => {
@@ -96,6 +96,42 @@ const CustomerManagementPage: React.FC = () => {
       fetchCustomers();
     } catch (error: any) {
       toast.error(error.message || 'Failed to update subscription');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle toggle rate limit exemption
+  const handleToggleRateLimitExempt = async (customerId: string, currentStatus: boolean) => {
+    setActionLoading(customerId);
+    try {
+      await updateCustomerRateLimitExempt(customerId, !currentStatus);
+      toast.success(`Rate limit exemption ${!currentStatus ? 'enabled' : 'disabled'} successfully`);
+      fetchCustomers();
+      // Also update the modal if open
+      if (selectedCustomer?._id === customerId) {
+        setSelectedCustomer({ ...selectedCustomer, rateLimitExempt: !currentStatus });
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update rate limit exemption');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle update custom rate limit
+  const handleUpdateCustomRateLimit = async (customerId: string, newLimit: number) => {
+    setActionLoading(customerId);
+    try {
+      await updateCustomerCustomRateLimit(customerId, newLimit);
+      toast.success(`Rate limit updated to ${newLimit} searches/hour`);
+      fetchCustomers();
+      // Update modal if open
+      if (selectedCustomer?._id === customerId) {
+        setSelectedCustomer({ ...selectedCustomer, customRateLimit: newLimit });
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update custom rate limit');
     } finally {
       setActionLoading(null);
     }
@@ -276,8 +312,15 @@ const CustomerManagementPage: React.FC = () => {
                           Free Plan
                         </span>
                       )}
-                      <div className="ml-1 mt-1 text-xs text-slate-400">
-                        {customer.tokenAvailable} tokens
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="ml-1 text-xs text-slate-400">
+                          {customer.customRateLimit || 15} limit
+                        </span>
+                        {customer.rateLimitExempt && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 text-[10px] font-semibold border border-purple-100">
+                            <Shield size={10} /> No Limit
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -291,6 +334,32 @@ const CustomerManagementPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Custom Rate Limit Dropdown */}
+                        <div className="relative group/tooltip">
+                          <select
+                            value={customer.customRateLimit || 15}
+                            onChange={(e) => handleUpdateCustomRateLimit(customer._id, Number(e.target.value))}
+                            disabled={actionLoading === customer._id || customer.rateLimitExempt}
+                            className={`p-1.5 rounded-lg border text-sm font-medium transition-all appearance-none cursor-pointer pr-6 min-w-[50px]
+                              ${customer.rateLimitExempt
+                                ? 'bg-slate-50 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
+                              }`}
+                          >
+                            {rateLimitOptions.map((limit) => (
+                              <option key={limit} value={limit}>
+                                {limit}
+                              </option>
+                            ))}
+                          </select>
+                          <div className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none 
+                            ${customer.rateLimitExempt ? 'text-slate-300' : 'text-slate-400'}`}>
+                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                        </div>
+
                         <button
                           onClick={() => handleToggleSubscription(customer._id, customer.isSubscribed)}
                           disabled={actionLoading === customer._id}
@@ -307,6 +376,18 @@ const CustomerManagementPage: React.FC = () => {
                           ) : (
                             <Crown size={16} />
                           )}
+                        </button>
+
+                        <button
+                          onClick={() => handleToggleRateLimitExempt(customer._id, !!customer.rateLimitExempt)}
+                          disabled={actionLoading === customer._id}
+                          className={`p-2 rounded-lg transition-colors border ${customer.rateLimitExempt
+                            ? 'bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          title={customer.rateLimitExempt ? 'Re-enable Rate Limit' : 'Exempt from Rate Limit'}
+                        >
+                          <Shield size={16} />
                         </button>
 
                         <button
@@ -499,6 +580,18 @@ const CustomerManagementPage: React.FC = () => {
                     }`}
                 >
                   {selectedCustomer.isSubscribed ? 'Revoke Subscription' : 'Activate Premium'}
+                </button>
+                <button
+                  onClick={() =>
+                    handleToggleRateLimitExempt(selectedCustomer._id, !!selectedCustomer.rateLimitExempt)
+                  }
+                  className={`px-6 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${selectedCustomer.rateLimitExempt
+                    ? 'bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                >
+                  <Shield size={14} />
+                  {selectedCustomer.rateLimitExempt ? 'Re-enable Rate Limit' : 'Exempt from Rate Limit'}
                 </button>
                 <button
                   onClick={handleCloseModal}

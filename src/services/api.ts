@@ -850,7 +850,8 @@ export interface SearchHistoryEntry {
   fromPincode: string;
   fromCity: string;
   fromState: string;
-  toPincode: string;
+  toPincode: string;         // effective pincode used (may be nearest serviceable)
+  originalToPincode?: string; // what the user originally typed (set when nearest was substituted)
   toCity: string;
   toState: string;
   modeOfTransport: "Road" | "Rail" | "Air" | "Ship";
@@ -869,7 +870,8 @@ export interface SaveSearchHistoryPayload {
   fromPincode: string;
   fromCity: string;
   fromState: string;
-  toPincode: string;
+  toPincode: string;          // effective pincode used
+  originalToPincode?: string; // original pincode typed by user (only when nearest was substituted)
   toCity: string;
   toState: string;
   modeOfTransport: string;
@@ -898,20 +900,32 @@ export const saveSearchHistory = async (data: SaveSearchHistoryPayload): Promise
   }
 };
 
+export interface SearchHistoryPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface SearchHistoryResponse {
+  data: SearchHistoryEntry[];
+  pagination: SearchHistoryPagination | null;
+}
+
 /**
- * Get user's search history (last 7 days)
- * GET /api/search-history
+ * Get user's search history (last 7 days), paginated.
+ * GET /api/search-history?page=1&limit=15
  */
-export const getSearchHistory = async (): Promise<SearchHistoryEntry[]> => {
+export const getSearchHistory = async (page = 1, limit = 15): Promise<SearchHistoryResponse> => {
   try {
-    const url = `${API_BASE}/api/search-history`;
+    const url = `${API_BASE}/api/search-history?page=${page}&limit=${limit}`;
     const response = await fetch(url, { headers: buildHeaders() });
-    if (!response.ok) return [];
-    const json = await safeJson<{ success: boolean; data: SearchHistoryEntry[] }>(response);
-    return json?.data || [];
+    if (!response.ok) return { data: [], pagination: null };
+    const json = await safeJson<{ success: boolean; data: SearchHistoryEntry[]; pagination: SearchHistoryPagination }>(response);
+    return { data: json?.data || [], pagination: json?.pagination || null };
   } catch (error) {
     console.error('[API] getSearchHistory error:', error);
-    return [];
+    return { data: [], pagination: null };
   }
 };
 

@@ -48,6 +48,10 @@ const VerificationBadge: React.FC<VerificationBadgeProps> = ({
     const config = statusConfig[status];
     const Icon = config.icon;
 
+    if (status === 'unknown') {
+        return null; // hide explicitly rather than showing 'Status Unknown'
+    }
+
     return (
         <span
             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${config.bgColor} ${config.textColor} ${config.borderColor} ${className}`}

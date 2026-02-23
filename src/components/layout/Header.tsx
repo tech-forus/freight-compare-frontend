@@ -37,7 +37,7 @@ const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) =>
 );
 
 const UserProfileDropdown = () => {
-  const { user, logout, isAdmin, isSuperAdmin } = useAuth();
+  const { user, logout, isSuperAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -130,7 +130,7 @@ const UserProfileDropdown = () => {
                 <History size={16} /> Box Libraries
               </Link>
 
-              {(isAdmin || isSuperAdmin) && (
+              {isSuperAdmin && (
                 <Link
                   to="/super-admin/utsf-manager"
                   onClick={() => setIsOpen(false)}
@@ -157,7 +157,7 @@ const UserProfileDropdown = () => {
 
 // --- MOBILE NAVIGATION (updated) ---
 const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => void }) => {
-  const { isAuthenticated, logout, isAdmin } = useAuth();
+  const { isAuthenticated, logout, isAdmin, isSuperAdmin } = useAuth();
 
   const handleSignOut = () => {
     logout();
@@ -219,11 +219,14 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                   <hr className="border-slate-200 my-3" />
 
                   {/* ADMIN-ONLY BLOCK (showing only for admin/superadmin) */}
-                  {isAdmin && (
+                  {(isAdmin || isSuperAdmin) && (
                     <>
                       <h3 className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                         Admin
                       </h3>
+                      <MobileNavLink to={isSuperAdmin ? "/super-admin" : "/admin-updates"}>
+                        <LayoutDashboard size={20} className="text-blue-600" /> Admin
+                      </MobileNavLink>
                       <MobileNavLink to="/addtransporter">
                         <Truck size={20} className="text-blue-600" /> Add Transporter
                       </MobileNavLink>
@@ -269,7 +272,7 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
 
 // --- MAIN HEADER COMPONENT (FIXED) ---
 const Header: React.FC = () => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isSuperAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -316,10 +319,10 @@ const Header: React.FC = () => {
                     </Link>
 
 
-                    {/* Admin button (desktop) - show only for admin */}
-                    {isAdmin && (
+                    {/* Admin button (desktop) - show only for admin or super admin */}
+                    {(isAdmin || isSuperAdmin) && (
                       <Link
-                        to="/admin"
+                        to={isSuperAdmin ? "/super-admin" : "/admin-updates"}
                         className="px-3 py-2 bg-white border text-sm font-medium rounded-lg hover:bg-slate-50"
                       >
                         Admin

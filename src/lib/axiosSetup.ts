@@ -22,13 +22,27 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-// Optional: surface 401s consistently
+// Handle 401s — specifically detect SESSION_REPLACED for single-session enforcement
 axios.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err?.response?.status === 401) {
-      // Keep behavior minimal; caller handles messaging.
-      // You may add global toast or redirect to login here if desired.
+      const code = err.response?.data?.code;
+
+      if (code === 'SESSION_REPLACED') {
+        // Clear all auth data
+        Cookies.remove('authToken');
+        localStorage.removeItem('authUser');
+        localStorage.removeItem('token');
+
+        // Notify user and redirect to login
+        alert('You have been logged out because your account was signed into another device.');
+
+        // Redirect to home/login page
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
+      }
     }
     return Promise.reject(err);
   }

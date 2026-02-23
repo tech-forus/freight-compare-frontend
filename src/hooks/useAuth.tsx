@@ -165,7 +165,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         // If 401 (token expired/invalid), clear auth
         if (error.response?.status === 401) {
-          console.log('[Auth] Token invalid, clearing auth state');
+          const code = error.response?.data?.code;
+
+          if (code === 'SESSION_REPLACED') {
+            console.log('[Auth] Session replaced — logged in on another device');
+            // Alert is handled by axiosSetup.ts global interceptor
+          } else {
+            console.log('[Auth] Token invalid, clearing auth state');
+          }
+
           Cookies.remove('authToken');
           localStorage.removeItem('authUser');
           localStorage.removeItem('token');
