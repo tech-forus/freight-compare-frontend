@@ -713,14 +713,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             try {
                 console.log('[Real-time Sync] Fetching all transporters...');
 
-                // Fetch BOTH temporary and regular transporters in parallel
-                const [tempVendors, regularVendors] = await Promise.all([
-                    getTemporaryTransporters(undefined) as Promise<any[]>,
-                    getRegularTransporters() as Promise<any[]>
-                ]);
+                // Fetch ONLY temporary transporters (regular requires admin)
+                const tempVendors = await getTemporaryTransporters(undefined) as Promise<any[]>;
 
                 console.log('[Real-time Sync] Temporary vendors:', tempVendors.length);
-                console.log('[Real-time Sync] Regular vendors:', regularVendors.length);
 
                 const statusMap: Record<string, { approvalStatus: 'pending' | 'approved' | 'rejected'; isVerified: boolean }> = {};
 
@@ -730,17 +726,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                         const normalizedName = vendor.companyName.trim().toLowerCase();
                         statusMap[normalizedName] = {
                             approvalStatus: vendor.approvalStatus as 'pending' | 'approved' | 'rejected',
-                            isVerified: vendor.isVerified === true
-                        };
-                    }
-                });
-
-                // Add regular transporters to map (will override temporary if same name exists)
-                regularVendors.forEach(vendor => {
-                    if (vendor.companyName) {
-                        const normalizedName = vendor.companyName.trim().toLowerCase();
-                        statusMap[normalizedName] = {
-                            approvalStatus: vendor.approvalStatus || 'approved', // Default approved for regular
                             isVerified: vendor.isVerified === true
                         };
                     }
@@ -1056,7 +1041,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     };
 
     // -------------------- Calculate Quotes (with CACHE) --------------------
-    const calculateQuotes = async (overrideToPincode?: string) => {
+    const calculateQuotes = async (overrideToPincode?: string, overrideCaptchaToken?: string) => {
         if (isCalculating) return;
 
         // 📰 Smart News Popup: Shows unless user clicked "Don't show again"
@@ -1227,6 +1212,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             // PERF: Minimal logging in hot path
             const calcStartTime = performance.now();
 
+            // Allow override of captcha token from parameter (solves closure state bug in retry callbacks)
+            const activeCaptchaToken = overrideCaptchaToken || captchaToken;
+
             const customer = getCustomer();
             const resp = await axios.post(
                 `${API_BASE_URL}/api/transporter/calculate`,
@@ -1243,7 +1231,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 {
                     headers: {
                         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                        ...(captchaToken ? { 'x-captcha-token': captchaToken } : {})
+                        ...(activeCaptchaToken ? { 'x-captcha-token': activeCaptchaToken } : {})
                     }
                 }
             );
@@ -3045,8 +3033,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                 setCaptchaToken(token);
                                                 setShowCaptchaModal(false);
                                                 // Retry calculation after a short delay
+                                                // FIXED: Pass token directly to bypass React closure state delays
                                                 setTimeout(() => {
-                                                    calculateQuotes();
+                                                    calculateQuotes(undefined, token);
                                                 }, 500);
                                             }
                                         }}

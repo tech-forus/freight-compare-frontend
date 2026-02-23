@@ -171,19 +171,10 @@ export const postVendor = async (
 export async function apiGetPincode(
   pincode: string
 ): Promise<{ state: string; city: string } | null> {
-  if (!/^\d{6}$/.test(pincode)) return null;
-  if (!API_BASE) return null;
-
-  try {
-    const url = `${API_BASE}/api/geo/pincode/${pincode}`;
-    const res = await fetch(url, { headers: buildHeaders() });
-    if (!res.ok) return null;
-    const data = await safeJson<PincodeLookupResponse>(res);
-    if (!data?.state || !data?.city) return null;
-    return { state: data.state, city: data.city };
-  } catch {
-    return null;
-  }
+  // 🚫 Backend endpoint /api/geo/pincode does not exist.
+  // Returning null forces the app to use its local fallback gracefully
+  // without spamming 404 errors in the console.
+  return null;
 }
 
 /**
