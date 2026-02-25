@@ -15,6 +15,7 @@ import {
   Settings,
   Shield,
   ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
 
 // Map icon names to components
@@ -43,6 +44,15 @@ const AdminWelcomePage: React.FC = () => {
     <AdminLayout
       title={`Welcome, ${userName}!`}
       subtitle="Access your admin tools below"
+      actions={
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-200"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </button>
+      }
     >
       {/* Quick Stats */}
       <div className="mb-8">
@@ -107,37 +117,32 @@ const AdminWelcomePage: React.FC = () => {
                   disabled={!isAccessible}
                   className={`
                     flex items-center justify-between p-4 rounded-xl border transition-all
-                    ${
-                      isAccessible
-                        ? 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
-                        : 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed'
+                    ${isAccessible
+                      ? 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
+                      : 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed'
                     }
                   `}
                 >
                   <div className="flex items-center gap-4">
                     <div
-                      className={`p-3 rounded-lg ${
-                        isAccessible ? 'bg-blue-100' : 'bg-slate-200'
-                      }`}
+                      className={`p-3 rounded-lg ${isAccessible ? 'bg-blue-100' : 'bg-slate-200'
+                        }`}
                     >
                       <IconComponent
-                        className={`w-6 h-6 ${
-                          isAccessible ? 'text-blue-600' : 'text-slate-400'
-                        }`}
+                        className={`w-6 h-6 ${isAccessible ? 'text-blue-600' : 'text-slate-400'
+                          }`}
                       />
                     </div>
                     <div className="text-left">
                       <h4
-                        className={`font-semibold ${
-                          isAccessible ? 'text-slate-800' : 'text-slate-500'
-                        }`}
+                        className={`font-semibold ${isAccessible ? 'text-slate-800' : 'text-slate-500'
+                          }`}
                       >
                         {perm.label}
                       </h4>
                       <p
-                        className={`text-sm ${
-                          isAccessible ? 'text-slate-600' : 'text-slate-400'
-                        }`}
+                        className={`text-sm ${isAccessible ? 'text-slate-600' : 'text-slate-400'
+                          }`}
                       >
                         {perm.description}
                       </p>

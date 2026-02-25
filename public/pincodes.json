@@ -143620,5 +143620,215 @@
     "city": "KISHANGANJ",
     "state": "BIHAR",
     "zone": "E2"
+  },
+  {
+    "pincode": "121206",
+    "zone": "N1",
+    "state": "HARYANA",
+    "city": "FARIDABAD"
+  },
+  {
+    "pincode": "126001",
+    "zone": "N1",
+    "state": "HARYANA",
+    "city": "TOHANA"
+  },
+  {
+    "pincode": "335514",
+    "zone": "N1",
+    "state": "HARYANA",
+    "city": "MANDI ADAMPUR"
+  },
+  {
+    "pincode": "381111",
+    "zone": "W2",
+    "state": "GUJARAT",
+    "city": "AHMEDABAD"
+  },
+  {
+    "pincode": "391742",
+    "zone": "W2",
+    "state": "GUJARAT",
+    "city": "VADODARA"
+  },
+  {
+    "pincode": "500170",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "500472",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "500475",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "500476",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "500488",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "500768",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "500789",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "532464",
+    "zone": "S1",
+    "state": "ANDHRA PRADESH",
+    "city": "YANAM"
+  },
+  {
+    "pincode": "563333",
+    "zone": "S2",
+    "state": "KARNATAKA",
+    "city": "BENGALURU"
+  },
+  {
+    "pincode": "570301",
+    "zone": "S2",
+    "state": "KARNATAKA",
+    "city": "KAVALANDE"
+  },
+  {
+    "pincode": "571304",
+    "zone": "S2",
+    "state": "KARNATAKA",
+    "city": "KAVALANDE"
+  },
+  {
+    "pincode": "590543",
+    "zone": "S2",
+    "state": "KARNATAKA",
+    "city": "BELAGAVI"
+  },
+  {
+    "pincode": "599991",
+    "zone": "S1",
+    "state": "TELANGANA",
+    "city": "HYDERABAD"
+  },
+  {
+    "pincode": "610051",
+    "zone": "S2",
+    "state": "TAMILNADU",
+    "city": "TIRUVARUR"
+  },
+  {
+    "pincode": "611006",
+    "zone": "S1",
+    "state": "TAMILNADU",
+    "city": "NAGAPATTINAM"
+  },
+  {
+    "pincode": "614010",
+    "zone": "S2",
+    "state": "TAMILNADU",
+    "city": "MANNARGUDI"
+  },
+  {
+    "pincode": "626100",
+    "zone": "S2",
+    "state": "TAMILNADU",
+    "city": "RAJAPALAYAM"
+  },
+  {
+    "pincode": "628313",
+    "zone": "S2",
+    "state": "TAMILNADU",
+    "city": "TIRUNELVELI"
+  },
+  {
+    "pincode": "630317",
+    "zone": "S2",
+    "state": "TAMILNADU",
+    "city": "KARAIKUDI"
+  },
+  {
+    "pincode": "638653",
+    "zone": "S2",
+    "state": "TAMILNADU",
+    "city": "GANESHAPURAM"
+  },
+  {
+    "pincode": "638697",
+    "zone": "S2",
+    "state": "TAMILNADU",
+    "city": "GANESHAPURAM"
+  },
+  {
+    "pincode": "686619",
+    "zone": "S2",
+    "state": "KERALA",
+    "city": "KOLLAM"
+  },
+  {
+    "pincode": "686680",
+    "zone": "S2",
+    "state": "KERALA",
+    "city": "KOLLAM"
+  },
+  {
+    "pincode": "688571",
+    "zone": "S2",
+    "state": "KERALA",
+    "city": "ALAPPUZHA"
+  },
+  {
+    "pincode": "689598",
+    "zone": "S2",
+    "state": "KERALA",
+    "city": "ALAPPUZHA"
+  },
+  {
+    "pincode": "695049",
+    "zone": "S2",
+    "state": "KERALA",
+    "city": "THIRUVANANTHAPURAM"
+  },
+  {
+    "pincode": "695212",
+    "zone": "S2",
+    "state": "KERALA",
+    "city": "ALAPPUZHA"
+  },
+  {
+    "pincode": "712344",
+    "zone": "E1",
+    "state": "WEST BENGAL",
+    "city": "KOLKATA"
+  },
+  {
+    "pincode": "713366",
+    "zone": "E1",
+    "state": "WEST BENGAL",
+    "city": "ASANSOL BDEL"
+  },
+  {
+    "pincode": "734333",
+    "zone": "E1",
+    "state": "WEST BENGAL",
+    "city": "SHIVMANDIR"
   }
 ]
