@@ -1,6 +1,6 @@
 
 // src/components/CompactChargeCard.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import {
   ChargeCardData,
@@ -86,6 +86,9 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
   allowVariable = true,
   required = false,
 }) => {
+  const [hasTypedFixed, setHasTypedFixed] = useState(false);
+  const [hasTypedWeight, setHasTypedWeight] = useState(false);
+
   const isFixed = data.mode === 'FIXED';
   const isVariable = data.mode === 'VARIABLE';
 
@@ -247,14 +250,17 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
             <input
               type="text"
               inputMode="numeric"
-              value={zeroToBlank(data.fixedAmount ?? null)}
-              onChange={(e) => handleIntegerChange(
-                e.target.value,
-                onFieldChange,
-                'fixedAmount',
-                cardName === 'handlingCharges' ? 1 : 0,
-                5000
-              )}
+              value={(!hasTypedFixed && (data.fixedAmount === 0 || data.fixedAmount === null || data.fixedAmount as any === '0')) ? '' : zeroToBlank(data.fixedAmount)}
+              onChange={(e) => {
+                setHasTypedFixed(true);
+                handleIntegerChange(
+                  e.target.value,
+                  onFieldChange,
+                  'fixedAmount',
+                  cardName === 'handlingCharges' ? 1 : 0,
+                  5000
+                );
+              }}
               onBlur={() => onFieldBlur('fixedAmount')}
               className={`w-full border rounded-md shadow-sm pl-3 pr-8 py-1.5 text-sm text-slate-700 placeholder-slate-400
                 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white
@@ -323,8 +329,9 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
           <div className="relative">
             <input
               type="number"
-              value={zeroToBlank(data.weightThreshold ?? null)}
+              value={(!hasTypedWeight && (data.weightThreshold === 0 || data.weightThreshold === null || data.weightThreshold as any === '0')) ? '' : zeroToBlank(data.weightThreshold ?? null)}
               onChange={(e) => {
+                setHasTypedWeight(true);
                 const val = Number(e.target.value || 0);
                 // Auto-clamp: max 20000 (optional field)
                 const clamped = val > 20000 ? 20000 : val;

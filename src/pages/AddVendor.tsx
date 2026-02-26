@@ -1142,10 +1142,7 @@ export const AddVendor: React.FC = () => {
               handlingCharges: pr.handlingCharges,
               appointmentCharges: pr.appointmentCharges,
             } as any);
-            // Restore custom surcharges if present
-            if (Array.isArray(pr.surcharges) && pr.surcharges.length > 0) {
-              charges.loadSurchargesFromDraft(pr.surcharges);
-            }
+
           }
 
           // Price matrix – restore into ZPM state + localStorage
@@ -1186,13 +1183,7 @@ export const AddVendor: React.FC = () => {
           if (draft.charges && typeof charges.loadFromDraft === 'function') {
             charges.loadFromDraft(draft.charges);
           }
-          if (
-            (draft as any).surcharges &&
-            Array.isArray((draft as any).surcharges) &&
-            typeof charges.loadSurchargesFromDraft === 'function'
-          ) {
-            charges.loadSurchargesFromDraft((draft as any).surcharges);
-          }
+
           toast.success('Draft restored', { duration: 1600, id: 'draft-restored' });
         } catch (err) {
           emitDebugError('DRAFT_LOAD_ERROR', { err });
@@ -1755,19 +1746,6 @@ export const AddVendor: React.FC = () => {
         0,
         100000,
       ),
-
-      // Custom carrier-specific surcharges (extensible, backward-compatible)
-      surcharges: (charges.surcharges || [])
-        .filter((s) => s.enabled !== false && s.label && s.label.trim())
-        .map((s) => ({
-          id:      s.id,
-          label:   s.label.trim(),
-          formula: s.formula,
-          value:   Number(s.value)  || 0,
-          value2:  Number(s.value2) || 0,
-          order:   s.order ?? 99,
-          enabled: true,
-        })),
     };
 
 

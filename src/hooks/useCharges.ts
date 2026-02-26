@@ -22,31 +22,7 @@ import { emitDebug } from '../utils/debug';
 // TYPES
 // =============================================================================
 
-/**
- * Carrier-specific surcharge entry (stored in DB as priceRate.surcharges[])
- * formula types:
- *   PCT_OF_BASE     — percentage of the base freight charge
- *   PCT_OF_SUBTOTAL — percentage of the running subtotal (all standard charges)
- *   FLAT            — fixed flat amount per shipment
- *   PER_KG          — fixed amount × chargeable weight
- *   MAX_FLAT_PKG    — max(value, value2 × chargeableWeight)  (e.g. handling minimums)
- */
-export type SurchargeFormula =
-  | 'PCT_OF_BASE'
-  | 'PCT_OF_SUBTOTAL'
-  | 'FLAT'
-  | 'PER_KG'
-  | 'MAX_FLAT_PKG';
 
-export interface CustomSurcharge {
-  id: string;
-  label: string;
-  formula: SurchargeFormula;
-  value: number;
-  value2: number;   // secondary value for MAX_FLAT_PKG
-  order: number;
-  enabled: boolean;
-}
 
 export interface ChargesErrors {
   // Simple charges
@@ -88,12 +64,6 @@ export interface UseChargesReturn {
   loadFromDraft: (draft: Partial<Charges>) => void;
   firstErrorRef: React.MutableRefObject<HTMLElement | null>;
 
-  // Custom surcharges
-  surcharges: CustomSurcharge[];
-  addSurcharge: () => void;
-  removeSurcharge: (id: string) => void;
-  updateSurcharge: (id: string, patch: Partial<CustomSurcharge>) => void;
-  loadSurchargesFromDraft: (items: CustomSurcharge[]) => void;
 }
 
 // =============================================================================
@@ -182,38 +152,7 @@ export const useCharges = (
   const [errors, setErrors] = useState<ChargesErrors>({});
   const firstErrorRef = useRef<HTMLElement | null>(null);
 
-  // ── Custom surcharges ────────────────────────────────────────────────────────
-  const [surcharges, setSurcharges] = useState<CustomSurcharge[]>([]);
 
-  const addSurcharge = useCallback(() => {
-    setSurcharges((prev) => [
-      ...prev,
-      {
-        id: `sc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        label: '',
-        formula: 'PCT_OF_BASE' as SurchargeFormula,
-        value: 0,
-        value2: 0,
-        order: prev.length + 1,
-        enabled: true,
-      },
-    ]);
-  }, []);
-
-  const removeSurcharge = useCallback((id: string) => {
-    setSurcharges((prev) => prev.filter((s) => s.id !== id));
-  }, []);
-
-  const updateSurcharge = useCallback((id: string, patch: Partial<CustomSurcharge>) => {
-    setSurcharges((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...patch } : s))
-    );
-  }, []);
-
-  const loadSurchargesFromDraft = useCallback((items: CustomSurcharge[]) => {
-    setSurcharges(items ?? []);
-  }, []);
-  // ────────────────────────────────────────────────────────────────────────────
 
   // Throttled draft persistence
   useEffect(() => {
@@ -462,9 +401,8 @@ export const useCharges = (
       }
 
       if (value !== null && value !== undefined) {
-        // Safe check with explicit cast (value is number here)
         if (!isNumberInRange(value as number, range.min, range.max)) {
-          newErrors[field as keyof ChargesErrors] = (field === 'fuelSurchargePct' || field === 'invoiceValueSurcharge')
+          (newErrors as any)[field] = (field === 'fuelSurchargePct' || field === 'invoiceValueSurcharge')
             ? `Must be between ${range.min} and ${range.max}`
             : 'Enter amount between 0-10,000';
           isValid = false;
@@ -537,7 +475,6 @@ export const useCharges = (
   const reset = useCallback(() => {
     setCharges(defaultCharges);
     setErrors({});
-    setSurcharges([]);
     firstErrorRef.current = null;
     emitDebug('CHARGES_RESET');
   }, []);
@@ -564,11 +501,6 @@ export const useCharges = (
     reset,
     loadFromDraft,
     firstErrorRef,
-    surcharges,
-    addSurcharge,
-    removeSurcharge,
-    updateSurcharge,
-    loadSurchargesFromDraft,
   };
 };
 
