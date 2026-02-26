@@ -12,7 +12,7 @@ import {
   validatePrimaryContactPhone,
   validatePrimaryContactEmail,
 } from '../utils/validators';
-import { VendorBasics, VendorRatings, persistDraft } from '../store/draftStore';
+import { VendorBasics, VendorRatings } from '../store/draftStore';
 import { emitDebug } from '../utils/debug';
 import { useFormConfig } from './useFormConfig';
 
@@ -151,16 +151,6 @@ export const useVendorBasics = (
 
   // Get dynamic form configuration for field constraints
   const { getField, getConstraint } = useFormConfig('add-vendor');
-
-  // Throttled draft persistence
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      persistDraft({ basics });
-      emitDebug('BASICS_DRAFT_SAVED', basics);
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [basics]);
 
   // Notify parent of updates
   useEffect(() => {

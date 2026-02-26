@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   CheckCircle2,
-  AlertTriangle,
   Circle,
   ChevronRight,
   Truck,
@@ -30,7 +29,7 @@ interface VendorSidePanelProps {
   hasPricing: boolean;
   isAutoFilled: boolean;
   autoFilledFrom?: string | null;
-  vendorMode: 'existing' | 'new_with_pincodes' | 'new_without_pincodes' | null;
+  vendorMode?: 'existing' | 'new_with_pincodes' | 'new_without_pincodes' | null;
   warnings?: string[];
 }
 
@@ -76,13 +75,13 @@ const ProgressRing: React.FC<{ pct: number; size?: number; stroke?: number }> = 
 interface StepRowProps {
   step: number;
   label: string;
-  icon: React.ReactNode;
-  done: boolean;
+  icon?: React.ReactNode;
+  done?: boolean;
   active: boolean;
   items: { label: string; done: boolean }[];
 }
 
-const StepRow: React.FC<StepRowProps> = ({ step, label, icon, done, active, items }) => {
+const StepRow: React.FC<StepRowProps> = ({ step, label, active, items }) => {
   const doneCount = items.filter((i) => i.done).length;
   const allDone = doneCount === items.length;
 
@@ -157,8 +156,6 @@ export const VendorSidePanel: React.FC<VendorSidePanelProps> = ({
   hasPricing,
   isAutoFilled,
   autoFilledFrom,
-  vendorMode,
-  warnings = [],
 }) => {
   // ── Per-step items ──
   const stepData: StepRowProps[] = [
@@ -208,11 +205,16 @@ export const VendorSidePanel: React.FC<VendorSidePanelProps> = ({
     },
   ];
 
-  // ── Completion calc (based on 4 steps) ──
+  // ── Completion calc (based on 4 steps navigation state) ──
   // Each step contributes 25% to the total progress
-  const completedSteps = stepData.filter(s => s.done).length;
   const totalSteps = stepData.length;
-  const completionPct = Math.round((completedSteps / totalSteps) * 100);
+  let completedSteps: number = currentStep;
+
+  if (!vendorName || vendorName.trim() === '') {
+    completedSteps = 0;
+  }
+
+  const completionPct = (completedSteps / totalSteps) * 100;
 
   // ── Action items (blockers) ──
   const actionItems: string[] = [];

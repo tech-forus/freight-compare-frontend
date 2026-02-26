@@ -15,7 +15,6 @@ import {
   createDefaultChargeCard,
 } from '../utils/chargeValidators';
 import { toNumberOrZero, isNumberInRange } from '../utils/numbers';
-import { persistDraft } from '../store/draftStore';
 import { emitDebug } from '../utils/debug';
 
 // =============================================================================
@@ -154,18 +153,9 @@ export const useCharges = (
 
 
 
-  // Throttled draft persistence
+  // Throttled draft persistence removed.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      persistDraft({ charges });
-      emitDebug('CHARGES_DRAFT_SAVED', charges);
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [charges]);
-
-  // Notify parent of updates
-  useEffect(() => {
+    // Notify parent of updates
     if (onUpdate) {
       onUpdate(charges);
     }

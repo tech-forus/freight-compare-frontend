@@ -40,7 +40,15 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
           {STEPS.map((step, i) => {
             const isDone = step.id < currentStep;
             const isActive = step.id === currentStep;
-            const isClickable = step.id <= currentStep;
+            // A step is clickable if it's the current step, a past step, or an upcoming step that has already been populated
+            let isClickable = step.id <= currentStep;
+
+            // Allow clicking forward to steps we've already "unlocked"
+            if (vendorName) {
+              if (step.id === 2) isClickable = true; // Can always go to pricing if vendor is selected
+              if (step.id === 3 && (zonesCount > 0 || pricingReady)) isClickable = true; // Can go to details if pricing is done
+              if (step.id === 4 && (zonesCount > 0 || pricingReady)) isClickable = true; // Can go to charges if pricing is done
+            }
 
             return (
               <React.Fragment key={step.id}>
@@ -50,20 +58,18 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
                     type="button"
                     onClick={() => isClickable && onStepChange(step.id)}
                     disabled={!isClickable}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 ${
-                      isDone
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 ${isDone
                         ? 'bg-green-500 border-green-500 text-white cursor-pointer hover:bg-green-600 hover:border-green-600'
                         : isActive
-                        ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
-                        : 'bg-white border-slate-300 text-slate-400 cursor-default'
-                    }`}
+                          ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
+                          : 'bg-white border-slate-300 text-slate-400 cursor-default'
+                      }`}
                   >
                     {isDone ? <Check className="w-4.5 h-4.5" strokeWidth={3} /> : step.id}
                   </button>
                   <span
-                    className={`mt-2 text-xs font-medium whitespace-nowrap ${
-                      isDone || isActive ? 'text-green-700' : 'text-slate-400'
-                    }`}
+                    className={`mt-2 text-xs font-medium whitespace-nowrap ${isDone || isActive ? 'text-green-700' : 'text-slate-400'
+                      }`}
                   >
                     {step.label}
                   </span>
@@ -73,9 +79,8 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
                 {i < STEPS.length - 1 && (
                   <div className="flex-1 mt-[18px] px-1">
                     <div
-                      className={`h-[3px] rounded-full transition-colors ${
-                        step.id < currentStep ? 'bg-green-500' : 'bg-slate-200'
-                      }`}
+                      className={`h-[3px] rounded-full transition-colors ${step.id < currentStep ? 'bg-green-500' : 'bg-slate-200'
+                        }`}
                     />
                   </div>
                 )}

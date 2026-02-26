@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { WizardDataV1, PriceMatrix, ZoneConfig } from "../types/wizard.types";
+import { getCustomerIDFromToken } from "../utils/authUtils";
 
-const WIZARD_KEY = "vendorWizard.v1";
+const getWizardKey = () => `vendorWizard.v1_${getCustomerIDFromToken() || 'guest'}`;
 
 // Default empty wizard data
 const getDefaultWizardData = (): WizardDataV1 => ({
@@ -49,7 +50,7 @@ export const useWizardStorage = () => {
   // Read from localStorage on mount
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(WIZARD_KEY);
+      const stored = localStorage.getItem(getWizardKey());
       if (stored) {
         const parsed = JSON.parse(stored) as WizardDataV1;
         setWizardData(parsed);
@@ -74,7 +75,7 @@ export const useWizardStorage = () => {
       };
 
       try {
-        localStorage.setItem(WIZARD_KEY, JSON.stringify(updated));
+        localStorage.setItem(getWizardKey(), JSON.stringify(updated));
       } catch (error) {
         console.error("Failed to save wizard data:", error);
       }
@@ -86,7 +87,7 @@ export const useWizardStorage = () => {
   // Clear wizard data
   const clearWizard = useCallback(() => {
     try {
-      localStorage.removeItem(WIZARD_KEY);
+      localStorage.removeItem(getWizardKey());
       setWizardData(getDefaultWizardData());
     } catch (error) {
       console.error("Failed to clear wizard data:", error);

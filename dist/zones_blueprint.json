@@ -65,7 +65,6 @@
     "N1": {
       "region": "North",
       "type": "limited",
-      "category": "N1",
       "preference": 1,
       "rawEntries": [
         {
@@ -107,7 +106,6 @@
     "N2": {
       "region": "North",
       "type": "full",
-      "category": "N2",
       "preference": 2,
       "rawEntries": [
         {
@@ -139,7 +137,6 @@
     "N3": {
       "region": "North",
       "type": "full",
-      "category": "N2",
       "preference": 3,
       "rawEntries": [
         {
@@ -175,7 +172,6 @@
     "N4": {
       "region": "North",
       "type": "full",
-      "category": "N2",
       "preference": 4,
       "rawEntries": [
         {
@@ -195,7 +191,6 @@
     "C1": {
       "region": "Central",
       "type": "limited",
-      "category": "N1",
       "preference": 1,
       "rawEntries": [
         {
@@ -216,7 +211,6 @@
     "C2": {
       "region": "Central",
       "type": "full",
-      "category": "N2",
       "preference": 2,
       "rawEntries": [
         {
@@ -232,7 +226,6 @@
     "E1": {
       "region": "East",
       "type": "limited",
-      "category": "N1",
       "preference": 1,
       "rawEntries": [
         {
@@ -266,7 +259,6 @@
     "E2": {
       "region": "East",
       "type": "full",
-      "category": "N2",
       "preference": 2,
       "rawEntries": [
         {
@@ -290,7 +282,6 @@
     "W1": {
       "region": "West",
       "type": "limited",
-      "category": "N1",
       "preference": 1,
       "rawEntries": [
         {
@@ -317,7 +308,6 @@
     "W2": {
       "region": "West",
       "type": "full",
-      "category": "N2",
       "preference": 2,
       "rawEntries": [
         {
@@ -345,7 +335,6 @@
     "S1": {
       "region": "South",
       "type": "limited",
-      "category": "N1",
       "preference": 1,
       "rawEntries": [
         {
@@ -379,7 +368,6 @@
     "S2": {
       "region": "South",
       "type": "full",
-      "category": "N2",
       "preference": 2,
       "rawEntries": [
         {
@@ -407,7 +395,6 @@
     "S3": {
       "region": "South",
       "type": "full",
-      "category": "N2",
       "preference": 3,
       "rawEntries": [
         {
@@ -427,7 +414,6 @@
     "S4": {
       "region": "South",
       "type": "full",
-      "category": "N2",
       "preference": 4,
       "rawEntries": [
         {
@@ -439,7 +425,6 @@
     "NE1": {
       "region": "Northeast",
       "type": "limited",
-      "category": "N1",
       "preference": 1,
       "rawEntries": [
         {
@@ -459,7 +444,6 @@
     "NE2": {
       "region": "Northeast",
       "type": "full",
-      "category": "N2",
       "preference": 2,
       "rawEntries": [
         {
@@ -499,7 +483,6 @@
     "X1": {
       "region": "Special",
       "type": "special",
-      "category": "N2",
       "preference": 1,
       "description": "Andaman & Nicobar Islands",
       "rawEntries": [
@@ -531,7 +514,6 @@
     "X2": {
       "region": "Special",
       "type": "special",
-      "category": "N2",
       "preference": 2,
       "description": "Lakshadweep",
       "rawEntries": [
@@ -546,7 +528,6 @@
     "X3": {
       "region": "Special",
       "type": "special",
-      "category": "N2",
       "preference": 3,
       "description": "Leh Ladakh",
       "rawEntries": [
@@ -847,15 +828,42 @@
         "W1",
         "W2"
       ],
-      "capitalZones": [
-        "W1"
+      "capitalZones": [],
+      "preference": [
+        "W1",
+        "W2"
+      ]
+    },
+    "DAMAN AND DIU": {
+      "zones": [
+        "W1",
+        "W2"
       ],
+      "capitalZones": [],
       "preference": [
         "W1",
         "W2"
       ]
     },
     "DADRA & NAGAR HAVELI": {
+      "zones": [
+        "W2"
+      ],
+      "capitalZones": [],
+      "preference": [
+        "W2"
+      ]
+    },
+    "DADRA AND NAGAR HAVELI": {
+      "zones": [
+        "W2"
+      ],
+      "capitalZones": [],
+      "preference": [
+        "W2"
+      ]
+    },
+    "DADRA NAGAR HAVELI": {
       "zones": [
         "W2"
       ],
@@ -905,6 +913,21 @@
         "S3"
       ]
     },
+    "TAMILNADU": {
+      "zones": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "capitalZones": [
+        "S1"
+      ],
+      "preference": [
+        "S1",
+        "S2",
+        "S3"
+      ]
+    },
     "ANDHRA PRADESH": {
       "zones": [
         "S1",
@@ -919,6 +942,17 @@
       ]
     },
     "PUDUCHERRY": {
+      "zones": [
+        "S2",
+        "S3"
+      ],
+      "capitalZones": [],
+      "preference": [
+        "S2",
+        "S3"
+      ]
+    },
+    "PONDICHERRY": {
       "zones": [
         "S2",
         "S3"
@@ -1025,6 +1059,24 @@
         "X1"
       ]
     },
+    "ANDAMAN AND NICOBAR ISLANDS": {
+      "zones": [
+        "X1"
+      ],
+      "capitalZones": [],
+      "preference": [
+        "X1"
+      ]
+    },
+    "ANDAMAN NICOBAR": {
+      "zones": [
+        "X1"
+      ],
+      "capitalZones": [],
+      "preference": [
+        "X1"
+      ]
+    },
     "LAKSHADWEEP": {
       "zones": [
         "X2"
@@ -1034,7 +1086,25 @@
         "X2"
       ]
     },
+    "LAKSHWADEEP": {
+      "zones": [
+        "X2"
+      ],
+      "capitalZones": [],
+      "preference": [
+        "X2"
+      ]
+    },
     "LADAKH": {
+      "zones": [
+        "X3"
+      ],
+      "capitalZones": [],
+      "preference": [
+        "X3"
+      ]
+    },
+    "LEH LADAKH": {
       "zones": [
         "X3"
       ],

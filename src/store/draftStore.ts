@@ -5,6 +5,7 @@
 
 import { Charges, Geo, VolumetricConfig, ZoneRateMatrix } from '../utils/validators';
 import { emitDebug, emitDebugError } from '../utils/debug';
+import { getCustomerIDFromToken } from '../utils/authUtils';
 
 // =============================================================================
 // TYPES
@@ -60,8 +61,8 @@ export interface VendorDraft {
 // CONSTANTS
 // =============================================================================
 
-const DRAFT_KEY = 'addVendorV2_draft';
-const CACHE_KEY = 'addVendorV2_cache';
+const getDraftKey = () => `addVendorV2_draft_${getCustomerIDFromToken() || 'guest'}`;
+const getCacheKey = () => `addVendorV2_cache_${getCustomerIDFromToken() || 'guest'}`;
 
 // =============================================================================
 // DRAFT OPERATIONS
@@ -74,7 +75,7 @@ const CACHE_KEY = 'addVendorV2_cache';
  */
 export const readDraft = (): VendorDraft | null => {
   try {
-    const stored = localStorage.getItem(DRAFT_KEY);
+    const stored = localStorage.getItem(getDraftKey());
     if (!stored) return null;
 
     const draft: VendorDraft = JSON.parse(stored);
@@ -104,7 +105,7 @@ export const readDraft = (): VendorDraft | null => {
 export const writeDraft = (draft: VendorDraft): void => {
   try {
     draft.lastSaved = new Date().toISOString();
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    localStorage.setItem(getDraftKey(), JSON.stringify(draft));
     emitDebug('DRAFT_WRITE', {
       hasBasics: !!draft.basics,
       hasGeo: !!draft.geo,
@@ -164,7 +165,7 @@ export const persistDraft = (patch: Partial<VendorDraft>): void => {
  */
 export const clearDraft = (): void => {
   try {
-    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(getDraftKey());
     emitDebug('DRAFT_CLEARED');
   } catch (error) {
     emitDebugError('DRAFT_CLEAR_ERROR', {
@@ -197,7 +198,7 @@ const pincodeCache = new Map<string, PincodeCacheEntry>();
  */
 const loadPincodeCache = (): void => {
   try {
-    const stored = localStorage.getItem(CACHE_KEY);
+    const stored = localStorage.getItem(getCacheKey());
     if (!stored) return;
 
     const data: PincodeCacheEntry[] = JSON.parse(stored);
@@ -225,7 +226,7 @@ const loadPincodeCache = (): void => {
 const savePincodeCache = (): void => {
   try {
     const data = Array.from(pincodeCache.values());
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(getCacheKey(), JSON.stringify(data));
     emitDebug('CACHE_SAVED', { count: data.length });
   } catch (error) {
     emitDebugError('CACHE_SAVE_ERROR', {
@@ -296,6 +297,6 @@ export const cachePincode = (
  */
 export const clearPincodeCache = (): void => {
   pincodeCache.clear();
-  localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem(getCacheKey());
   emitDebug('CACHE_CLEARED');
 };
