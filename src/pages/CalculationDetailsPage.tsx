@@ -44,7 +44,8 @@ const FormulaGuide = ({ isOpen, onClose, quote }: { isOpen: boolean; onClose: ()
         new Intl.NumberFormat('en-IN', {
             style: 'currency',
             currency: 'INR',
-            maximumFractionDigits: 0
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
         }).format(amount);
 
     const glossary = [
@@ -372,7 +373,8 @@ const CalculationDetailsPage: React.FC = () => {
         new Intl.NumberFormat('en-IN', {
             style: 'currency',
             currency: 'INR',
-            maximumFractionDigits: 0
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
         }).format(amount);
 
     return (
@@ -514,7 +516,7 @@ const CalculationDetailsPage: React.FC = () => {
                                     <div className="text-right">
                                         <div className="font-bold text-xl text-slate-900">
                                             {showFormulas
-                                                ? <span className="font-mono text-lg text-indigo-600">MAX({params.unitPrice * quote.chargeableWeight}, {params.minCharges})</span>
+                                                ? <span className="font-mono text-lg text-indigo-600">MAX({quote.chargeableWeight} × {params.unitPrice}, {params.minCharges})</span>
                                                 : formatMoney(params.baseFreight)
                                             }
                                         </div>
