@@ -3,16 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { User, MapPin, Truck as VendorIcon } from 'lucide-react';
-import Cookies from 'js-cookie';
+
 import { API_BASE_URL } from '../config/api';
 
 // Use centralized API configuration
 
-// Helper: build auth headers from cookie
-const buildAuthHeaders = () => {
-  const token = Cookies.get('authToken');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+
 
 // --- Types (keep lightweight and tolerant) ---
 interface UserProfile {
@@ -157,7 +153,7 @@ const CustomerDashboardPage: React.FC = () => {
         if (baseProfile && !baseProfile.createdAt) {
           try {
             const res = await fetch(`${API_BASE_URL}/api/users/me`, {
-              headers: buildAuthHeaders(),
+              credentials: 'include',
             });
             if (res.ok) {
               const body = await res.json();
@@ -178,7 +174,7 @@ const CustomerDashboardPage: React.FC = () => {
         // If we didn't have baseProfile at all, fetch full profile
         if (!baseProfile) {
           const res = await fetch(`${API_BASE_URL}/api/users/me`, {
-            headers: buildAuthHeaders(),
+            credentials: 'include',
           });
           if (res.ok) {
             const body = await res.json();
@@ -219,14 +215,13 @@ const CustomerDashboardPage: React.FC = () => {
 
         // Temporary transporters
         try {
-          const token = Cookies.get('authToken');
-          if (token && (authUser as any)?._id) {
+          if ((authUser as any)?._id) {
             const vendorsResponse = await fetch(
               `${API_BASE_URL}/api/transporter/gettemporarytransporters?customerID=${(authUser as any)._id
               }`,
               {
+                credentials: 'include',
                 headers: {
-                  Authorization: `Bearer ${token}`,
                   'Content-Type': 'application/json',
                 },
               }
@@ -277,7 +272,7 @@ const CustomerDashboardPage: React.FC = () => {
       setIsLoadingOverview(true);
       try {
         const res = await fetch(`${API_BASE_URL}/api/dashboard/overview`, {
-          headers: buildAuthHeaders(),
+          credentials: 'include',
         });
         if (!res.ok) throw new Error(`overview failed: ${res.status}`);
         const body = await res.json();

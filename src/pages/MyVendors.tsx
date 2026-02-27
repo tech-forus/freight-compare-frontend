@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { getTemporaryTransporters } from '../services/api';
-import Cookies from 'js-cookie';
+
 import EditVendorModal from '../components/EditVendorModal';
 import { API_BASE_URL } from '../config/api';
 
@@ -85,9 +85,8 @@ const MyVendors: React.FC = () => {
       // Fetch UTSF vendors
       let utsfVendors: Vendor[] = [];
       try {
-        const token = Cookies.get('authToken') || localStorage.getItem('token') || localStorage.getItem('authToken');
         const utsfRes = await fetch(`${API_BASE}/api/utsf/my-vendors?customerId=${ownerId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
         });
         if (utsfRes.ok) {
           const utsfJson = await utsfRes.json();
@@ -179,8 +178,6 @@ const MyVendors: React.FC = () => {
       user?.id ||
       user?.customer?._id ||
       user?.customer?.id ||
-      Cookies.get('customerId') ||
-      Cookies.get('customerID') ||
       localStorage.getItem('customerId') ||
       localStorage.getItem('customerID');
 
@@ -195,24 +192,14 @@ const MyVendors: React.FC = () => {
     const isUtsf = vendor?.source === 'UTSF';
 
     try {
-      const token =
-        Cookies.get('authToken') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('authToken');
-
-      if (!token) {
-        toast.error('Authentication required to delete vendor');
-        return;
-      }
-
       let response;
       if (isUtsf) {
         // UTSF vendor: use the user-scoped endpoint
         response = await fetch(`${API_BASE}/api/utsf/my-vendors/${vendorId}`, {
           method: 'DELETE',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ customerId }),
         });
@@ -220,9 +207,9 @@ const MyVendors: React.FC = () => {
         // MongoDB vendor: use the legacy endpoint
         response = await fetch(`${API_BASE}/api/transporter/remove-tied-up`, {
           method: 'DELETE',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             customerID: customerId,

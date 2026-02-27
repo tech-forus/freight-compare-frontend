@@ -33,7 +33,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -283,7 +282,6 @@ type PresetSaveState = "idle" | "saving" | "success" | "exists" | "error";
 // -----------------------------------------------------------------------------
 const CalculatorPage: React.FC = (): JSX.Element => {
     const { user, isSuperAdmin, loading } = useAuth();
-    const token = Cookies.get("authToken");
     const navigate = useNavigate();
 
     // Helper to safely get customer data regardless of user object structure
@@ -769,7 +767,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         if (loading) return;
         fetchSavedBoxes();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loading, user, token]);
+    }, [loading, user]);
 
     useEffect(() => {
         if (
@@ -831,11 +829,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     // Presets
     const fetchSavedBoxes = async () => {
-        if (!token) {
-            console.warn("[Presets] Skipping fetch: missing auth token");
-            setSavedBoxes([]);
-            return;
-        }
 
         const customerId = getCustomer()?._id;
         if (!customerId) {
@@ -847,8 +840,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         }
         try {
             const response = await axios.get(
-                `${API_BASE_URL}/api/transporter/getpackinglist`,
-                { headers: { Authorization: `Bearer ${token}` } }
+                `${API_BASE_URL}/api/transporter/getpackinglist`
             );
 
             const list = (response as any)?.data?.data;
@@ -874,10 +866,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         if (window.confirm("Delete this preset permanently?")) {
             try {
                 await axios.delete(
-                    `${API_BASE_URL}/api/transporter/deletepackinglist/${presetId}`,
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
+                    `${API_BASE_URL}/api/transporter/deletepackinglist/${presetId}`
                 );
                 await fetchSavedBoxes();
             } catch (err: any) {
@@ -989,7 +978,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             return;
         }
 
-        if (!user || !token) {
+        if (!user) {
             setError("You are not authenticated. Please log in again.");
             return;
         }
@@ -1022,10 +1011,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         try {
             await axios.post(
                 `${API_BASE_URL}/api/transporter/savepackinglist`,
-                payload,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                }
+                payload
             );
             setPresetStatus(boxId, "success");
             await fetchSavedBoxes(); // refresh dropdown data
@@ -1230,7 +1216,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 },
                 {
                     headers: {
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
                         ...(activeCaptchaToken ? { 'x-captcha-token': activeCaptchaToken } : {})
                     }
                 }
@@ -1331,7 +1316,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
                 shipment: shipmentPayload,
                 totalWeight,
-                token,
                 isWheelseyeServiceArea: (pin: string) => /^\d{6}$/.test(pin),
                 distanceKmOverride, // Use distance from backend - eliminates redundant API call
             });
@@ -2657,7 +2641,6 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                             _t: Date.now() // Cache-bust to prevent 304 stale responses
                                                         },
                                                         headers: {
-                                                            Authorization: `Bearer ${token}`,
                                                             'Cache-Control': 'no-cache'
                                                         }
                                                     });

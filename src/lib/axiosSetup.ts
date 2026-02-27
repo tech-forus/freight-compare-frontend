@@ -35,9 +35,12 @@ axios.interceptors.response.use(
       // SESSION_REPLACED = user logged in elsewhere; force logout
       if (code === 'SESSION_REPLACED') {
         localStorage.removeItem('authUser');
+        // Clear the httpOnly auth cookies by calling the logout endpoint.
+        // Must use fetch (not axios) to avoid triggering this interceptor again.
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
         alert('You have been logged out because your account was signed into another device.');
         if (typeof window !== 'undefined' && !window.location.pathname.includes('/signin')) {
-          window.location.href = '/';
+          window.location.href = '/signin';
         }
         return Promise.reject(err);
       }

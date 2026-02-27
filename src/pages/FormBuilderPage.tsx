@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import Cookies from 'js-cookie';
+
 import { Pencil, Trash2, RotateCcw, History, CheckCircle, XCircle, ChevronRight, FileCode } from 'lucide-react';
 import FieldEditorModal from '../components/FieldEditorModal';
 import AdminLayout from '../components/admin/AdminLayout';
@@ -60,10 +60,9 @@ interface FormConfig {
     lastModifiedAt?: string;
 }
 
-// Get auth token
-const getAuthToken = (): string => {
-    return Cookies.get('authToken') || localStorage.getItem('authToken') || localStorage.getItem('token') || '';
-};
+// Auth is handled via httpOnly cookies automatically (credentials: 'include')
+// This function is kept for backward compatibility but returns empty.
+const getAuthToken = (): string => '';
 
 const SECTION_LABELS: Record<string, string> = {
     company: 'Company & Contact',
@@ -90,10 +89,9 @@ const FormBuilderPage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const token = getAuthToken();
             const response = await fetch(`${API_BASE}/api/form-config/${pageId}/full`, {
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
             });
@@ -114,9 +112,8 @@ const FormBuilderPage: React.FC = () => {
     // Fetch change history
     const fetchHistory = useCallback(async () => {
         try {
-            const token = getAuthToken();
             const response = await fetch(`${API_BASE}/api/form-config/${pageId}/history?limit=20`, {
-                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include',
             });
             if (response.ok) {
                 const result = await response.json();
@@ -137,11 +134,10 @@ const FormBuilderPage: React.FC = () => {
         setSaving(true);
         setError(null);
         try {
-            const token = getAuthToken();
             const response = await fetch(`${API_BASE}/api/form-config/${pageId}/field/${fieldId}`, {
                 method: 'PUT',
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(updates),
@@ -171,10 +167,9 @@ const FormBuilderPage: React.FC = () => {
         setSaving(true);
         setError(null);
         try {
-            const token = getAuthToken();
             const response = await fetch(`${API_BASE}/api/form-config/${pageId}/field/${fieldId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include',
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const result = await response.json();
@@ -197,10 +192,9 @@ const FormBuilderPage: React.FC = () => {
         setSaving(true);
         setError(null);
         try {
-            const token = getAuthToken();
             const response = await fetch(`${API_BASE}/api/form-config/${pageId}/field/${fieldId}/restore`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include',
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const result = await response.json();

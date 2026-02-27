@@ -243,12 +243,9 @@ const BLOCKED_KEYS = new Set(['e', 'E', '+', '-']);
 // ============================================================================
 
 function getAuthTokenFromStorage(): string {
-  return (
-    Cookies.get('authToken') ||
-    localStorage.getItem('authToken') ||
-    localStorage.getItem('token') ||
-    ''
-  );
+  // Auth is handled via httpOnly cookies (credentials: 'include').
+  // JS cannot read httpOnly cookies — this returns empty for backward compat.
+  return '';
 }
 
 const displayZeroAsBlank = (val: string | number | null | undefined): string => {

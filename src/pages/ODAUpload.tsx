@@ -270,11 +270,6 @@ const ODAUpload: React.FC = () => {
       const { API_BASE_URL } = await import('../config/api');
       const API_BASE = API_BASE_URL;
 
-      // Get auth token
-      const token = localStorage.getItem('authToken') ||
-        localStorage.getItem('token') ||
-        document.cookie.split('; ').find(row => row.startsWith('authToken='))?.split('=')[1] || '';
-
       const matrixData = {
         weightRanges: weightRanges.map(r => r.label),
         distanceRanges: distanceRanges.map(r => r.label),
@@ -286,9 +281,9 @@ const ODAUpload: React.FC = () => {
       // Save to backend API
       const response = await fetch(`${API_BASE}/api/oda/upload`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(matrixData),
       });
@@ -1000,10 +995,10 @@ const ODAUpload: React.FC = () => {
                           <h4 className="font-semibold text-slate-800 mb-4">Upload your ODA CSV</h4>
                           <div
                             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging
-                                ? 'border-green-500 bg-green-50'
-                                : file
-                                  ? 'border-green-400 bg-green-50'
-                                  : 'border-slate-300 hover:border-green-400'
+                              ? 'border-green-500 bg-green-50'
+                              : file
+                                ? 'border-green-400 bg-green-50'
+                                : 'border-slate-300 hover:border-green-400'
                               }`}
                             onDragEnter={handleDragIn}
                             onDragLeave={handleDragOut}

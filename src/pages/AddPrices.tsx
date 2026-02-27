@@ -17,7 +17,7 @@ import {
   Scale, // New icon for threshold weight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Cookies from "js-cookie";
+
 import { API_BASE_URL } from '../config/api';
 
 // --- Type Definitions ---
@@ -109,7 +109,6 @@ export default function AddPrices() {
   const handleCellChange = (i: number, j: number, val: number) => { setZoneRates(prev => { const next = prev.map(r => [...r]); next[i][j] = val; return next; }); };
   const handleAddUnitPrice = () => { if (!manualFrom || !manualTo || manualPrice === undefined) { toast.error("Please select zones and enter a price."); return; } const i = zoneLabels.indexOf(manualFrom); const j = zoneLabels.indexOf(manualTo); if (i >= 0 && j >= 0) { handleCellChange(i, j, manualPrice); toast.success(`Set rate from ${manualFrom} to ${manualTo} as ₹${manualPrice}`); setManualPrice(undefined); } };
   useEffect(() => { const savedName = sessionStorage.getItem("companyName"); const savedZones = sessionStorage.getItem("zones"); if (savedName) setTransporterName(savedName); if (savedZones) { try { const arr = JSON.parse(savedZones); if (Array.isArray(arr)) { setZoneLabels(arr); setZoneRates(arr.map(() => arr.map(() => 0))); } } catch { } } }, []);
-  const token = Cookies.get("authToken");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -120,7 +119,7 @@ export default function AddPrices() {
     setLoading(true);
     try {
       console.log(payload);
-      await axios.post(`${API_BASE_URL}/api/transporter/auth/addprice`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${API_BASE_URL}/api/transporter/auth/addprice`, payload);
       toast.success("Price configuration saved successfully!"); navigate("/compare");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Save failed."); console.error(err);
