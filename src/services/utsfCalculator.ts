@@ -74,6 +74,7 @@ export async function calculateUTSFPrices(
     const response = await fetch(`${API_BASE_URL}/api/utsf/calculate`, {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: JSON.stringify(params),
     });
 
@@ -132,6 +133,7 @@ export async function checkServiceability(
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ pincode, transporterId }),
     });
 
@@ -180,7 +182,9 @@ export async function getUTSFTransporters(): Promise<{
   error?: string;
 }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/utsf/transporters`);
+    const response = await fetch(`${API_BASE_URL}/api/utsf/transporters`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       return {

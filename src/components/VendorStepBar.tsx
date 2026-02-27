@@ -35,8 +35,8 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
   return (
     <div className="select-none">
       {/* Stepper row */}
-      <div className="px-6 pt-4 pb-3 flex items-start justify-center">
-        <div className="flex items-start w-full max-w-xl">
+      <div className="px-6 pt-6 pb-12 flex flex-col items-center justify-center relative">
+        <div className="flex items-start w-full max-w-3xl justify-between relative z-10">
           {STEPS.map((step, i) => {
             const isDone = step.id < currentStep;
             const isActive = step.id === currentStep;
@@ -53,22 +53,22 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
             return (
               <React.Fragment key={step.id}>
                 {/* Step circle + label */}
-                <div className="flex flex-col items-center z-10">
+                <div className="flex flex-col items-center z-20 relative px-2">
                   <button
                     type="button"
                     onClick={() => isClickable && onStepChange(step.id)}
                     disabled={!isClickable}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 ${isDone
-                        ? 'bg-green-500 border-green-500 text-white cursor-pointer hover:bg-green-600 hover:border-green-600'
-                        : isActive
-                          ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
-                          : 'bg-white border-slate-300 text-slate-400 cursor-default'
+                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${isDone
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white cursor-pointer hover:shadow-lg hover:scale-105'
+                      : isActive
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/40 scale-110 ring-4 ring-blue-100'
+                        : 'bg-white border-2 border-slate-200 text-slate-400 cursor-default'
                       }`}
                   >
-                    {isDone ? <Check className="w-4.5 h-4.5" strokeWidth={3} /> : step.id}
+                    {isDone ? <Check className="w-6 h-6" strokeWidth={3} /> : <span className="text-lg font-bold">{step.id}</span>}
                   </button>
                   <span
-                    className={`mt-2 text-xs font-medium whitespace-nowrap ${isDone || isActive ? 'text-green-700' : 'text-slate-400'
+                    className={`absolute -bottom-8 whitespace-nowrap text-sm font-bold transition-colors ${isDone || isActive ? 'text-indigo-900' : 'text-slate-400'
                       }`}
                   >
                     {step.label}
@@ -77,11 +77,13 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
 
                 {/* Connector line */}
                 {i < STEPS.length - 1 && (
-                  <div className="flex-1 mt-[18px] px-1">
-                    <div
-                      className={`h-[3px] rounded-full transition-colors ${step.id < currentStep ? 'bg-green-500' : 'bg-slate-200'
-                        }`}
-                    />
+                  <div className="flex-1 mt-[22px] px-2 z-0 relative">
+                    <div className="h-[4px] rounded-full bg-slate-200 relative overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500 ease-out flex-1 w-full"
+                        style={{ transform: `translateX(${step.id < currentStep ? '0%' : '-100%'})` }}
+                      />
+                    </div>
                   </div>
                 )}
               </React.Fragment>
@@ -89,33 +91,33 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
           })}
         </div>
 
-        {/* Reset button */}
+        {/* Reset button - ABSOLUTE to prevent layout shift */}
         <button
           type="button"
           onClick={onReset}
-          className="ml-6 mt-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
+          className="absolute right-6 top-6 px-4 py-2 text-sm font-bold rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm"
         >
-          Reset
+          Reset Setup
         </button>
       </div>
 
       {/* Context strip — visible after step 1 when vendor is known */}
       {currentStep > 1 && vendorName && (
-        <div className="px-6 py-1.5 bg-green-50/60 border-t border-green-100 flex items-center gap-5 text-[11px] text-slate-600 overflow-x-auto">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            <span className="font-semibold text-slate-800 truncate max-w-[180px]">{vendorName}</span>
+        <div className="px-6 py-2.5 bg-blue-50/80 border-t border-blue-100 flex items-center gap-6 text-[13px] text-slate-700 overflow-x-auto">
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            <span className="font-bold text-blue-900 truncate max-w-[200px]">{vendorName}</span>
           </span>
           {transportMode && (
             <span className="flex items-center gap-1">
-              <span className="uppercase px-1.5 py-0.5 rounded bg-green-100 font-semibold text-green-800">{transportMode}</span>
+              <span className="uppercase px-2 py-0.5 rounded-md bg-white border border-blue-200 shadow-sm font-bold text-blue-800 tracking-wider text-xs">{transportMode}</span>
             </span>
           )}
-          <span className={`flex items-center gap-1 ${zonesCount > 0 ? 'text-green-700' : 'text-amber-600'}`}>
-            {zonesCount > 0 ? `${zonesCount} zones` : 'No zones yet'}
+          <span className={`flex items-center gap-1.5 font-semibold ${zonesCount > 0 ? 'text-indigo-700' : 'text-amber-600'}`}>
+            {zonesCount > 0 ? `${zonesCount} zones active` : 'No zones yet'}
           </span>
           {pricingReady !== undefined && (
-            <span className={`flex items-center gap-1 ${pricingReady ? 'text-green-700' : 'text-amber-600'}`}>
+            <span className={`flex items-center gap-1.5 font-semibold ${pricingReady ? 'text-indigo-700' : 'text-amber-600'}`}>
               Pricing: {pricingReady ? 'Ready' : 'Incomplete'}
             </span>
           )}

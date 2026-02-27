@@ -66,7 +66,8 @@ import {
   FileDown,
   Download,
   Trash2,
-  Clock
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 
 // Optional email validator
@@ -695,6 +696,7 @@ export const AddVendor: React.FC = () => {
           console.time('[Search] API call');
           const response = await fetch(url, {
             method: 'GET',
+            credentials: 'include',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -751,6 +753,7 @@ export const AddVendor: React.FC = () => {
           console.time('[AutoFill] detail-fetch');
           const detailRes = await fetch(detailUrl, {
             method: 'GET',
+            credentials: 'include',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -2019,6 +2022,7 @@ export const AddVendor: React.FC = () => {
 
         const res = await fetch(url, {
           method: 'POST',
+          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
           body: fd,
         });
@@ -2066,6 +2070,7 @@ export const AddVendor: React.FC = () => {
 
         const utsfRes = await fetch(utsfUrl, {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
@@ -2198,279 +2203,309 @@ export const AddVendor: React.FC = () => {
   return (
     <div
       ref={topRef}
-      className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200"
+      className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 relative overflow-x-hidden pb-10"
     >
-      {/* ═══ UNIFIED WHITE CARD: Stepper + Content + Side Panel ═══ */}
-      <div className="mx-4 md:mx-6 mt-4 mb-6 bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-        <div className="flex gap-0 min-h-[calc(100vh-140px)]">
-          {/* LEFT column: Stepper + Main Content */}
+      {/* ═══ FLOATING 3D GRAPHIC FOR STEP 1 ═══ */}
+      {/* Moved into the Step 1 Form Layout container to ensure grid alignment */}
+
+      {/* ═══ STEPPER FULL WIDTH ═══ */}
+      <div className="relative z-20 w-full mb-2">
+        <VendorStepBar
+          currentStep={currentStep}
+          onStepChange={goToStep}
+          vendorName={sidePanelProps.vendorName}
+          transportMode={transportMode}
+          zonesCount={matrixSize.rows}
+          pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
+          onReset={handleReset}
+        />
+      </div>
+
+      {/* ═══ MAIN LAYOUT ═══ */}
+      <div className="mx-4 md:mx-6 mt-4 mb-6 relative z-10">
+        <div className="flex gap-8 items-stretch min-h-[calc(100vh-140px)] bg-transparent">
+          {/* LEFT column: Main Content */}
           <div className="flex-1 min-w-0 flex flex-col">
-            {/* Stepper inside left column */}
-            <VendorStepBar
-              currentStep={currentStep}
-              onStepChange={goToStep}
-              vendorName={sidePanelProps.vendorName}
-              transportMode={transportMode}
-              zonesCount={matrixSize.rows}
-              pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
-              onReset={handleReset}
-            />
             {/* Main Content */}
             <div className="flex-1 min-w-0 p-6">
               <form id="add-vendor-form" onSubmit={handleSubmit} className="space-y-3">
 
                 {/* ════════════════════════════════════════════════ */}
-                {/* STEP 1: FIND VENDOR (REDESIGNED)                */}
+                {/* STEP 1: FIND VENDOR (REDESIGNED HERO)           */}
                 {/* ════════════════════════════════════════════════ */}
                 <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="max-w-3xl mx-auto pt-4"
-                  >
+                  <div className="flex flex-col xl:flex-row-reverse items-stretch justify-between gap-8 w-full py-4">
 
-                    {/* HERO HEADING */}
-                    <div className="text-center mb-8">
-                      <h2 className="text-3xl font-bold text-slate-800 mb-2">Find Your Vendor</h2>
-                      <p className="text-slate-500">Search for an existing partner or create a new profile.</p>
-                    </div>
-
-                    {vendorBasics.basics.companyName ? (
+                    {/* LEFT COLUMN: Text Setup */}
+                    <div className="flex-1 w-full max-w-3xl flex flex-col justify-between py-4">
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mt-6 bg-emerald-50 border border-emerald-100 rounded-xl p-5 shadow-sm"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
                       >
-                        <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
-                          <div className="flex items-center gap-4">
-                            <div className="bg-emerald-100 p-2 rounded-full">
-                              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-emerald-900">Vendor Selected</h4>
-                              <p className="text-sm text-emerald-700">
-                                You are working on <strong>{vendorBasics.basics.companyName}</strong>
-                              </p>
-                              {isAutoFilled && autoFilledFromName && (
-                                <p className="text-xs text-emerald-600 mt-1">
-                                  Data auto-filled from {autoFilledFromName}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-3 w-full md:w-auto">
-                            <button
-                              type="button"
-                              onClick={clearAutoFill}
-                              className="flex-1 md:flex-none px-4 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-50"
-                            >
-                              Clear Selection
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { if (!vendorMode) setVendorMode('existing'); goNext(); }}
-                              className="flex-1 md:flex-none px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center justify-center gap-2"
-                            >
-                              Continue <ChevronDown className="w-4 h-4 -rotate-90" />
-                            </button>
-                          </div>
+
+                        {/* HERO HEADING */}
+                        <div className="mb-12 text-left">
+                          <h1 className="text-[3.5rem] leading-[1.1] font-extrabold text-slate-900 tracking-tight mb-4">
+                            Find Your <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Trusted Vendors</span>
+                          </h1>
+                          <p className="text-xl text-slate-500 font-medium max-w-xl">
+                            Search for an existing active partner in our database or quickly create a new profile.
+                          </p>
                         </div>
-                      </motion.div>
-                    ) : (
-                      <>
-                        {/* SEARCH CONTAINER */}
-                        <div ref={dropdownRef} className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative z-10">
-                          <div className="p-1">
-                            <div className="relative group">
-                              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                {isSearching ? <Loader2 className="h-6 w-6 text-blue-500 animate-spin" /> : <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-500 transition-colors" />}
+
+                        {vendorBasics.basics.companyName ? (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 shadow-sm mb-12"
+                          >
+                            <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
+                              <div className="flex items-center gap-4">
+                                <div className="bg-emerald-100 p-3 rounded-full">
+                                  <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-emerald-900 text-lg">Vendor Selected</h4>
+                                  <p className="text-emerald-700 hover:opacity-80">
+                                    You are working on <strong>{vendorBasics.basics.companyName}</strong>
+                                  </p>
+                                  {isAutoFilled && autoFilledFromName && (
+                                    <p className="text-sm text-emerald-600 mt-1 font-medium">
+                                      Data auto-filled from {autoFilledFromName}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                              <input
-                                type="text"
-                                className="block w-full pl-12 pr-4 py-4 text-lg border-none focus:ring-0 focus:outline-none placeholder:text-slate-300 transition-all bg-transparent"
-                                placeholder="Type vendor name..."
-                                value={legalCompanyNameInput}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  setLegalCompanyNameInput(value);
-                                  setIsAutoFilled(false);
-                                  if (value.length >= 2) setIsSearching(true);
-                                  searchTransporters(value);
-                                }}
-                                onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-                                onKeyDown={(e) => {
-                                  if (!showDropdown || !suggestions.length) return;
-                                  if (e.key === 'ArrowDown') {
-                                    e.preventDefault();
-                                    setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
-                                  } else if (e.key === 'ArrowUp') {
-                                    e.preventDefault();
-                                    setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
-                                  } else if (e.key === 'Enter' && highlightedIndex >= 0) {
-                                    e.preventDefault();
-                                    handleVendorAutoSelect(suggestions[highlightedIndex]);
-                                  } else if (e.key === 'Escape') {
-                                    setShowDropdown(false);
-                                  }
-                                }}
-                              />
-                              {/* Clear Button */}
-                              {legalCompanyNameInput.length > 0 && !isAutoFilled && (
+                              <div className="flex gap-3 w-full md:w-auto">
                                 <button
                                   type="button"
-                                  onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
-                                  className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                                  onClick={clearAutoFill}
+                                  className="flex-1 md:flex-none px-5 py-3 bg-white border border-emerald-200 text-emerald-700 rounded-xl font-bold hover:bg-emerald-50 transition-colors"
                                 >
-                                  <XCircleIcon className="h-5 w-5 text-slate-300 hover:text-slate-500 transition-colors" />
+                                  Clear Selection
                                 </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* DROPDOWN RESULTS */}
-                          <AnimatePresence>
-                            {showDropdown && suggestions.length > 0 && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="border-t border-slate-100 bg-slate-50/50 max-h-60 overflow-y-auto"
-                              >
-                                {suggestions.map((v, i) => (
-                                  <div
-                                    key={v.id}
-                                    onClick={() => handleVendorAutoSelect(v)}
-                                    onMouseEnter={() => setHighlightedIndex(i)}
-                                    className={`px-4 py-3 cursor-pointer flex items-center gap-3 transition-colors ${highlightedIndex === i ? 'bg-blue-50' : 'hover:bg-white'}`}
-                                  >
-                                    <div className={`p-2 rounded-lg ${v.isTemporary ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                                      <Building2 className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <h4 className="font-semibold text-slate-800 text-sm">{v.legalCompanyName || v.companyName}</h4>
-                                      <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
-                                        {v.vendorCode && <span className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">{v.vendorCode}</span>}
-                                        {v.zones?.length > 0 && <span>• {v.zones.length} zones active</span>}
-                                      </div>
-                                    </div>
-                                    <div className="text-slate-400">
-                                      <CheckCircleIcon className="w-5 h-5 text-slate-300 hover:text-blue-500" />
-                                    </div>
-                                  </div>
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-
-                        {/* Old Case 1 Removed - merged into the top condition */}
-
-                        {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
-                        {/* Show this if: Not auto-filled AND (Search is empty OR No results found) */}
-                        {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className="mt-12"
-                          >
-                            <div className="flex items-center gap-4 mb-6">
-                              <div className="h-px bg-slate-200 flex-1"></div>
-                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or Create New</span>
-                              <div className="h-px bg-slate-200 flex-1"></div>
-                            </div>
-
-                            <p className="text-center text-slate-600 mb-6 font-medium">Do you have a pincode serviceability list?</p>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                              {/* OPTION A: HAS PINCODES (EXCEL) */}
-                              <button
-                                type="button"
-                                onClick={() => { setVendorMode('new_with_pincodes'); setZoneConfigMode('pincode'); goNext(); }}
-                                className="group relative bg-white border-2 border-slate-100 hover:border-green-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
-                              >
-                                <div className="absolute top-4 right-4 text-slate-300 group-hover:text-green-500 transition-colors">
-                                  <CheckCircle2 className="w-6 h-6" />
-                                </div>
-                                <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                  <FileSpreadsheet className="w-6 h-6" />
-                                </div>
-                                <h3 className="font-bold text-slate-800 text-lg group-hover:text-green-700">Yes, I have an Excel file</h3>
-                                <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                                  Upload your pincode list (Excel/CSV). We will maximize coverage automatically.
-                                </p>
-                              </button>
-
-                              {/* OPTION B: MANUAL (WIZARD) */}
-                              <button
-                                type="button"
-                                onClick={() => { setVendorMode('new_without_pincodes'); setZoneConfigMode('wizard'); goNext(); }}
-                                className="group relative bg-white border-2 border-slate-100 hover:border-blue-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
-                              >
-                                <div className="absolute top-4 right-4 text-slate-300 group-hover:text-blue-500 transition-colors">
-                                  <MapPin className="w-6 h-6" />
-                                </div>
-                                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                  <Sparkles className="w-6 h-6" />
-                                </div>
-                                <h3 className="font-bold text-slate-800 text-lg group-hover:text-blue-700">No, select manually</h3>
-                                <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                                  Use the Zone Wizard to select states, cities, and regions manually.
-                                </p>
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { if (!vendorMode) setVendorMode('existing'); goNext(); }}
+                                  className="flex-1 md:flex-none px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
+                                >
+                                  Continue <ChevronDown className="w-5 h-5 -rotate-90" />
+                                </button>
+                              </div>
                             </div>
                           </motion.div>
-                        )}
-
-                        {/* === MONGODB DRAFTS UI === */}
-                        {!isAutoFilled && cloudDrafts.length > 0 && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-10"
-                          >
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <Clock className="w-5 h-5 text-blue-500" />
-                                Your Saved Drafts ({cloudDrafts.length}/2)
-                              </h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {cloudDrafts.map((draft, idx) => (
-                                <div key={draft._id || idx} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                                  <div className="flex justify-between items-start mb-2">
-                                    <h4 className="font-bold text-slate-800">{draft.draftName || 'Untitled Draft'}</h4>
+                        ) : (
+                          <>
+                            {/* SEARCH CONTAINER (Hero Size) */}
+                            <div ref={dropdownRef} className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 overflow-hidden relative z-30 mb-12 transition-all duration-300 focus-within:-translate-y-1 focus-within:shadow-[0_20px_40px_rgb(0,0,0,0.08)]">
+                              <div className="p-2">
+                                <div className="relative flex items-center">
+                                  <div className="absolute left-6 flex items-center pointer-events-none">
+                                    {isSearching ? <Loader2 className="h-8 w-8 text-blue-600 animate-spin" /> : <Search className="h-8 w-8 text-slate-300" />}
+                                  </div>
+                                  <input
+                                    type="text"
+                                    className="block w-full pl-20 pr-16 py-6 text-2xl font-semibold border-none focus:ring-0 focus:outline-none placeholder:text-slate-300 text-slate-800 bg-transparent"
+                                    placeholder="Type vendor name..."
+                                    value={legalCompanyNameInput}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setLegalCompanyNameInput(value);
+                                      setIsAutoFilled(false);
+                                      if (value.length >= 2) setIsSearching(true);
+                                      searchTransporters(value);
+                                    }}
+                                    onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+                                    onKeyDown={(e) => {
+                                      if (!showDropdown || !suggestions.length) return;
+                                      if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
+                                      } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
+                                      } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+                                        e.preventDefault();
+                                        handleVendorAutoSelect(suggestions[highlightedIndex]);
+                                      } else if (e.key === 'Escape') {
+                                        setShowDropdown(false);
+                                      }
+                                    }}
+                                  />
+                                  {/* Clear Button */}
+                                  {legalCompanyNameInput.length > 0 && !isAutoFilled && (
                                     <button
                                       type="button"
-                                      onClick={() => draft._id && handleDeleteCloudDraft(draft._id, draft.draftName || 'Untitled Draft')}
-                                      className="text-slate-400 hover:text-red-500 transition-colors p-1"
-                                      title="Delete Draft"
+                                      onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
+                                      className="absolute right-6 flex items-center p-2 rounded-full hover:bg-slate-100 transition-colors"
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <XCircleIcon className="h-7 w-7 text-slate-300 hover:text-slate-600" />
                                     </button>
-                                  </div>
-                                  <p className="text-xs text-slate-500 mb-4 flex-1">
-                                    Saved on: {draft.updatedAt ? new Date(draft.updatedAt).toLocaleDateString() : 'Recently'}
-                                  </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* DROPDOWN RESULTS */}
+                              <AnimatePresence>
+                                {showDropdown && suggestions.length > 0 && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="border-t border-slate-100 bg-white max-h-[300px] overflow-y-auto"
+                                  >
+                                    {suggestions.map((v, i) => (
+                                      <div
+                                        key={v.id}
+                                        onClick={() => handleVendorAutoSelect(v)}
+                                        onMouseEnter={() => setHighlightedIndex(i)}
+                                        className={`px-8 py-4 cursor-pointer flex items-center gap-4 transition-colors ${highlightedIndex === i ? 'bg-blue-50/60' : 'hover:bg-slate-50'}`}
+                                      >
+                                        <div className={`p-3 rounded-xl ${v.isTemporary ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                                          <Building2 className="w-6 h-6" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <h4 className="font-bold text-slate-800 text-lg">{v.legalCompanyName || v.companyName}</h4>
+                                          <div className="flex gap-3 text-sm text-slate-500 mt-1 font-medium">
+                                            {v.vendorCode && <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">{v.vendorCode}</span>}
+                                            {v.zones?.length > 0 && <span>• {v.zones.length} zones active</span>}
+                                          </div>
+                                        </div>
+                                        <div className="text-slate-400">
+                                          <ChevronDown className="w-6 h-6 -rotate-90 text-slate-300 hover:text-blue-500 transition-colors" />
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                            {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
+                            {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.1 }}
+                              >
+                                <div className="flex items-center gap-4 mb-8">
+                                  <span className="text-sm font-bold text-slate-400 tracking-widest uppercase">Or Create New Profile</span>
+                                  <div className="h-px bg-slate-200 flex-1"></div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* OPTION A: HAS PINCODES (EXCEL) */}
                                   <button
                                     type="button"
-                                    onClick={() => handleRestoreCloudDraft(draft)}
-                                    className="w-full py-2 bg-blue-50 text-blue-600 font-semibold text-sm rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                                    onClick={() => { setVendorMode('new_with_pincodes'); setZoneConfigMode('pincode'); goNext(); }}
+                                    className="group relative bg-white border-2 border-blue-600 rounded-3xl p-8 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-2 overflow-hidden"
                                   >
-                                    <Download className="w-4 h-4" />
-                                    Restore This Draft
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+                                    <div className="absolute top-6 right-6 text-slate-200 group-hover:text-blue-600 transition-colors">
+                                      <ArrowRight className="w-8 h-8 -rotate-45" />
+                                    </div>
+                                    <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-600/30 group-hover:scale-110 transition-transform duration-300">
+                                      <FileSpreadsheet className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="font-extrabold text-slate-900 text-2xl mb-2">Upload Excel Matrix</h3>
+                                    <p className="text-base text-slate-500 font-medium leading-relaxed">
+                                      Upload your pincode list (Excel/CSV). We will auto-map and maximize zone coverage.
+                                    </p>
+                                  </button>
+
+                                  {/* OPTION B: MANUAL (WIZARD) */}
+                                  <button
+                                    type="button"
+                                    onClick={() => { setVendorMode('new_without_pincodes'); setZoneConfigMode('wizard'); goNext(); }}
+                                    className="group relative bg-white border-2 border-indigo-600 rounded-3xl p-8 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-900/10 hover:-translate-y-2 overflow-hidden"
+                                  >
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+                                    <div className="absolute top-6 right-6 text-slate-200 group-hover:text-indigo-600 transition-colors">
+                                      <ArrowRight className="w-8 h-8 -rotate-45" />
+                                    </div>
+                                    <div className="w-16 h-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-600/30 group-hover:scale-110 transition-transform duration-300">
+                                      <MapPin className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="font-extrabold text-slate-900 text-2xl mb-2">Manual Zone Setup</h3>
+                                    <p className="text-base text-slate-500 font-medium leading-relaxed">
+                                      Use our interactive Zone Wizard to select states, cities, and regions manually.
+                                    </p>
                                   </button>
                                 </div>
-                              ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </>
-                    )}
+                              </motion.div>
+                            )}
 
-                  </motion.div>
-                </div>{/* close rounded-xl */}
-                {/* END STEP 1 */}
+                            {/* === MONGODB DRAFTS UI === */}
+                            {!isAutoFilled && cloudDrafts.length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-12"
+                              >
+                                <div className="flex items-center gap-4 mb-6">
+                                  <span className="text-sm font-bold text-slate-400 tracking-widest uppercase">Resume Draft</span>
+                                  <div className="h-px bg-slate-200 flex-1"></div>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                  {cloudDrafts.map((draft, idx) => (
+                                    <div key={draft._id || idx} className="bg-white border-2 border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group">
+                                      <div className="flex items-center gap-4">
+                                        <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                          <Clock className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                          <h4 className="font-bold text-slate-800 text-lg">{draft.draftName || 'Untitled Vendor Draft'}</h4>
+                                          <p className="text-sm text-slate-500 font-medium mt-0.5">
+                                            Last saved: {draft.updatedAt ? new Date(draft.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          type="button"
+                                          onClick={() => draft._id && handleDeleteCloudDraft(draft._id, draft.draftName || 'Untitled Draft')}
+                                          className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                          title="Delete Draft"
+                                        >
+                                          <Trash2 className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRestoreCloudDraft(draft)}
+                                          className="px-6 py-3 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center gap-2 shadow-sm"
+                                        >
+                                          <Download className="w-5 h-5" />
+                                          Restore
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </>
+                        )}
+
+                      </motion.div>
+                    </div>
+
+                    {/* RIGHT COLUMN: Illustration */}
+                    <motion.div
+                      initial={{ opacity: 0, x: -50 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.8 }}
+                      className="flex-[0.5] hidden xl:flex justify-center items-center pointer-events-none bg-blue-600 rounded-3xl px-16 py-8 shadow-inner"
+                    >
+                      <img
+                        src="/freightcompare-container.png"
+                        alt="Logistics Tech"
+                        className="w-full h-auto object-contain object-center drop-shadow-[0_30px_30px_rgba(0,0,0,0.2)] bg-white rounded-xl p-4"
+                      />
+                    </motion.div>
+
+                  </div>
+                </div>{/* close step 1 */}
 
                 {/* ════════════════════════════════════════════════ */}
                 {/* STEP 3: COMPANY DETAILS                         */}
@@ -2631,19 +2666,19 @@ export const AddVendor: React.FC = () => {
                     className="w-full mx-auto"
                   >
 
-                    {/* Header & Tabs */}
-                    <div className="flex flex-col items-center mb-4">
-                      <h3 className="text-lg font-bold text-slate-800 mb-1">
-                        {vendorMode === 'existing' ? 'Zone Price Matrix' : 'Serviceability & Pricing'}
-                      </h3>
-                      {vendorMode === 'existing' && autoFilledFromName && (
-                        <p className="text-slate-500 mb-2 text-xs">
-                          Fill in prices for <strong>{autoFilledFromName}</strong>'s zones
-                        </p>
-                      )}
+                    {/* Top Navigation for Step 2 */}
+                    <WizardNavigation
+                      onBack={goBack}
+                      backLabel="Back to Search"
+                      onNext={goNext}
+                      nextLabel="Next: Company Details"
+                      isNextDisabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
+                    />
 
-                      {/* Segmented Control — hidden when existing vendor (goes directly to matrix) */}
-                      {vendorMode !== 'existing' && (
+                    {/* Tabs */}
+                    {vendorMode !== 'existing' && (
+                      <div className="flex flex-col items-center mb-4 mt-2">
+                        {/* Segmented Control */}
                         <div className="bg-slate-100 p-1 rounded-xl flex items-center shadow-inner">
                           {[
                             { id: 'pincode', label: 'Pincode Upload', icon: FileSpreadsheet },
@@ -2677,18 +2712,10 @@ export const AddVendor: React.FC = () => {
                             );
                           })}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px] ${zoneConfigMode === 'matrix' ? 'p-2' : 'p-6'}`}>
-                      {/* Top Navigation for Step 2 */}
-                      <WizardNavigation
-                        onBack={goBack}
-                        backLabel="Back to Search"
-                        onNext={goNext}
-                        nextLabel="Next: Company Details"
-                        isNextDisabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
-                      />
 
                       <AnimatePresence mode="wait">
 
@@ -2914,28 +2941,30 @@ export const AddVendor: React.FC = () => {
             </div > {/* close flex-1 main content */}
           </div> {/* close left column */}
 
-          {/* ═══ RIGHT SIDE PANEL (inside white card) ═══ */}
-          <div className="w-[320px] shrink-0 border-l border-slate-100 bg-slate-50/50">
-            <VendorSidePanel
-              currentStep={currentStep}
-              vendorName={sidePanelProps.vendorName}
-              vendorCode={sidePanelProps.vendorCode}
-              transportMode={sidePanelProps.transportMode}
-              serviceMode={sidePanelProps.serviceMode}
-              zonesCount={matrixSize.rows}
-              pincodeCount={sidePanelProps.pincodeCount}
-              matrixSize={matrixSize}
-              hasCompanyInfo={sidePanelProps.hasCompanyInfo}
-              hasContactInfo={sidePanelProps.hasContactInfo}
-              hasGST={sidePanelProps.hasGST}
-              hasCharges={sidePanelProps.hasCharges}
-              hasPricing={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
-              isAutoFilled={isAutoFilled}
-              autoFilledFrom={autoFilledFromName}
-              vendorMode={vendorMode}
-              warnings={sideWarnings}
-            />
-          </div>
+          {/* ═══ RIGHT SIDE PANEL ═══ */}
+          {currentStep > 1 && (
+            <div className="w-[340px] shrink-0 hidden lg:block">
+              <VendorSidePanel
+                currentStep={currentStep}
+                vendorName={sidePanelProps.vendorName}
+                vendorCode={sidePanelProps.vendorCode}
+                transportMode={sidePanelProps.transportMode}
+                serviceMode={sidePanelProps.serviceMode}
+                zonesCount={matrixSize.rows}
+                pincodeCount={sidePanelProps.pincodeCount}
+                matrixSize={matrixSize}
+                hasCompanyInfo={sidePanelProps.hasCompanyInfo}
+                hasContactInfo={sidePanelProps.hasContactInfo}
+                hasGST={sidePanelProps.hasGST}
+                hasCharges={sidePanelProps.hasCharges}
+                hasPricing={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
+                isAutoFilled={isAutoFilled}
+                autoFilledFrom={autoFilledFromName}
+                vendorMode={vendorMode}
+                warnings={sideWarnings}
+              />
+            </div>
+          )}
         </div> {/* close flex */}
       </div> {/* close white card */}
 

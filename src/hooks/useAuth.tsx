@@ -1,7 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import Cookies from 'js-cookie';
 import http from '../lib/http';
-import { jwtDecode } from 'jwt-decode';
 import { AdminPermissions, DEFAULT_ADMIN_PERMISSIONS } from '../config/adminPermissions';
 
 // Matches backend JWT which nests user under `customer`
@@ -107,16 +105,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = Cookies.get('authToken');
+      // Fast UX: restore state from localStorage while we verify with the server
       const storedUser = localStorage.getItem('authUser');
-
-      if (!token) {
-        // No token = not authenticated
-        setLoading(false);
-        return;
-      }
-
-      // First, set initial state from localStorage for fast UX
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
@@ -131,27 +121,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // Then, fetch fresh data from API to ensure permissions are current
+      // Verify the session by calling /api/auth/me (uses the httpOnly cookie automatically)
       try {
         console.log('[Auth] Fetching fresh user data from /api/auth/me...');
         const response = await http.get('/api/auth/me');
 
         if (response.data.success && response.data.customer) {
           const freshCustomer = response.data.customer;
-          console.log('[Auth] Fresh user data received:', {
-            email: freshCustomer.email,
-            isAdmin: freshCustomer.isAdmin,
-            adminPermissions: freshCustomer.adminPermissions
-          });
-
-          // Wrap in { customer: ... } to maintain consistent structure with JWT decode
-          // This ensures (user as any).customer._id works throughout the app
           const freshUser = { customer: freshCustomer };
 
-          // Update localStorage with wrapped data for consistency
           localStorage.setItem('authUser', JSON.stringify(freshUser));
-
-          // Update state with wrapped data
           setUser(freshUser as unknown as AuthUser);
           setIsAuthenticated(true);
 
@@ -163,27 +142,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error: any) {
         console.error('[Auth] Failed to fetch fresh user data:', error.response?.data || error.message);
 
-        // If 401 (token expired/invalid), clear auth
         if (error.response?.status === 401) {
-          const code = error.response?.data?.code;
-
-          if (code === 'SESSION_REPLACED') {
-            console.log('[Auth] Session replaced — logged in on another device');
-            // Alert is handled by axiosSetup.ts global interceptor
-          } else {
-            console.log('[Auth] Token invalid, clearing auth state');
-          }
-
-          Cookies.remove('authToken');
+          // Cookie expired or invalid — clear local state
           localStorage.removeItem('authUser');
-          localStorage.removeItem('token');
           setIsAuthenticated(false);
           setUser(null);
           setIsSuperAdmin(false);
           setIsAdmin(false);
           setAdminPermissions(null);
         }
-        // For other errors, keep the localStorage data as fallback
+        // For network errors, keep localStorage data as optimistic fallback
       }
 
       setLoading(false);
@@ -198,39 +166,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   ): Promise<{ success: boolean; error?: string }> => {
     const lowerEmail = email.toLowerCase();
 
-    // ACTUAL API LOGIN
     try {
-      // Use Vite dev proxy in development and baseURL in production via http client
+      // Login — the server sets httpOnly cookies (authToken + refreshToken) in the response.
+      // The token is NOT returned in the JSON body anymore.
       const response = await http.post("/api/auth/login", {
         email: lowerEmail,
         password: pass,
       });
 
-      if (response.data && response.data.token) {
-        const token = response.data.token;
-        const decodedToken: JwtPayload = jwtDecode(token);
+      if (response.data?.customer) {
+        // Use the customer object returned directly from the login response
+        const freshCustomer = response.data.customer;
+        const freshUser = { customer: freshCustomer };
 
-        console.log('[Auth] Login successful, decoded token:', decodedToken);
+        console.log('[Auth] Login successful:', freshCustomer.email);
 
-        // Keep full decoded token to preserve `customer` nesting for existing pages
         setIsAuthenticated(true);
-        setUser(decodedToken as unknown as AuthUser);
+        setUser(freshUser as unknown as AuthUser);
 
-        // Extract admin info using helper (determines super admin from email in token)
-        const adminInfo = extractAdminInfo(decodedToken);
+        const adminInfo = extractAdminInfo(freshUser);
         setIsSuperAdmin(adminInfo.isSuperAdmin);
         setIsAdmin(adminInfo.isAdmin);
         setAdminPermissions(adminInfo.permissions);
 
-        Cookies.set('authToken', token, { expires: 7 });
-        localStorage.setItem('authUser', JSON.stringify(decodedToken));
-        localStorage.setItem('token', token); // Store raw token for axios interceptor
+        // Store non-sensitive user profile in localStorage for fast page-load UX
+        localStorage.setItem('authUser', JSON.stringify(freshUser));
 
         return { success: true };
       } else {
         return {
           success: false,
-          error: response.data.message || 'Login failed: No token in response.',
+          error: response.data?.message || 'Login failed.',
         };
       }
     } catch (error: any) {
@@ -246,9 +212,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    Cookies.remove('authToken');
+    // Fire-and-forget: ask the server to clear the httpOnly cookies and invalidate the refresh token.
+    // We don't await because the UI should respond immediately regardless.
+    http.post('/api/auth/logout').catch(() => { /* ignore errors on logout */ });
+
     localStorage.removeItem('authUser');
-    localStorage.removeItem('token'); // Also remove raw token
     setIsAuthenticated(false);
     setUser(null);
     setIsSuperAdmin(false);

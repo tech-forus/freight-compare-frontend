@@ -24,6 +24,7 @@ export const draftApi = {
             const response = await fetch(`${API_BASE_URL}/api/drafts/vendor`, {
                 method: 'GET',
                 headers: buildHeaders(),
+                credentials: 'include',
             });
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -45,6 +46,7 @@ export const draftApi = {
                 method: 'POST',
                 headers: buildHeaders(),
                 body: JSON.stringify(body),
+                credentials: 'include',
             });
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -62,6 +64,7 @@ export const draftApi = {
             const response = await fetch(`${API_BASE_URL}/api/drafts/vendor/${draftId}`, {
                 method: 'DELETE',
                 headers: buildHeaders(),
+                credentials: 'include',
             });
             if (!response.ok) {
                 throw new Error('Network response was not ok');

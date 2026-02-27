@@ -45,7 +45,7 @@ const UTSFHealthMonitor: React.FC = () => {
     const fetchHealth = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${API_BASE}/utsf/health`);
+            const res = await fetch(`${API_BASE}/utsf/health`, { credentials: 'include' });
             const data = await res.json();
             if (data.success) {
                 setHealthData(data);
@@ -72,7 +72,7 @@ const UTSFHealthMonitor: React.FC = () => {
     const handleRepair = async (id: string) => {
         setRepairing(id);
         try {
-            const res = await fetch(`${API_BASE}/utsf/repair/${id}`, { method: 'POST' });
+            const res = await fetch(`${API_BASE}/utsf/repair/${id}`, { method: 'POST', credentials: 'include' });
             const data = await res.json();
             if (data.success) {
                 setToast({ message: `Repaired: ${data.message}`, type: 'success' });
@@ -121,8 +121,8 @@ const UTSFHealthMonitor: React.FC = () => {
             {/* Toast */}
             {toast && (
                 <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-2xl border backdrop-blur-lg text-sm font-medium flex items-center gap-2 animate-slide-in ${toast.type === 'success'
-                        ? 'bg-emerald-900/80 border-emerald-500/40 text-emerald-200'
-                        : 'bg-red-900/80 border-red-500/40 text-red-200'
+                    ? 'bg-emerald-900/80 border-emerald-500/40 text-emerald-200'
+                    : 'bg-red-900/80 border-red-500/40 text-red-200'
                     }`}>
                     {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
                     {toast.message}

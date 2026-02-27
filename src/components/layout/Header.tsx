@@ -305,7 +305,7 @@ const Header: React.FC = () => {
                     {/* PRIMARY CTA: Calculate Freight (new) */}
                     <Link
                       to="/compare"
-                      className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-blue-700"
+                      className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-bold rounded-full shadow-md shadow-blue-500/30 hover:shadow-lg hover:-translate-y-0.5 transition-all"
                     >
                       Calculate Freight
                     </Link>
@@ -313,7 +313,7 @@ const Header: React.FC = () => {
                     {/* SECONDARY CTA: Dashboard (new) */}
                     <Link
                       to="/dashboard"
-                      className="px-4 py-2 bg-white border text-sm font-semibold rounded-lg hover:bg-slate-50"
+                      className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-full hover:bg-slate-50 hover:border-slate-300 transition-colors"
                     >
                       Dashboard
                     </Link>
@@ -323,7 +323,7 @@ const Header: React.FC = () => {
                     {(isAdmin || isSuperAdmin) && (
                       <Link
                         to={isSuperAdmin ? "/super-admin" : "/admin-updates"}
-                        className="px-3 py-2 bg-white border text-sm font-medium rounded-lg hover:bg-slate-50"
+                        className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-full hover:bg-slate-50 hover:border-slate-300 transition-colors"
                       >
                         Admin
                       </Link>

@@ -65,6 +65,13 @@ const buildHeaders = (includeContentType: boolean = true): HeadersInit => {
   return headers;
 };
 
+/**
+ * Wrapper around fetch that always includes credentials: 'include'
+ * so httpOnly auth cookies are sent automatically with every request.
+ */
+const authFetch = (url: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+  fetch(url, { ...init, credentials: 'include' });
+
 /** Safely parse JSON, tolerate non-JSON (HTML error pages, etc.) */
 const safeJson = async <T = unknown>(res: Response): Promise<T | null> => {
   try {
@@ -123,7 +130,7 @@ export const postVendor = async (
     const url = `${API_BASE}/api/transporter/addtiedupcompanies`;
     emitDebug('API_POST_VENDOR_REQUEST', { url });
 
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }, // DO NOT set Content-Type for FormData
       body: formData,
@@ -215,7 +222,7 @@ export const getTemporaryTransporters = async (
     const headers = buildHeaders();
     const newUrl = `${API_BASE}/api/transporter/temporary${ownerId ? `?customerID=${ownerId}` : ''}`;
     console.log('[API] Fetching from:', newUrl);
-    const r1 = await fetch(newUrl, { method: 'GET', headers });
+    const r1 = await authFetch(newUrl, { method: 'GET', headers });
     console.log('[API] Response status:', r1.status, r1.statusText);
 
     if (r1.ok) {
@@ -236,7 +243,7 @@ export const getTemporaryTransporters = async (
     // Fallback to LEGACY if we have an ownerId and the new one failed (404 etc.)
     if (ownerId) {
       const legacyUrl = `${API_BASE}/api/transporter/gettemporarytransporters?customerID=${ownerId}`;
-      const r2 = await fetch(legacyUrl, { method: 'GET', headers });
+      const r2 = await authFetch(legacyUrl, { method: 'GET', headers });
       if (r2.ok) {
         const json = await safeJson<any>(r2);
         const arr = unwrapArray<TemporaryTransporter & { _id: string }>(json);
@@ -269,7 +276,7 @@ export const getTemporaryTransporterById = async (
     const headers = buildHeaders();
     const url = `${API_BASE}/api/transporter/temporary/${id}`;
     console.log('[API] Fetching from:', url);
-    const response = await fetch(url, { method: 'GET', headers });
+    const response = await authFetch(url, { method: 'GET', headers });
     console.log('[API] Response status:', response.status);
 
     if (!response.ok) {
@@ -321,7 +328,7 @@ export const getTransporterById = async (
 
     const url = `${API_BASE}/api/transporter/gettransporterdetails/${id}`;
 
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'GET',
       headers: buildHeaders(false),
     });
@@ -361,12 +368,12 @@ export const deleteTemporaryTransporter = async (id: string): Promise<boolean> =
 
     // Try NEW endpoint
     const urlNew = `${API_BASE}/api/transporter/temporary/${id}`;
-    let res = await fetch(urlNew, { method: 'DELETE', headers: buildHeaders() });
+    let res = await authFetch(urlNew, { method: 'DELETE', headers: buildHeaders() });
 
     // Fallback: try legacy route if 404
     if (!res.ok && res.status === 404) {
       const urlLegacy = `${API_BASE}/api/transporter/deletetemporary/${id}`;
-      res = await fetch(urlLegacy, { method: 'DELETE', headers: buildHeaders() });
+      res = await authFetch(urlLegacy, { method: 'DELETE', headers: buildHeaders() });
     }
 
     emitDebug('API_DELETE_TEMP_TRANSPORTER_RESPONSE', { status: res.status });
@@ -402,7 +409,7 @@ export const updateTemporaryTransporter = async (
     emitDebug('API_UPDATE_TEMP_TRANSPORTER_START', { id, fields: Object.keys(updateData) });
 
     const url = `${API_BASE}/api/transporter/temporary/${id}`;
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
       body: JSON.stringify(updateData),
@@ -463,7 +470,7 @@ export const updateTemporaryTransporter = async (
 export const getAllAdmins = async (search?: string) => {
   try {
     const url = `${API_BASE}/api/admin/management/admins${search ? `?search=${search}` : ''}`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'GET',
       headers: buildHeaders(),
     });
@@ -487,7 +494,7 @@ export const getAllAdmins = async (search?: string) => {
 export const approveUserAsAdmin = async (userId: string) => {
   try {
     const url = `${API_BASE}/api/admin/management/admins/${userId}/approve`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
     });
@@ -512,7 +519,7 @@ export const approveUserAsAdmin = async (userId: string) => {
 export const revokeAdminAccess = async (userId: string) => {
   try {
     const url = `${API_BASE}/api/admin/management/admins/${userId}/revoke`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
     });
@@ -545,7 +552,7 @@ export const updateAdminPermissions = async (
 ) => {
   try {
     const url = `${API_BASE}/api/admin/management/admins/${userId}/permissions`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
       body: JSON.stringify(permissions),
@@ -598,7 +605,7 @@ export const getRegularTransporters = async (): Promise<RegularTransporter[]> =>
     const headers = buildHeaders();
     const url = `${API_BASE}/api/transporter/regular`;
     console.log('[API] Fetching from:', url);
-    const response = await fetch(url, { method: 'GET', headers });
+    const response = await authFetch(url, { method: 'GET', headers });
     console.log('[API] Response status:', response.status);
 
     if (!response.ok) {
@@ -634,7 +641,7 @@ export const updateTransporterStatus = async (
   try {
     console.log('[API] updateTransporterStatus:', id, status);
     const url = `${API_BASE}/api/transporter/regular/${id}/status`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
       body: JSON.stringify({ status }),
@@ -663,7 +670,7 @@ export const toggleTransporterVerification = async (
   try {
     console.log('[API] toggleTransporterVerification:', id, isVerified);
     const url = `${API_BASE}/api/transporter/regular/${id}/verification`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
       body: JSON.stringify({ isVerified }),
@@ -714,7 +721,7 @@ export interface BoxLibrary {
 export const getBoxLibraries = async (): Promise<BoxLibrary[]> => {
   try {
     const url = `${API_BASE}/api/transporter/box-libraries`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'GET',
       headers: buildHeaders(),
     });
@@ -743,7 +750,7 @@ export const createBoxLibrary = async (
 ): Promise<BoxLibrary | null> => {
   try {
     const url = `${API_BASE}/api/transporter/box-libraries`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'POST',
       headers: buildHeaders(),
       body: JSON.stringify({ name, category, boxes }),
@@ -772,7 +779,7 @@ export const updateBoxLibrary = async (
 ): Promise<BoxLibrary | null> => {
   try {
     const url = `${API_BASE}/api/transporter/box-libraries/${id}`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
       body: JSON.stringify(updates),
@@ -798,7 +805,7 @@ export const updateBoxLibrary = async (
 export const deleteBoxLibrary = async (id: string): Promise<boolean> => {
   try {
     const url = `${API_BASE}/api/transporter/box-libraries/${id}`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'DELETE',
       headers: buildHeaders(),
     });
@@ -881,7 +888,7 @@ export interface SaveSearchHistoryPayload {
 export const saveSearchHistory = async (data: SaveSearchHistoryPayload): Promise<void> => {
   try {
     const url = `${API_BASE}/api/search-history`;
-    await fetch(url, {
+    await authFetch(url, {
       method: 'POST',
       headers: buildHeaders(),
       body: JSON.stringify(data),
@@ -910,7 +917,7 @@ export interface SearchHistoryResponse {
 export const getSearchHistory = async (page = 1, limit = 15): Promise<SearchHistoryResponse> => {
   try {
     const url = `${API_BASE}/api/search-history?page=${page}&limit=${limit}`;
-    const response = await fetch(url, { headers: buildHeaders() });
+    const response = await authFetch(url, { headers: buildHeaders() });
     if (!response.ok) return { data: [], pagination: null };
     const json = await safeJson<{ success: boolean; data: SearchHistoryEntry[]; pagination: SearchHistoryPagination }>(response);
     return { data: json?.data || [], pagination: json?.pagination || null };
@@ -927,7 +934,7 @@ export const getSearchHistory = async (page = 1, limit = 15): Promise<SearchHist
 export const deleteSearchHistoryEntry = async (id: string): Promise<boolean> => {
   try {
     const url = `${API_BASE}/api/search-history/${id}`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'DELETE',
       headers: buildHeaders(),
     });
@@ -945,7 +952,7 @@ export const deleteSearchHistoryEntry = async (id: string): Promise<boolean> => 
 export const clearAllSearchHistory = async (): Promise<boolean> => {
   try {
     const url = `${API_BASE}/api/search-history/clear`;
-    const response = await fetch(url, {
+    const response = await authFetch(url, {
       method: 'DELETE',
       headers: buildHeaders(),
     });

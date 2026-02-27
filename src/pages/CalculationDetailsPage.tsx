@@ -378,7 +378,7 @@ const CalculationDetailsPage: React.FC = () => {
         }).format(amount);
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+        <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-4 md:p-8">
             <FormulaGuide isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} quote={quote} />
 
             <div className="max-w-4xl mx-auto">
@@ -446,7 +446,7 @@ const CalculationDetailsPage: React.FC = () => {
                 ) : (
                     <div className="space-y-6">
                         {/* 1. Weight Calculation */}
-                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <section className="">
                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
                                     <Truck size={20} className="text-slate-400" />
@@ -490,7 +490,7 @@ const CalculationDetailsPage: React.FC = () => {
                         </section>
 
                         {/* 2. Base Freight */}
-                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <section className="">
                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
                                 <h3 className="font-bold text-slate-800">Step 2: Base Freight Calculation</h3>
                             </div>
@@ -531,7 +531,7 @@ const CalculationDetailsPage: React.FC = () => {
                         </section>
 
                         {/* 3. Surcharges (Receipt Style) */}
-                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <section className="">
                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                                 <h3 className="font-bold text-slate-800">Step 3: Surcharges & Additional Fees</h3>
                                 {showFormulas && <span className="text-xs text-indigo-600 font-medium px-2 py-1 bg-indigo-50 rounded">Logic View Active</span>}

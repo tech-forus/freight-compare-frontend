@@ -109,11 +109,11 @@ const UTSFManager: React.FC = () => {
     setLoading(true);
     try {
       // 1. Load basic transporters list
-      const response = await fetch(`${API_BASE_URL}/api/utsf/transporters`);
+      const response = await fetch(`${API_BASE_URL}/api/utsf/transporters`, { credentials: 'include' });
       const data = await response.json();
 
       // 2. Load health/compliance data
-      const healthResponse = await fetch(`${API_BASE_URL}/api/utsf/health`);
+      const healthResponse = await fetch(`${API_BASE_URL}/api/utsf/health`, { credentials: 'include' });
       const healthData = await healthResponse.json();
 
       if (data.success && healthData.success) {
@@ -162,6 +162,7 @@ const UTSFManager: React.FC = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/utsf/upload`, {
         method: 'POST',
+        credentials: 'include',
         body: formData
       });
 
@@ -186,7 +187,8 @@ const UTSFManager: React.FC = () => {
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/utsf/transporters/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -210,6 +212,7 @@ const UTSFManager: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/api/utsf/repair/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ editorId })
       });
 
@@ -235,6 +238,7 @@ const UTSFManager: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/api/utsf/rollback/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ versionIndex })
       });
 
@@ -260,7 +264,7 @@ const UTSFManager: React.FC = () => {
 
     setComparingId(id);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/utsf/compare/${id}`);
+      const response = await fetch(`${API_BASE_URL}/api/utsf/compare/${id}`, { credentials: 'include' });
       const data = await response.json();
 
       if (data.success) {
@@ -282,7 +286,7 @@ const UTSFManager: React.FC = () => {
 
   const handleReload = async () => {
     setLoading(true);
-    await fetch(`${API_BASE_URL}/api/utsf/reload`, { method: 'POST' });
+    await fetch(`${API_BASE_URL}/api/utsf/reload`, { method: 'POST', credentials: 'include' });
     loadTransporters();
   };
 
@@ -295,7 +299,7 @@ const UTSFManager: React.FC = () => {
     } else {
       setEnrichLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/utsf/transporters/${t.id}`);
+        const res = await fetch(`${API_BASE_URL}/api/utsf/transporters/${t.id}`, { credentials: 'include' });
         const d = await res.json();
         if (d.success) {
           setTransporterDetails(prev => ({ ...prev, [t.id]: d.transporter }));
@@ -332,7 +336,7 @@ const UTSFManager: React.FC = () => {
       setActiveTab('details'); // Default to details on open
       if (!transporterDetails[id]) {
         setDetailsLoading(id);
-        const res = await fetch(`${API_BASE_URL}/api/utsf/transporters/${id}`);
+        const res = await fetch(`${API_BASE_URL}/api/utsf/transporters/${id}`, { credentials: 'include' });
         const d = await res.json();
         if (d.success) setTransporterDetails(prev => ({ ...prev, [id]: d.transporter }));
         setDetailsLoading(null);
@@ -445,7 +449,7 @@ const UTSFManager: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="flex-1 w-24 bg-slate-200 rounded-full h-2 overflow-hidden">
                           <div className={`h-full rounded-full transition-all duration-500 ${(t.complianceScore || 0) >= 1 ? 'bg-green-500' :
-                              (t.complianceScore || 0) > 0.9 ? 'bg-amber-500' : 'bg-red-500'
+                            (t.complianceScore || 0) > 0.9 ? 'bg-amber-500' : 'bg-red-500'
                             }`} style={{ width: `${(t.complianceScore || 0) * 100}%` }}></div>
                         </div>
                         <span className="text-sm font-medium text-slate-700">{Math.round((t.complianceScore || 0) * 100)}%</span>
@@ -774,6 +778,7 @@ const EnrichUTSFModal: React.FC<EnrichUTSFModalProps> = ({ transporter, details,
       const res = await fetch(`${API_BASE_URL}/api/utsf/transporters/${transporter.id}/enrich`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
       const data = await res.json();
