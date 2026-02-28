@@ -51,7 +51,7 @@ const DEFAULT_ADD_VENDOR_FIELDS: FieldConfig[] = [
     { fieldId: 'vendorEmailAddress', label: 'Email Address', placeholder: 'email@example.com', type: 'email', required: true, visible: true, gridSpan: 1, order: 4, constraints: {} },
     { fieldId: 'gstin', label: 'GST Number', placeholder: '15-character GST number', type: 'text', required: false, visible: true, gridSpan: 1, order: 5, constraints: { maxLength: 15, minLength: 15 }, autoCapitalize: 'uppercase' },
     { fieldId: 'subVendor', label: 'Sub Transporter', placeholder: 'Enter sub vendor (optional)', type: 'text', required: false, visible: true, gridSpan: 1, order: 6, constraints: { maxLength: 20 }, autoCapitalize: 'uppercase' },
-    { fieldId: 'vendorCode', label: 'Transporter Code', placeholder: 'Enter vendor code (optional)', type: 'text', required: false, visible: true, gridSpan: 1, order: 7, constraints: { maxLength: 20 }, autoCapitalize: 'uppercase' },
+    { fieldId: 'vendorCode', label: 'Transporter Code', placeholder: 'Enter vendor code', type: 'text', required: true, visible: true, gridSpan: 1, order: 7, constraints: { maxLength: 20 }, autoCapitalize: 'uppercase' },
     { fieldId: 'pincode', label: 'Pincode', placeholder: '6-digit pincode', type: 'text', required: true, visible: true, gridSpan: 1, order: 8, constraints: { maxLength: 6, minLength: 6 }, inputMode: 'numeric' },
     { fieldId: 'address', label: 'Address', placeholder: 'Enter complete address', type: 'textarea', required: true, visible: true, gridSpan: 2, order: 9, constraints: { maxLength: 150, minLength: 1 } },
     { fieldId: 'state', label: 'State', placeholder: 'State (auto-filled)', type: 'text', required: true, visible: true, gridSpan: 1, order: 10, constraints: {} },
