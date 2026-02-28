@@ -502,7 +502,9 @@ function App() {
               path="/about"
               element={
                 <MainLayout>
-                  <AboutUsPage />
+                  <PublicRoute>
+                    <AboutUsPage />
+                  </PublicRoute>
                 </MainLayout>
               }
             />
