@@ -60,7 +60,7 @@ export async function fetchWheelseyePrice(
   const resp = await fetch(`${base}/api/vendor/wheelseye-pricing`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ weightKg, distanceKm }),
+    body: JSON.stringify({ weight: weightKg, distance: distanceKm }),
     credentials: "include",
   });
   return jsonOrThrow<WheelseyePriceResponse>(resp);

@@ -340,7 +340,6 @@ export async function getWheelseyePriceFromDB(
     const candidates = [
       explicit,                                   // env wins if set
       "/api/vendor/wheelseye-pricing",           // correct endpoint
-      "/api/wheelseye/pricing",                  // alternative endpoint
     ].filter(Boolean) as string[];
 
     try {
