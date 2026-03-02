@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { INDIA_PATHS } from './india_paths';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Maximize2, X, Map as MapIcon } from 'lucide-react';
@@ -151,76 +150,73 @@ export default function NetworkCoverageMap({ fromPincode, toPincode }: NetworkCo
             </motion.div>
 
             {/* --- EXPANDED MODAL VIEW --- */}
-            {typeof document !== 'undefined' && createPortal(
-                <AnimatePresence>
-                    {isExpanded && (
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                            <motion.div
-                                layoutId="map-container"
-                                className="bg-white w-full max-w-4xl aspect-[16/9] rounded-2xl shadow-2xl relative overflow-hidden flex"
+            <AnimatePresence>
+                {isExpanded && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                        <motion.div
+                            layoutId="map-container"
+                            className="bg-white w-full max-w-4xl aspect-[16/9] rounded-2xl shadow-2xl relative overflow-hidden flex"
+                        >
+                            {/* Close Button */}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+                                className="absolute top-4 right-4 z-20 p-2 bg-white/80 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
                             >
-                                {/* Close Button */}
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-                                    className="absolute top-4 right-4 z-20 p-2 bg-white/80 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
+                                <X size={20} />
+                            </button>
 
-                                {/* Left Panel: Info */}
-                                <div className="w-1/3 bg-slate-50 border-r border-slate-100 p-8 flex flex-col justify-between z-10">
-                                    <div>
-                                        <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 mb-6">
-                                            <MapIcon size={24} />
+                            {/* Left Panel: Info */}
+                            <div className="w-1/3 bg-slate-50 border-r border-slate-100 p-8 flex flex-col justify-between z-10">
+                                <div>
+                                    <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 mb-6">
+                                        <MapIcon size={24} />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Network Coverage</h2>
+                                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                        FreightCompare connects over 21,000+ pincodes across India through a verified network of 500+ logistics partners.
+                                    </p>
+
+                                    {isRouteActive ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Origin</div>
+                                                <div className="text-lg font-bold text-slate-800">{originZone?.label || "Unknown Zone"}</div>
+                                                <div className="text-sm text-slate-500 font-mono">{fromPincode}</div>
+                                            </div>
+                                            <div className="flex justify-center text-slate-300">↓</div>
+                                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Destination</div>
+                                                <div className="text-lg font-bold text-slate-800">{destZone?.label || "Unknown Zone"}</div>
+                                                <div className="text-sm text-slate-500 font-mono">{toPincode}</div>
+                                            </div>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-slate-800 mb-2">Network Coverage</h2>
-                                        <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                                            FreightCompare connects over 21,000+ pincodes across India through a verified network of 500+ logistics partners.
-                                        </p>
-
-                                        {isRouteActive ? (
-                                            <div className="space-y-4">
-                                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                                    <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Origin</div>
-                                                    <div className="text-lg font-bold text-slate-800">{originZone?.label || "Unknown Zone"}</div>
-                                                    <div className="text-sm text-slate-500 font-mono">{fromPincode}</div>
-                                                </div>
-                                                <div className="flex justify-center text-slate-300">↓</div>
-                                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                                    <div className="text-xs font-semibold text-slate-400 uppercase mb-1">Destination</div>
-                                                    <div className="text-lg font-bold text-slate-800">{destZone?.label || "Unknown Zone"}</div>
-                                                    <div className="text-sm text-slate-500 font-mono">{toPincode}</div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 text-sm font-medium">
-                                                Enter origin and destination pincodes to verify route availability.
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="text-xs text-slate-400 font-medium">
-                                        Map data FreightCompare
-                                    </div>
+                                    ) : (
+                                        <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 text-sm font-medium">
+                                            Enter origin and destination pincodes to verify route availability.
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Right Panel: Large Map */}
-                                <div className="w-2/3 bg-white relative flex items-center justify-center p-12">
-                                    <div className="w-full h-full max-w-lg">
-                                        <MapVisual
-                                            originZone={originZone}
-                                            destZone={destZone}
-                                            isRouteActive={isRouteActive}
-                                            isLarge
-                                        />
-                                    </div>
+                                <div className="text-xs text-slate-400 font-medium">
+                                    Map data FreightCompare
                                 </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
+                            </div>
+
+                            {/* Right Panel: Large Map */}
+                            <div className="w-2/3 bg-white relative flex items-center justify-center p-12">
+                                <div className="w-full h-full max-w-lg">
+                                    <MapVisual
+                                        originZone={originZone}
+                                        destZone={destZone}
+                                        isRouteActive={isRouteActive}
+                                        isLarge
+                                    />
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </>
     );
 }

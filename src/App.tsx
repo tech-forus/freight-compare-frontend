@@ -51,23 +51,29 @@ import UTSFManager from './pages/UTSFManager';
 import UTSFHealthMonitor from './pages/UTSFHealthMonitor';
 import TransporterSignupPage from './pages/TransporterSignupPage';
 import AdminUpdatesPage from './pages/AdminUpdatesPage';
+import IndiaPostAdminPage from './pages/IndiaPostAdminPage';
 // Unused imports removed
+
+const RouteLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="text-center">
+      <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+      <p className="text-sm text-slate-400">Loading…</p>
+    </div>
+  </div>
+);
 
 export const PrivateRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
-  if (loading) {
-    return <div className="text-center mt-20 text-gray-600">Loading...</div>;
-  }
+  if (loading) return <RouteLoader />;
   return isAuthenticated ? <>{children}</> : <Navigate to="/signin" replace />;
 };
 
 export const PublicRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
-  if (loading) {
-    return <div className="text-center mt-20 text-gray-600">Loading...</div>;
-  }
+  if (loading) return <RouteLoader />;
   return isAuthenticated ? <Navigate to="/compare" replace /> : <>{children}</>;
 };
 
@@ -76,9 +82,7 @@ export const PublicRoute: React.FC<React.PropsWithChildren> = ({ children }) => 
 export const SuperAdminRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { isAuthenticated, loading, isSuperAdmin } = useAuth();
 
-  if (loading) {
-    return <div className="text-center mt-20 text-gray-600">Loading...</div>;
-  }
+  if (loading) return <RouteLoader />;
 
   if (!isAuthenticated) {
     return <SignInPage />;
@@ -110,15 +114,13 @@ export const SuperAdminRoute: React.FC<React.PropsWithChildren> = ({ children })
 // Pass requiredPermission to check for specific permission (e.g., "formBuilder", "dashboard")
 interface AdminRouteProps {
   children: React.ReactNode;
-  requiredPermission?: 'formBuilder' | 'dashboard' | 'vendorApproval' | 'userManagement';
+  requiredPermission?: 'formBuilder' | 'dashboard' | 'vendorApproval' | 'userManagement' | 'indiaPostPricing';
 }
 
 export const AdminRoute: React.FC<AdminRouteProps> = ({ children, requiredPermission }) => {
   const { isAuthenticated, loading, isSuperAdmin, isAdmin, adminPermissions, user } = useAuth();
 
-  if (loading) {
-    return <div className="text-center mt-20 text-gray-600">Loading...</div>;
-  }
+  if (loading) return <RouteLoader />;
 
   if (!isAuthenticated) {
     return <SignInPage />;
@@ -401,6 +403,16 @@ function App() {
               }
             />
 
+                        {/* IndiaPost Pricing */}
+            <Route
+              path="/super-admin/indiapost-pricing"
+              element={
+                <AdminRoute requiredPermission="indiaPostPricing">
+                  <IndiaPostAdminPage />
+                </AdminRoute>
+              }
+            />
+
             {/* UTSF Manager - SUPER ADMIN ONLY */}
             <Route
               path="/super-admin/utsf-manager"
@@ -502,9 +514,7 @@ function App() {
               path="/about"
               element={
                 <MainLayout>
-                  <PublicRoute>
-                    <AboutUsPage />
-                  </PublicRoute>
+                  <AboutUsPage />
                 </MainLayout>
               }
             />

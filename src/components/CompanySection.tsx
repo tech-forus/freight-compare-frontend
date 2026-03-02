@@ -3,6 +3,7 @@ import { UseVendorBasicsReturn } from '../hooks/useVendorBasics';
 import { UsePincodeLookupReturn } from '../hooks/usePincodeLookup';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useFormConfig } from '../hooks/useFormConfig';
+import { FormKeyNav } from './FormKeyNav';
 
 // =============================================================================
 // PROPS
@@ -54,7 +55,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
     getField(fieldId)?.visible ?? true;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+    <FormKeyNav className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
       <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
         <InformationCircleIcon className="w-5 h-5 text-blue-500" />
         Company & Contact Information
@@ -296,6 +297,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             value={geo.state || ''}
             onChange={(e) => setState(e.target.value)}
             readOnly={!isManual && !geoError}
+            tabIndex={(!isManual && !geoError) ? -1 : undefined}
             className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
                        focus:outline-none focus:ring-1 focus:border-blue-500 transition
                        ${!isManual && !geoError
@@ -326,6 +328,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
             value={geo.city || ''}
             onChange={(e) => setCity(e.target.value)}
             readOnly={!isManual && !geoError}
+            tabIndex={(!isManual && !geoError) ? -1 : undefined}
             className={`mt-1 block w-full border rounded-lg shadow-sm px-3 py-2 text-sm text-slate-800 placeholder-slate-400
                        focus:outline-none focus:ring-1 focus:border-blue-500 transition
                        ${!isManual && !geoError
@@ -451,6 +454,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
               {/* Full Truck Load */}
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={() => {
                   setField('serviceMode', 'FTL');
                   if (errors.serviceMode) validateField('serviceMode');
@@ -475,6 +479,7 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
               {/* Part Truck Load */}
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={() => {
                   setField('serviceMode', 'LTL');
                   if (errors.serviceMode) validateField('serviceMode');
@@ -502,6 +507,6 @@ export const CompanySection: React.FC<CompanySectionProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </FormKeyNav>
   );
 };

@@ -33,7 +33,7 @@ interface HealthData {
     health: HealthEntry[];
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://backend-k9t6.onrender.com/api';
 
 const UTSFHealthMonitor: React.FC = () => {
     const [healthData, setHealthData] = useState<HealthData | null>(null);
@@ -45,7 +45,7 @@ const UTSFHealthMonitor: React.FC = () => {
     const fetchHealth = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${API_BASE}/utsf/health`, { credentials: 'include' });
+            const res = await fetch(`${API_BASE}/utsf/health`);
             const data = await res.json();
             if (data.success) {
                 setHealthData(data);
@@ -72,7 +72,7 @@ const UTSFHealthMonitor: React.FC = () => {
     const handleRepair = async (id: string) => {
         setRepairing(id);
         try {
-            const res = await fetch(`${API_BASE}/utsf/repair/${id}`, { method: 'POST', credentials: 'include' });
+            const res = await fetch(`${API_BASE}/utsf/repair/${id}`, { method: 'POST' });
             const data = await res.json();
             if (data.success) {
                 setToast({ message: `Repaired: ${data.message}`, type: 'success' });

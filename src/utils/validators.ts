@@ -810,7 +810,6 @@ const ChargesSchema = z.object({
   greenTax: z.number().min(0, 'Green tax must be >= 0').nullable().optional(),
   miscCharges: z.number().min(0, 'Misc charges must be >= 0').nullable().optional(),
   daccCharges: z.number().min(0, 'DACC charges must be >= 0').nullable().optional(),
-  chequeHandlingCharges: z.number().min(0, 'Cheque handling charges must be >= 0').nullable().optional(),
 
   // --- UPDATED INVOICE FIELDS ---
   invoiceValueSurcharge: z

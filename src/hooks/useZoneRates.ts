@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ZoneRateMatrix, validateZoneRatesCompleteness } from '../utils/validators';
 import { normalizeZoneRates, to2dp } from '../utils/numbers';
+import { persistDraft } from '../store/draftStore';
 import { emitDebug } from '../utils/debug';
 
 // =============================================================================
@@ -41,6 +42,18 @@ export const useZoneRates = (
 ): UseZoneRatesReturn => {
   const [zoneRates, setZoneRates] = useState<ZoneRateMatrix>({});
   const [error, setError] = useState('');
+
+  // Throttled draft persistence
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      persistDraft({ zoneRates });
+      emitDebug('ZONE_RATES_DRAFT_SAVED', {
+        fromZoneCount: Object.keys(zoneRates).length,
+      });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [zoneRates]);
 
   // Notify parent of updates
   useEffect(() => {

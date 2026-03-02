@@ -14,11 +14,12 @@ export type AdminPermissionKey =
   | 'formBuilder'
   | 'dashboard'
   | 'vendorApproval'
-  | 'userManagement';
-  // Future permissions can be added here:
-  // | 'analytics'
-  // | 'billing'
-  // | 'reports'
+  | 'userManagement'
+  | 'indiaPostPricing';
+// Future permissions can be added here:
+// | 'analytics'
+// | 'billing'
+// | 'reports'
 
 // Permission definition structure
 export interface PermissionDefinition {
@@ -65,6 +66,14 @@ export const ADMIN_PERMISSIONS: Record<AdminPermissionKey, PermissionDefinition>
     icon: 'Settings',
     order: 4,
   },
+  indiaPostPricing: {
+    key: 'indiaPostPricing',
+    label: 'IndiaPost Rates',
+    description: 'Manage IndiaPost pricing brackets and distances',
+    route: '/super-admin/indiapost-pricing',
+    icon: 'Settings',
+    order: 5,
+  },
 };
 
 // Get ordered list of permissions (for sidebar)
@@ -78,6 +87,7 @@ export interface AdminPermissions {
   dashboard: boolean;
   vendorApproval: boolean;
   userManagement: boolean;
+  indiaPostPricing: boolean;
   // Add new permissions here when needed
 }
 
@@ -87,6 +97,7 @@ export const DEFAULT_ADMIN_PERMISSIONS: AdminPermissions = {
   dashboard: false,
   vendorApproval: false,
   userManagement: false,
+  indiaPostPricing: true,
 };
 
 // Check if user has a specific permission

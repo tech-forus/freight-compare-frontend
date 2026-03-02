@@ -252,7 +252,6 @@ export async function getGoogleMapsDistance(
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` })
     },
-    credentials: 'include',
     body: JSON.stringify({
       origin: fromPincode,
       destination: toPincode

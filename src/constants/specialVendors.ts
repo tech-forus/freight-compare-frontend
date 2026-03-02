@@ -16,6 +16,7 @@
 export const SPECIAL_VENDOR_IDS = {
   WHEELSEYE_FTL: "wheelseye-ftl-transporter",
   LOCAL_FTL: "local-ftl-transporter",
+  INDIA_POST: "indiapost-transporter",
 } as const;
 
 /**
@@ -24,6 +25,7 @@ export const SPECIAL_VENDOR_IDS = {
 export const SPECIAL_VENDOR_NAMES = {
   WHEELSEYE_FTL: "Wheelseye FTL",
   LOCAL_FTL: "LOCAL FTL",
+  INDIA_POST: "IndiaPost",
 } as const;
 
 /**
@@ -65,6 +67,7 @@ export const getSpecialVendorIdByName = (companyName: string | undefined | null)
   if (!companyName) return null;
   if (companyName === SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL) return SPECIAL_VENDOR_IDS.WHEELSEYE_FTL;
   if (companyName === SPECIAL_VENDOR_NAMES.LOCAL_FTL) return SPECIAL_VENDOR_IDS.LOCAL_FTL;
+  if (companyName === SPECIAL_VENDOR_NAMES.INDIA_POST) return SPECIAL_VENDOR_IDS.INDIA_POST;
   return null;
 };
 
@@ -77,6 +80,7 @@ export const getSpecialVendorNameById = (vendorId: string | undefined | null): s
   if (!vendorId) return null;
   if (vendorId === SPECIAL_VENDOR_IDS.WHEELSEYE_FTL) return SPECIAL_VENDOR_NAMES.WHEELSEYE_FTL;
   if (vendorId === SPECIAL_VENDOR_IDS.LOCAL_FTL) return SPECIAL_VENDOR_NAMES.LOCAL_FTL;
+  if (vendorId === SPECIAL_VENDOR_IDS.INDIA_POST) return SPECIAL_VENDOR_NAMES.INDIA_POST;
   return null;
 };
 

@@ -1,7 +1,7 @@
+// src/hooks/useVendorAutofill.ts
 import { useCallback } from 'react';
-import { getCustomerIDFromToken } from '../utils/authUtils';
 
-const getZpmKey = () => `zonePriceMatrixData_${getCustomerIDFromToken() || 'guest'}`;
+const ZPM_KEY = 'zonePriceMatrixData';
 
 // =============================================================================
 // INITIAL STATE CONSTANTS - Single source of truth for all form defaults
@@ -610,7 +610,7 @@ export function useVendorAutofill(params: {
         if (o.writeLegacyZpm) {
           try {
             const zpmData = { zones: zoneCodes, priceMatrix: finalPriceMatrix, timestamp: new Date().toISOString() };
-            localStorage.setItem(getZpmKey(), JSON.stringify(zpmData));
+            localStorage.setItem(ZPM_KEY, JSON.stringify(zpmData));
             if (typeof setZpm === 'function') setZpm(zpmData);
           } catch (err) {
             console.warn('autofill: failed writing ZPM_KEY', err);
@@ -620,7 +620,7 @@ export function useVendorAutofill(params: {
 
         // Write wizard state with full zone configs
         try {
-          const wizardKey = `vendorWizard.v1_${getCustomerIDFromToken() || 'guest'}`;
+          const wizardKey = 'vendorWizard.v1';
           let wizardState: any = {};
           const raw = localStorage.getItem(wizardKey);
           if (raw) {

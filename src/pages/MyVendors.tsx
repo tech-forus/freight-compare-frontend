@@ -6,9 +6,22 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { getTemporaryTransporters } from '../services/api';
-
+import Cookies from 'js-cookie';
 import EditVendorModal from '../components/EditVendorModal';
 import { API_BASE_URL } from '../config/api';
+import {
+  PhoneIcon,
+  EnvelopeIcon,
+  MapPinIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  BuildingOfficeIcon,
+  TruckIcon,
+  ArrowPathIcon,
+  PlusIcon,
+  StarIcon,
+} from '@heroicons/react/24/outline';
+import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
 interface Vendor {
   _id: string;
@@ -24,6 +37,8 @@ interface Vendor {
   pincode?: string;
   rating?: number;
   subVendor?: string;
+  contactPersonName?: string;
+  serviceMode?: string;
   selectedZones?: string[];
   prices?: {
     priceRate?: any;
@@ -85,8 +100,9 @@ const MyVendors: React.FC = () => {
       // Fetch UTSF vendors
       let utsfVendors: Vendor[] = [];
       try {
+        const token = Cookies.get('authToken') || localStorage.getItem('token') || localStorage.getItem('authToken');
         const utsfRes = await fetch(`${API_BASE}/api/utsf/my-vendors?customerId=${ownerId}`, {
-          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (utsfRes.ok) {
           const utsfJson = await utsfRes.json();
@@ -94,12 +110,28 @@ const MyVendors: React.FC = () => {
             utsfVendors = utsfJson.transporters.map((t: any) => ({
               _id: t._id,
               companyName: t.companyName,
+              vendorCode: t.vendorCode,
+              vendorPhone: t.vendorPhone,
+              vendorEmail: t.vendorEmail,
+              gstNo: t.gstNo,
+              address: t.address,
+              city: t.city,
+              state: t.state,
+              pincode: t.pincode,
+              mode: t.mode,
+              serviceMode: t.serviceMode,
+              contactPersonName: t.contactPersonName,
+              subVendor: t.subVendor,
               rating: t.rating,
               createdAt: t.createdAt,
               updatedAt: t.updatedAt,
               source: 'UTSF' as const,
               integrityMode: t.integrityMode,
               softExclusions: t.softExclusions,
+              prices: t.pricing ? {
+                priceRate: t.pricing.priceRate || {},
+                priceChart: t.pricing.priceChart || null,
+              } : undefined,
             }));
           }
         }
@@ -152,8 +184,56 @@ const MyVendors: React.FC = () => {
   // -------------------------
   // Edit handlers
   // -------------------------
-  const handleEditVendor = (vendor: Vendor) => {
+  const handleEditVendor = async (vendor: Vendor) => {
     console.log('📝 Opening edit modal for vendor:', vendor);
+
+    if (vendor.source === 'UTSF') {
+      // Fetch full UTSF data so EditVendorModal has meta + pricing fields
+      try {
+        const token =
+          Cookies.get('authToken') ||
+          localStorage.getItem('token') ||
+          localStorage.getItem('authToken');
+        const res = await fetch(`${API_BASE}/api/utsf/transporters/${vendor._id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const t = json.transporter;
+          const meta = t?.data?.meta || {};
+          const pricing = t?.data?.pricing || {};
+          // Build a vendor-shaped object that EditVendorModal can read
+          const enriched: Vendor = {
+            ...vendor,
+            companyName: meta.companyName || vendor.companyName,
+            vendorCode: meta.vendorCode,
+            vendorPhone: meta.vendorPhone,
+            vendorEmail: meta.vendorEmail,
+            gstNo: meta.gstNo,
+            address: meta.address,
+            state: meta.state,
+            city: meta.city,
+            pincode: meta.pincode ? String(meta.pincode) : undefined,
+            rating: meta.rating ?? vendor.rating,
+            subVendor: meta.subVendor,
+            mode: meta.transportMode || meta.mode,
+            serviceMode: meta.serviceMode,
+            contactPersonName: meta.contactPersonName,
+            prices: {
+              priceRate: pricing.priceRate || {},
+              priceChart: pricing.priceChart || null,
+            },
+            source: 'UTSF',
+          };
+          setSelectedVendor(enriched);
+          setShowEditModal(true);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch full UTSF data for editing:', err);
+      }
+    }
+
     setSelectedVendor(vendor);
     setShowEditModal(true);
   };
@@ -178,6 +258,8 @@ const MyVendors: React.FC = () => {
       user?.id ||
       user?.customer?._id ||
       user?.customer?.id ||
+      Cookies.get('customerId') ||
+      Cookies.get('customerID') ||
       localStorage.getItem('customerId') ||
       localStorage.getItem('customerID');
 
@@ -192,14 +274,24 @@ const MyVendors: React.FC = () => {
     const isUtsf = vendor?.source === 'UTSF';
 
     try {
+      const token =
+        Cookies.get('authToken') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('authToken');
+
+      if (!token) {
+        toast.error('Authentication required to delete vendor');
+        return;
+      }
+
       let response;
       if (isUtsf) {
         // UTSF vendor: use the user-scoped endpoint
         response = await fetch(`${API_BASE}/api/utsf/my-vendors/${vendorId}`, {
           method: 'DELETE',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ customerId }),
         });
@@ -207,9 +299,9 @@ const MyVendors: React.FC = () => {
         // MongoDB vendor: use the legacy endpoint
         response = await fetch(`${API_BASE}/api/transporter/remove-tied-up`, {
           method: 'DELETE',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             customerID: customerId,
@@ -259,147 +351,223 @@ const MyVendors: React.FC = () => {
   // -------------------------
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading vendors...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-slate-500 text-sm font-medium">Loading vendors...</p>
         </div>
       </div>
     );
   }
 
+  // Helper: render star rating
+  const renderStars = (rating: number | undefined) => {
+    if (!rating || rating <= 0) return null;
+    const full = Math.floor(rating);
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        i <= full
+          ? <StarSolidIcon key={i} className="w-3.5 h-3.5 text-amber-400" />
+          : <StarIcon key={i} className="w-3.5 h-3.5 text-slate-300" />
+      );
+    }
+    return (
+      <div className="flex items-center gap-0.5">
+        {stars}
+        <span className="ml-1 text-xs text-slate-500 font-medium">{rating.toFixed(1)}</span>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Vendors</h1>
-          <p className="mt-2 text-gray-600">
-            Manage your added vendors and their details
-          </p>
+
+        {/* Page Header */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <BuildingOfficeIcon className="w-7 h-7 text-indigo-600 shrink-0" />
+              My Vendors
+              {vendors.length > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-700">
+                  {vendors.length}
+                </span>
+              )}
+            </h1>
+            <p className="mt-1 text-slate-500 text-sm">
+              Manage your logistics partners and their pricing details
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => fetchVendorsInternal()}
+              title="Refresh vendors list"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium bg-white hover:bg-slate-50 hover:border-slate-400 transition-colors shadow-sm"
+            >
+              <ArrowPathIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <a
+              href="/addvendor"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Vendor
+            </a>
+          </div>
         </div>
 
         {vendors.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mx-auto h-12 w-12 text-gray-400">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                />
-              </svg>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm py-16 px-8 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+              <BuildingOfficeIcon className="w-8 h-8 text-slate-400" />
             </div>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No vendors found
+            <h3 className="text-base font-semibold text-slate-800 mb-1">
+              No vendors yet
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Get started by adding your first vendor.
+            <p className="text-sm text-slate-500 mb-6">
+              Start by adding your first logistics vendor to compare rates.
             </p>
-            <div className="mt-6">
-              <a
-                href="/addvendor"
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Add Vendor
-              </a>
-            </div>
+            <a
+              href="/addvendor"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Your First Vendor
+            </a>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {vendors.map((vendor) => (
-              <div key={vendor._id} className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {vendor.companyName}
-                      </h3>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${vendor.source === 'UTSF'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-blue-100 text-blue-800'
-                        }`}>
-                        {vendor.source || 'MongoDB'}
-                      </span>
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {vendors.map((vendor) => {
+              const isUtsf = vendor.source === 'UTSF';
+              const accentColor = isUtsf
+                ? 'from-emerald-500 to-teal-600'
+                : 'from-blue-500 to-indigo-600';
+              const badgeBg = isUtsf
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-blue-100 text-blue-800';
+              const locationStr = [vendor.city, vendor.state].filter(Boolean).join(', ');
+              const locationFull = locationStr
+                ? (vendor.pincode ? `${locationStr} – ${vendor.pincode}` : locationStr)
+                : null;
+
+              return (
+                <div
+                  key={vendor._id}
+                  className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col overflow-hidden"
+                >
+                  {/* Color accent strip */}
+                  <div className={`h-1 w-full bg-gradient-to-r ${accentColor}`} />
+
+                  <div className="p-5 flex flex-col flex-1">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-bold text-slate-900 leading-tight truncate" title={vendor.companyName}>
+                          {vendor.companyName}
+                        </h3>
+                        {vendor.vendorCode && (
+                          <p className="text-xs text-slate-400 font-mono mt-0.5">#{vendor.vendorCode}</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${badgeBg}`}>
+                          {vendor.source || 'MongoDB'}
+                        </span>
+                        {vendor.rating && vendor.rating > 0 ? (
+                          renderStars(vendor.rating)
+                        ) : null}
+                      </div>
                     </div>
-                    {vendor.vendorCode && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        Code: {vendor.vendorCode}
-                      </p>
+
+                    {/* Transport mode badges */}
+                    {(vendor.mode || vendor.serviceMode) && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {vendor.mode && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-medium">
+                            <TruckIcon className="w-3 h-3" />
+                            {vendor.mode}
+                          </span>
+                        )}
+                        {vendor.serviceMode && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-xs font-medium">
+                            {vendor.serviceMode}
+                          </span>
+                        )}
+                      </div>
                     )}
-                    <div className="mt-3 space-y-1">
+
+                    {/* Contact info */}
+                    <div className="space-y-1.5 text-sm flex-1">
                       {vendor.vendorPhone && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Phone:</span>{' '}
-                          {vendor.vendorPhone}
-                        </p>
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <PhoneIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{vendor.vendorPhone}</span>
+                        </div>
                       )}
                       {vendor.vendorEmail && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Email:</span>{' '}
-                          {vendor.vendorEmail}
-                        </p>
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <EnvelopeIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate text-xs">{vendor.vendorEmail}</span>
+                        </div>
+                      )}
+                      {locationFull && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <MapPinIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate text-xs">{locationFull}</span>
+                        </div>
                       )}
                       {vendor.gstNo && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">GST:</span> {vendor.gstNo}
-                        </p>
-                      )}
-                      {vendor.mode && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Mode:</span> {vendor.mode}
-                        </p>
-                      )}
-                      {vendor.city && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Location:</span>{' '}
-                          {vendor.city}{vendor.state ? `, ${vendor.state}` : ''}{vendor.pincode ? ` - ${vendor.pincode}` : ''}
-                        </p>
-                      )}
-                      {vendor.rating && vendor.rating > 0 && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Rating:</span>{' '}
-                          {vendor.rating}/5
-                        </p>
-                      )}
-                      {vendor.source === 'UTSF' && vendor.integrityMode && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Integrity:</span>{' '}
-                          <span className={vendor.integrityMode === 'STRICT' ? 'text-emerald-600 font-semibold' : 'text-orange-500'}>
-                            {vendor.integrityMode}
-                          </span>
-                          {vendor.softExclusions != null && vendor.softExclusions > 0 && (
-                            <span className="text-gray-400 ml-1">({vendor.softExclusions} soft-blocked)</span>
-                          )}
-                        </p>
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <span className="text-xs font-mono text-slate-400 shrink-0">GST</span>
+                          <span className="text-xs font-mono truncate">{vendor.gstNo}</span>
+                        </div>
                       )}
                     </div>
-                    <div className="mt-3">
-                      <p className="text-xs text-gray-500">
-                        Added on {formatDate(vendor.createdAt)}
+
+                    {/* UTSF integrity info */}
+                    {isUtsf && vendor.integrityMode && vendor.integrityMode !== 'NONE' && (
+                      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+                        <span className="text-xs text-slate-500">Integrity:</span>
+                        <span className={`text-xs font-semibold ${vendor.integrityMode === 'STRICT' ? 'text-emerald-600' : 'text-orange-500'}`}>
+                          {vendor.integrityMode}
+                        </span>
+                        {vendor.softExclusions != null && vendor.softExclusions > 0 && (
+                          <span className="text-xs text-slate-400">({vendor.softExclusions} soft-blocked)</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Date footer */}
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <p className="text-xs text-slate-400">
+                        Added {formatDate(vendor.createdAt)}
                       </p>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => handleEditVendor(vendor)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 active:scale-95 transition-all"
+                      >
+                        <PencilSquareIcon className="w-4 h-4" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVendor(vendor._id, vendor.companyName)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 bg-white border border-red-300 text-red-600 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-red-50 hover:border-red-400 active:scale-95 transition-all"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="mt-4 flex space-x-2">
-                  <button
-                    onClick={() => handleEditVendor(vendor)}
-                    className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleDeleteVendor(vendor._id, vendor.companyName)
-                    }
-                    className="flex-1 bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

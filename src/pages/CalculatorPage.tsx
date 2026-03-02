@@ -33,6 +33,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -61,6 +62,7 @@ import RatingFormModal from "../components/RatingFormModal";
 
 // 🔽 FTL + Wheelseye quotes from service (no inline vendor code)
 import { buildFtlAndWheelseyeQuotes } from "../services/wheelseye";
+import { buildIndiaPostQuote } from "../services/indiapost";
 
 // 🔽 Special vendor constants for Wheelseye FTL and LOCAL FTL
 import {
@@ -282,6 +284,7 @@ type PresetSaveState = "idle" | "saving" | "success" | "exists" | "error";
 // -----------------------------------------------------------------------------
 const CalculatorPage: React.FC = (): JSX.Element => {
     const { user, isSuperAdmin, loading } = useAuth();
+    const token = Cookies.get("authToken");
     const navigate = useNavigate();
 
     // Helper to safely get customer data regardless of user object structure
@@ -767,7 +770,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         if (loading) return;
         fetchSavedBoxes();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [loading, user]);
+    }, [loading, user, token]);
 
     useEffect(() => {
         if (
@@ -829,6 +832,11 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
     // Presets
     const fetchSavedBoxes = async () => {
+        if (!token) {
+            console.warn("[Presets] Skipping fetch: missing auth token");
+            setSavedBoxes([]);
+            return;
+        }
 
         const customerId = getCustomer()?._id;
         if (!customerId) {
@@ -840,7 +848,8 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         }
         try {
             const response = await axios.get(
-                `${API_BASE_URL}/api/transporter/getpackinglist`
+                `${API_BASE_URL}/api/transporter/getpackinglist`,
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             const list = (response as any)?.data?.data;
@@ -866,7 +875,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         if (window.confirm("Delete this preset permanently?")) {
             try {
                 await axios.delete(
-                    `${API_BASE_URL}/api/transporter/deletepackinglist/${presetId}`
+                    `${API_BASE_URL}/api/transporter/deletepackinglist/${presetId}`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
                 );
                 await fetchSavedBoxes();
             } catch (err: any) {
@@ -978,7 +990,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             return;
         }
 
-        if (!user) {
+        if (!user || !token) {
             setError("You are not authenticated. Please log in again.");
             return;
         }
@@ -1011,7 +1023,10 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         try {
             await axios.post(
                 `${API_BASE_URL}/api/transporter/savepackinglist`,
-                payload
+                payload,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
             );
             setPresetStatus(boxId, "success");
             await fetchSavedBoxes(); // refresh dropdown data
@@ -1216,6 +1231,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                 },
                 {
                     headers: {
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
                         ...(activeCaptchaToken ? { 'x-captcha-token': activeCaptchaToken } : {})
                     }
                 }
@@ -1316,8 +1332,19 @@ const CalculatorPage: React.FC = (): JSX.Element => {
 
                 shipment: shipmentPayload,
                 totalWeight,
+                token,
                 isWheelseyeServiceArea: (pin: string) => /^\d{6}$/.test(pin),
                 distanceKmOverride, // Use distance from backend - eliminates redundant API call
+            });
+
+            // ---------- Inject IndiaPost via SERVICE ----------
+            const indiaPostQuote = await buildIndiaPostQuote({
+                fromPincode,
+                toPincode: effectiveToPincode,
+                shipment: shipmentPayload,
+                totalWeight,
+                token,
+                distanceKmOverride,
             });
 
             // Log total frontend processing time
@@ -1326,6 +1353,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
             // Mark special vendors as verified (client-side injected, always trusted)
             if (ftlQuote) others.unshift({ ...ftlQuote, isSpecialVendor: true });
             if (wheelseyeQuote) others.unshift({ ...wheelseyeQuote, isSpecialVendor: true });
+            if (indiaPostQuote) others.unshift({ ...indiaPostQuote, isSpecialVendor: true });
 
             // Note: Test/dummy transporter filtering is now handled in the backend
             // See backend/controllers/transportController.js - filters applied to all queries
@@ -2641,6 +2669,7 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                                                             _t: Date.now() // Cache-bust to prevent 304 stale responses
                                                         },
                                                         headers: {
+                                                            Authorization: `Bearer ${token}`,
                                                             'Cache-Control': 'no-cache'
                                                         }
                                                     });
@@ -3744,8 +3773,8 @@ const VendorResultCard = ({
 
         const companyName = quote.companyName || quote.transporterName;
 
-        // SPECIAL VENDORS: Wheelseye FTL and LOCAL FTL
-        if (companyName === "Wheelseye FTL" || companyName === "LOCAL FTL") {
+        // SPECIAL VENDORS: Wheelseye FTL, LOCAL FTL, and IndiaPost
+        if (companyName === "Wheelseye FTL" || companyName === "LOCAL FTL" || companyName === "IndiaPost") {
             console.log("Special vendor detected:", companyName);
             navigate(`/vendor/special`, {
                 state: {
@@ -3755,17 +3784,17 @@ const VendorResultCard = ({
                         companyName: companyName,
                         vendorPhoneNumber: companyName === "Wheelseye FTL"
                             ? "+91 9876543210"
-                            : "+91 8800123456",
+                            : companyName === "IndiaPost" ? "1800 266 6868" : "+91 8800123456",
                         vendorEmail: companyName === "Wheelseye FTL"
                             ? "support@wheelseye.com"
-                            : "ftl@freightcompare.ai",
+                            : companyName === "IndiaPost" ? "info@indiapost.gov.in" : "ftl@freightcompare.ai",
                         contactPerson: companyName === "Wheelseye FTL"
                             ? "Wheelseye Support"
-                            : "FreightCompare FTL Team",
+                            : companyName === "IndiaPost" ? "IndiaPost Customer Care" : "FreightCompare FTL Team",
                         description: companyName === "Wheelseye FTL"
                             ? "Our trusted FTL partner for pan-India full truck load services"
-                            : "Local FTL services with competitive pricing",
-                        rating: 4.6,
+                            : companyName === "IndiaPost" ? "Extensive postal network reaching every corner of India with reliable service." : "Local FTL services with competitive pricing",
+                        rating: companyName === "IndiaPost" ? 4.2 : 4.6,
                         approvalStatus: "approved",
                     }
                 }

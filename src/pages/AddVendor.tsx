@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import Cookies from 'js-cookie';
 import { persistDraft } from '../store/draftStore';
-import { draftApi, VendorDraftPayload } from '../api/drafts';
 // Hooks (keep your originals)
 import { useVendorAutofill } from '../hooks/useVendorAutofill';
 
@@ -63,11 +63,7 @@ import {
   Upload,
   Sparkles,
   Cloud as CloudIcon,
-  FileDown,
-  Download,
-  Trash2,
-  Clock,
-  ArrowRight
+  FileDown
 } from 'lucide-react';
 
 // Optional email validator
@@ -153,9 +149,7 @@ function readSimpleCharge(root: any, ...keys: string[]): number {
 import { API_BASE_URL } from '../config/api';
 const API_BASE = API_BASE_URL;
 
-import { getAuthToken, base64UrlToJson, getCustomerIDFromToken } from '../utils/authUtils';
-
-const getZpmKey = () => `zonePriceMatrixData_${getCustomerIDFromToken() || 'guest'}`;
+const ZPM_KEY = 'zonePriceMatrixData';
 
 type PriceMatrix = Record<string, Record<string, number>>;
 type ZonePriceMatrixLS = {
@@ -387,7 +381,42 @@ interface VendorSuggestion {
   serviceabilityChecksum?: string;
   serviceabilitySource?: string;
 }
-// Utils imported from authUtils
+function getAuthToken(): string {
+  return (
+    Cookies.get('authToken') ||
+    localStorage.getItem('authToken') ||
+    localStorage.getItem('token') ||
+    ''
+  );
+}
+
+function base64UrlToJson<T = any>(b64url: string): T | null {
+  try {
+    const b64 = b64url
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(b64url.length / 4) * 4, '=');
+    const json = atob(b64);
+    return JSON.parse(json) as T;
+  } catch {
+    return null;
+  }
+}
+
+function getCustomerIDFromToken(): string {
+  const token = getAuthToken();
+  if (!token || token.split('.').length < 2) return '';
+  const payload = base64UrlToJson<Record<string, any>>(token.split('.')[1]) || {};
+  const id =
+    payload?.customer?._id ||
+    payload?.user?._id ||
+    payload?._id ||
+    payload?.id ||
+    payload?.customerId ||
+    payload?.customerID ||
+    '';
+  return id || '';
+}
 
 /** Capitalize every word (auto-capitalize) */
 function capitalizeWords(s: string): string {
@@ -430,7 +459,7 @@ function safeGetNumber(obj: any, defaultVal: number, ...keys: string[]): number 
 /** LocalStorage loader (legacy - for backwards compatibility) */
 function safeLoadZPM(): ZonePriceMatrixLS | null {
   try {
-    const raw = localStorage.getItem(getZpmKey());
+    const raw = localStorage.getItem(ZPM_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed?.priceMatrix && typeof parsed.priceMatrix === 'object') return parsed;
@@ -491,92 +520,8 @@ export const AddVendor: React.FC = () => {
   // Zone Price Matrix (from wizard/localStorage)
   const [zpm, setZpm] = useState<ZonePriceMatrixLS | null>(null);
 
-  // Explicit Draft saving state
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
-
   // Zone configuration mode: 'wizard', 'upload', 'auto', or 'pincode' (new pincode-authoritative mode)
   const [zoneConfigMode, setZoneConfigMode] = useState<'wizard' | 'upload' | 'auto' | 'pincode' | 'matrix'>('pincode');
-
-  // === MONGODB DRAFTS STATE ===
-  const [cloudDrafts, setCloudDrafts] = useState<VendorDraftPayload[]>([]);
-  const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
-
-  // Fetch Drafts on Mount
-  useEffect(() => {
-    const fetchDrafts = async () => {
-      setIsLoadingDrafts(true);
-      try {
-        const res = await draftApi.getVendorDrafts();
-        if (res && res.success && Array.isArray(res.data)) {
-          setCloudDrafts(res.data);
-        }
-      } catch (err) {
-        console.error('Failed to load cloud drafts:', err);
-      } finally {
-        setIsLoadingDrafts(false);
-      }
-    };
-    fetchDrafts();
-  }, []);
-
-  const handleRestoreCloudDraft = (draft: VendorDraftPayload) => {
-    if (!draft.payload) return;
-    try {
-      const p = draft.payload;
-      if (p.vendorBasics && typeof vendorBasics.loadFromDraft === 'function') vendorBasics.loadFromDraft(p.vendorBasics);
-      if (p.pincodeLookup && typeof pincodeLookup.loadFromDraft === 'function') pincodeLookup.loadFromDraft(p.pincodeLookup);
-      if (p.volumetric && typeof volumetric.loadFromDraft === 'function') volumetric.loadFromDraft(p.volumetric);
-      if (p.charges && typeof charges.loadFromDraft === 'function') charges.loadFromDraft(p.charges);
-
-      toast.success(`Draft "${draft.draftName}" restored successfully`);
-    } catch (err) {
-      toast.error('Failed to restore draft properly');
-      emitDebugError('DRAFT_RESTORE_ERROR', { err });
-    }
-  };
-
-  const handleDeleteCloudDraft = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete the draft "${name}"?`)) return;
-    try {
-      await draftApi.deleteVendorDraft(id);
-      setCloudDrafts(prev => prev.filter(d => d._id !== id));
-      toast.success('Draft deleted');
-    } catch (err) {
-      toast.error('Failed to delete draft');
-    }
-  };
-
-  const handleSaveCloudDraft = async () => {
-    const p = {
-      vendorBasics: vendorBasics.basics,
-      pincodeLookup: pincodeLookup.geo,
-      volumetric: volumetric.volumetric,
-      charges: charges.charges,
-    };
-
-    // Require at least a company name or temporary ID to save
-    const currentName = vendorBasics.basics.companyName || legalCompanyNameInput;
-    if (!currentName || currentName.length < 2) {
-      toast.error('Please enter at least a Company Name to save a draft.');
-      return;
-    }
-
-    setIsSavingDraft(true);
-    try {
-      const res = await draftApi.saveVendorDraft(currentName, p, cloudDrafts[0]?._id);
-      if (res.success) {
-        toast.success('Draft securely saved to cloud!', { duration: 2500, icon: '☁️' });
-        // Retrieve updated drafts list
-        const updated = await draftApi.getVendorDrafts();
-        if (updated.success && Array.isArray(updated.data)) setCloudDrafts(updated.data);
-      }
-    } catch (err) {
-      toast.error('Failed to securely save draft');
-      console.error(err);
-    } finally {
-      setIsSavingDraft(false);
-    }
-  };
 
   // NEW: Pincode-authoritative serviceability state
   const [serviceabilityData, setServiceabilityData] = useState<{
@@ -696,7 +641,6 @@ export const AddVendor: React.FC = () => {
           console.time('[Search] API call');
           const response = await fetch(url, {
             method: 'GET',
-            credentials: 'include',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -753,7 +697,6 @@ export const AddVendor: React.FC = () => {
           console.time('[AutoFill] detail-fetch');
           const detailRes = await fetch(detailUrl, {
             method: 'GET',
-            credentials: 'include',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -815,14 +758,7 @@ export const AddVendor: React.FC = () => {
     setIsAutoFilled(false);
     setAutoFilledFromName(null);
     setAutoFilledFromId(null);
-    setLegalCompanyNameInput('');
-    setVendorMode(null);
-    if (vendorBasics?.setField) {
-      vendorBasics.setField('companyName', '');
-      vendorBasics.setField('vendorCode', '');
-    }
-    goToStep(1);
-  }, [vendorBasics, goToStep]);
+  }, []);
   // Prevent double-run in React StrictMode / dev double-mounts
   const mountRan = useRef(false);
 
@@ -900,7 +836,7 @@ export const AddVendor: React.FC = () => {
         priceMatrix: data.priceMatrix,
         timestamp: new Date().toISOString()
       };
-      localStorage.setItem(getZpmKey(), JSON.stringify(zpmData));
+      localStorage.setItem(ZPM_KEY, JSON.stringify(zpmData));
       setZpm(zpmData);
 
       // Update wizard data state
@@ -979,7 +915,7 @@ export const AddVendor: React.FC = () => {
         priceMatrix: data.priceMatrix,
         timestamp: new Date().toISOString()
       };
-      localStorage.setItem(getZpmKey(), JSON.stringify(zpmData));
+      localStorage.setItem(ZPM_KEY, JSON.stringify(zpmData));
       setZpm(zpmData);
 
       // Update wizard data state
@@ -1089,7 +1025,7 @@ export const AddVendor: React.FC = () => {
       priceMatrix,
       timestamp: new Date().toISOString()
     };
-    localStorage.setItem(getZpmKey(), JSON.stringify(zpmData));
+    localStorage.setItem(ZPM_KEY, JSON.stringify(zpmData));
     setZpm(zpmData);
 
     // Update wizard data state
@@ -1206,7 +1142,10 @@ export const AddVendor: React.FC = () => {
               handlingCharges: pr.handlingCharges,
               appointmentCharges: pr.appointmentCharges,
             } as any);
-
+            // Restore custom surcharges if present
+            if (Array.isArray(pr.surcharges) && pr.surcharges.length > 0) {
+              charges.loadSurchargesFromDraft(pr.surcharges);
+            }
           }
 
           // Price matrix – restore into ZPM state + localStorage
@@ -1217,7 +1156,7 @@ export const AddVendor: React.FC = () => {
               priceMatrix: priceChart,
               timestamp: new Date().toISOString(),
             };
-            localStorage.setItem(getZpmKey(), JSON.stringify(zpmData));
+            localStorage.setItem(ZPM_KEY, JSON.stringify(zpmData));
             setZpm(zpmData);
           }
 
@@ -1229,17 +1168,40 @@ export const AddVendor: React.FC = () => {
         }
       });
     } else {
-      // ── Local draft auto-restore disabled to fix "Phantom 50%" bug ──
-      // Users must now explicitly restore drafts from the "Saved Drafts" UI
-
-      // ✅ Clean slate: wipe wizard and matrix cache on fresh mount
-      clearWizard();
-      localStorage.removeItem(getZpmKey());
+      // ── Local draft: restore from localStorage ──
+      const draft = readDraft();
+      if (draft) {
+        emitDebug('DRAFT_LOADED_ON_MOUNT', draft);
+        try {
+          if (draft.basics && typeof vendorBasics.loadFromDraft === 'function') {
+            vendorBasics.loadFromDraft(draft.basics);
+            if (draft.basics.transportMode) setTransportMode(draft.basics.transportMode);
+          }
+          if (draft.geo && typeof pincodeLookup.loadFromDraft === 'function') {
+            pincodeLookup.loadFromDraft(draft.geo);
+          }
+          if (draft.volumetric && typeof volumetric.loadFromDraft === 'function') {
+            volumetric.loadFromDraft(draft.volumetric);
+          }
+          if (draft.charges && typeof charges.loadFromDraft === 'function') {
+            charges.loadFromDraft(draft.charges);
+          }
+          if (
+            (draft as any).surcharges &&
+            Array.isArray((draft as any).surcharges) &&
+            typeof charges.loadSurchargesFromDraft === 'function'
+          ) {
+            charges.loadSurchargesFromDraft((draft as any).surcharges);
+          }
+          toast.success('Draft restored', { duration: 1600, id: 'draft-restored' });
+        } catch (err) {
+          emitDebugError('DRAFT_LOAD_ERROR', { err });
+          toast.error('Failed to restore draft completely');
+        }
+      }
     }
 
-    if (draftId) {
-      loadZoneData(); // also load zone matrix from localStorage (legacy)
-    }
+    loadZoneData(); // also load zone matrix from localStorage (legacy)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   //useffect for auto-fill of invoice value charges//
@@ -1793,6 +1755,19 @@ export const AddVendor: React.FC = () => {
         0,
         100000,
       ),
+
+      // Custom carrier-specific surcharges (extensible, backward-compatible)
+      surcharges: (charges.surcharges || [])
+        .filter((s) => s.enabled !== false && s.label && s.label.trim())
+        .map((s) => ({
+          id:      s.id,
+          label:   s.label.trim(),
+          formula: s.formula,
+          value:   Number(s.value)  || 0,
+          value2:  Number(s.value2) || 0,
+          order:   s.order ?? 99,
+          enabled: true,
+        })),
     };
 
 
@@ -1890,6 +1865,7 @@ export const AddVendor: React.FC = () => {
       },
 
       // ✅ Draft Mode Flag
+      isDraft: saveMode === 'draft',
     };
 
     console.log('🔍 FINAL PAYLOAD:', payloadForApi);
@@ -1913,13 +1889,6 @@ export const AddVendor: React.FC = () => {
     emitDebug('SUBMIT_STARTED');
     console.debug('[SUBMIT] clicked - start');
     console.log('[STEP 0] handleSubmit fired, outputMode =', outputMode);
-
-    // ✅ DRAFT MODE: Use dedicated draft API (separate from vendor creation)
-    if (saveMode === 'draft') {
-      console.log('[SUBMIT] Draft mode — delegating to handleSaveCloudDraft');
-      await handleSaveCloudDraft();
-      return;
-    }
 
     // Calculate priceChart first before validation
     const priceChart = (wizardData?.priceMatrix || zpm?.priceMatrix || {}) as Record<string, Record<string, number>>;
@@ -1947,14 +1916,19 @@ export const AddVendor: React.FC = () => {
     console.log('[STEP 2] Running validateAll...');
 
     // ✅ DRAFT LOGIC: Skip validation if saving as draft
+    const isDraft = saveMode === 'draft';
     let ok = true;
 
-    ok = validateAll();
-    console.log('[STEP 2] validateAll result =', ok);
-    if (!ok) {
-      emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
-      toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
-      return;
+    if (!isDraft) {
+      ok = validateAll();
+      console.log('[STEP 2] validateAll result =', ok);
+      if (!ok) {
+        emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
+        toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
+        return;
+      }
+    } else {
+      console.log('[STEP 2] Skipping validation for DRAFT mode');
     }
 
     // Show full-screen overlay loading immediately
@@ -1977,7 +1951,7 @@ export const AddVendor: React.FC = () => {
       emitDebug('SUBMIT_PAYLOAD_FOR_API', payloadForApi);
 
       // ========== CLOUD SAVE ==========
-      if (['cloud', 'cloud_utsf', 'active'].includes(saveMode)) {
+      if (['cloud', 'cloud_utsf', 'active', 'draft'].includes(saveMode)) {
         const fd = new FormData();
         fd.append('customerID', String(payloadForApi.customerID || ''));
         fd.append('companyName', payloadForApi.companyName);
@@ -2022,7 +1996,6 @@ export const AddVendor: React.FC = () => {
 
         const res = await fetch(url, {
           method: 'POST',
-          credentials: 'include',
           headers: { Authorization: `Bearer ${token}` },
           body: fd,
         });
@@ -2041,28 +2014,46 @@ export const AddVendor: React.FC = () => {
       if (saveMode === 'utsf' || saveMode === 'cloud_utsf') {
         console.log(`[SUBMIT] Saving to UTSF (Mode: ${saveMode})`);
 
+        const volUnit = volumetric.state.unit || 'cm';
         const utsfPayload = {
-          version: '1.0',
+          version: '2.0',
           meta: {
-            id: payloadForApi.vendorCode,
-            name: payloadForApi.companyName,
-            contact: {
-              person: payloadForApi.contactPersonName,
-              phone: payloadForApi.vendorPhone,
-              email: payloadForApi.vendorEmail,
-            },
-            gst: payloadForApi.gstNo,
-            address: {
-              street: payloadForApi.address,
-              city: payloadForApi.city,
-              state: payloadForApi.state,
-              pincode: payloadForApi.pincode,
-            },
+            // ID generated by backend if missing; vendorCode as hint only
+            id: undefined as string | undefined,
+            companyName: payloadForApi.companyName,
+            vendorCode: payloadForApi.vendorCode,
+            customerID: payloadForApi.customerID,
+            contactPersonName: payloadForApi.contactPersonName,
+            vendorPhone: String(payloadForApi.vendorPhone || ''),
+            vendorEmail: payloadForApi.vendorEmail,
+            gstNo: payloadForApi.gstNo,
+            address: payloadForApi.address,
+            city: payloadForApi.city,
+            state: payloadForApi.state,
+            pincode: String(payloadForApi.pincode || ''),
             transportMode: payloadForApi.transportMode,
+            serviceMode: payloadForApi.serviceMode,
+            rating: payloadForApi.rating,
+            subVendor: payloadForApi.subVendor,
+            transporterType: 'regular' as const,
+            isVerified: false,
+            approvalStatus: 'approved' as const,
+            createdAt: new Date().toISOString(),
           },
-          pricing: payloadForApi.prices,
-          serviceability: payloadForApi.serviceability || [],
-          raw: payloadForApi,
+          pricing: {
+            priceRate: {
+              ...(payloadForApi.prices?.priceRate || {}),
+              volumetricUnit: volUnit,
+              divisor: volUnit === 'cm' ? (volumetric.state.volumetricDivisor || null) : null,
+              cftFactor: volUnit === 'in' ? (volumetric.state.cftFactor || null) : null,
+            },
+            priceChart: payloadForApi.prices?.priceChart || {},
+            zoneRates: payloadForApi.prices?.priceChart || {},
+          },
+          serviceability: payloadForApi.serviceability || {},
+          zoneRates: {},
+          oda: {},
+          stats: {},
         };
 
         const token = getAuthToken();
@@ -2070,7 +2061,6 @@ export const AddVendor: React.FC = () => {
 
         const utsfRes = await fetch(utsfUrl, {
           method: 'POST',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
@@ -2093,7 +2083,7 @@ export const AddVendor: React.FC = () => {
       // Reset the form
       clearDraft();
       clearWizard();
-      localStorage.removeItem(getZpmKey());
+      localStorage.removeItem(ZPM_KEY);
       try {
         if (typeof vendorBasics.reset === 'function') vendorBasics.reset();
         if (typeof pincodeLookup.reset === 'function') pincodeLookup.reset();
@@ -2203,309 +2193,229 @@ export const AddVendor: React.FC = () => {
   return (
     <div
       ref={topRef}
-      className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 relative overflow-x-hidden pb-10"
+      className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200"
     >
-      {/* ═══ FLOATING 3D GRAPHIC FOR STEP 1 ═══ */}
-      {/* Moved into the Step 1 Form Layout container to ensure grid alignment */}
-
-      {/* ═══ STEPPER FULL WIDTH ═══ */}
-      <div className="relative z-20 w-full mb-2">
-        <VendorStepBar
-          currentStep={currentStep}
-          onStepChange={goToStep}
-          vendorName={sidePanelProps.vendorName}
-          transportMode={transportMode}
-          zonesCount={matrixSize.rows}
-          pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
-          onReset={handleReset}
-        />
-      </div>
-
-      {/* ═══ MAIN LAYOUT ═══ */}
-      <div className="mx-4 md:mx-6 mt-4 mb-6 relative z-10">
-        <div className="flex gap-8 items-stretch min-h-[calc(100vh-140px)] bg-transparent">
-          {/* LEFT column: Main Content */}
+      {/* ═══ UNIFIED WHITE CARD: Stepper + Content + Side Panel ═══ */}
+      <div className="mx-4 md:mx-6 mt-4 mb-6 bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div className="flex gap-0 min-h-[calc(100vh-140px)]">
+          {/* LEFT column: Stepper + Main Content */}
           <div className="flex-1 min-w-0 flex flex-col">
+            {/* Stepper inside left column */}
+            <VendorStepBar
+              currentStep={currentStep}
+              onStepChange={goToStep}
+              vendorName={sidePanelProps.vendorName}
+              transportMode={transportMode}
+              zonesCount={matrixSize.rows}
+              pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
+              onReset={handleReset}
+            />
             {/* Main Content */}
             <div className="flex-1 min-w-0 p-6">
               <form id="add-vendor-form" onSubmit={handleSubmit} className="space-y-3">
 
                 {/* ════════════════════════════════════════════════ */}
-                {/* STEP 1: FIND VENDOR (REDESIGNED HERO)           */}
+                {/* STEP 1: FIND VENDOR (REDESIGNED)                */}
                 {/* ════════════════════════════════════════════════ */}
                 <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
-                  <div className="flex flex-col xl:flex-row-reverse items-stretch justify-between gap-8 w-full py-4">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="max-w-3xl mx-auto pt-4"
+                  >
 
-                    {/* LEFT COLUMN: Text Setup */}
-                    <div className="flex-1 w-full max-w-3xl flex flex-col justify-between py-4">
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-
-                        {/* HERO HEADING */}
-                        <div className="mb-12 text-left">
-                          <h1 className="text-[3.5rem] leading-[1.1] font-extrabold text-slate-900 tracking-tight mb-4">
-                            Find Your <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Trusted Vendors</span>
-                          </h1>
-                          <p className="text-xl text-slate-500 font-medium max-w-xl">
-                            Search for an existing active partner in our database or quickly create a new profile.
-                          </p>
-                        </div>
-
-                        {vendorBasics.basics.companyName ? (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 shadow-sm mb-12"
-                          >
-                            <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
-                              <div className="flex items-center gap-4">
-                                <div className="bg-emerald-100 p-3 rounded-full">
-                                  <CheckCircle2 className="w-7 h-7 text-emerald-600" />
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-emerald-900 text-lg">Vendor Selected</h4>
-                                  <p className="text-emerald-700 hover:opacity-80">
-                                    You are working on <strong>{vendorBasics.basics.companyName}</strong>
-                                  </p>
-                                  {isAutoFilled && autoFilledFromName && (
-                                    <p className="text-sm text-emerald-600 mt-1 font-medium">
-                                      Data auto-filled from {autoFilledFromName}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex gap-3 w-full md:w-auto">
-                                <button
-                                  type="button"
-                                  onClick={clearAutoFill}
-                                  className="flex-1 md:flex-none px-5 py-3 bg-white border border-emerald-200 text-emerald-700 rounded-xl font-bold hover:bg-emerald-50 transition-colors"
-                                >
-                                  Clear Selection
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { if (!vendorMode) setVendorMode('existing'); goNext(); }}
-                                  className="flex-1 md:flex-none px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5"
-                                >
-                                  Continue <ChevronDown className="w-5 h-5 -rotate-90" />
-                                </button>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ) : (
-                          <>
-                            {/* SEARCH CONTAINER (Hero Size) */}
-                            <div ref={dropdownRef} className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 overflow-hidden relative z-30 mb-12 transition-all duration-300 focus-within:-translate-y-1 focus-within:shadow-[0_20px_40px_rgb(0,0,0,0.08)]">
-                              <div className="p-2">
-                                <div className="relative flex items-center">
-                                  <div className="absolute left-6 flex items-center pointer-events-none">
-                                    {isSearching ? <Loader2 className="h-8 w-8 text-blue-600 animate-spin" /> : <Search className="h-8 w-8 text-slate-300" />}
-                                  </div>
-                                  <input
-                                    type="text"
-                                    className="block w-full pl-20 pr-16 py-6 text-2xl font-semibold border-none focus:ring-0 focus:outline-none placeholder:text-slate-300 text-slate-800 bg-transparent"
-                                    placeholder="Type vendor name..."
-                                    value={legalCompanyNameInput}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      setLegalCompanyNameInput(value);
-                                      setIsAutoFilled(false);
-                                      if (value.length >= 2) setIsSearching(true);
-                                      searchTransporters(value);
-                                    }}
-                                    onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-                                    onKeyDown={(e) => {
-                                      if (!showDropdown || !suggestions.length) return;
-                                      if (e.key === 'ArrowDown') {
-                                        e.preventDefault();
-                                        setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
-                                      } else if (e.key === 'ArrowUp') {
-                                        e.preventDefault();
-                                        setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
-                                      } else if (e.key === 'Enter' && highlightedIndex >= 0) {
-                                        e.preventDefault();
-                                        handleVendorAutoSelect(suggestions[highlightedIndex]);
-                                      } else if (e.key === 'Escape') {
-                                        setShowDropdown(false);
-                                      }
-                                    }}
-                                  />
-                                  {/* Clear Button */}
-                                  {legalCompanyNameInput.length > 0 && !isAutoFilled && (
-                                    <button
-                                      type="button"
-                                      onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
-                                      className="absolute right-6 flex items-center p-2 rounded-full hover:bg-slate-100 transition-colors"
-                                    >
-                                      <XCircleIcon className="h-7 w-7 text-slate-300 hover:text-slate-600" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* DROPDOWN RESULTS */}
-                              <AnimatePresence>
-                                {showDropdown && suggestions.length > 0 && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="border-t border-slate-100 bg-white max-h-[300px] overflow-y-auto"
-                                  >
-                                    {suggestions.map((v, i) => (
-                                      <div
-                                        key={v.id}
-                                        onClick={() => handleVendorAutoSelect(v)}
-                                        onMouseEnter={() => setHighlightedIndex(i)}
-                                        className={`px-8 py-4 cursor-pointer flex items-center gap-4 transition-colors ${highlightedIndex === i ? 'bg-blue-50/60' : 'hover:bg-slate-50'}`}
-                                      >
-                                        <div className={`p-3 rounded-xl ${v.isTemporary ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                                          <Building2 className="w-6 h-6" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <h4 className="font-bold text-slate-800 text-lg">{v.legalCompanyName || v.companyName}</h4>
-                                          <div className="flex gap-3 text-sm text-slate-500 mt-1 font-medium">
-                                            {v.vendorCode && <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">{v.vendorCode}</span>}
-                                            {v.zones?.length > 0 && <span>• {v.zones.length} zones active</span>}
-                                          </div>
-                                        </div>
-                                        <div className="text-slate-400">
-                                          <ChevronDown className="w-6 h-6 -rotate-90 text-slate-300 hover:text-blue-500 transition-colors" />
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-
-                            {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
-                            {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
-                              <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.1 }}
-                              >
-                                <div className="flex items-center gap-4 mb-8">
-                                  <span className="text-sm font-bold text-slate-400 tracking-widest uppercase">Or Create New Profile</span>
-                                  <div className="h-px bg-slate-200 flex-1"></div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  {/* OPTION A: HAS PINCODES (EXCEL) */}
-                                  <button
-                                    type="button"
-                                    onClick={() => { setVendorMode('new_with_pincodes'); setZoneConfigMode('pincode'); goNext(); }}
-                                    className="group relative bg-white border-2 border-blue-600 rounded-3xl p-8 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-2 overflow-hidden"
-                                  >
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
-                                    <div className="absolute top-6 right-6 text-slate-200 group-hover:text-blue-600 transition-colors">
-                                      <ArrowRight className="w-8 h-8 -rotate-45" />
-                                    </div>
-                                    <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-600/30 group-hover:scale-110 transition-transform duration-300">
-                                      <FileSpreadsheet className="w-8 h-8" />
-                                    </div>
-                                    <h3 className="font-extrabold text-slate-900 text-2xl mb-2">Upload Excel Matrix</h3>
-                                    <p className="text-base text-slate-500 font-medium leading-relaxed">
-                                      Upload your pincode list (Excel/CSV). We will auto-map and maximize zone coverage.
-                                    </p>
-                                  </button>
-
-                                  {/* OPTION B: MANUAL (WIZARD) */}
-                                  <button
-                                    type="button"
-                                    onClick={() => { setVendorMode('new_without_pincodes'); setZoneConfigMode('wizard'); goNext(); }}
-                                    className="group relative bg-white border-2 border-indigo-600 rounded-3xl p-8 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-900/10 hover:-translate-y-2 overflow-hidden"
-                                  >
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
-                                    <div className="absolute top-6 right-6 text-slate-200 group-hover:text-indigo-600 transition-colors">
-                                      <ArrowRight className="w-8 h-8 -rotate-45" />
-                                    </div>
-                                    <div className="w-16 h-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-600/30 group-hover:scale-110 transition-transform duration-300">
-                                      <MapPin className="w-8 h-8" />
-                                    </div>
-                                    <h3 className="font-extrabold text-slate-900 text-2xl mb-2">Manual Zone Setup</h3>
-                                    <p className="text-base text-slate-500 font-medium leading-relaxed">
-                                      Use our interactive Zone Wizard to select states, cities, and regions manually.
-                                    </p>
-                                  </button>
-                                </div>
-                              </motion.div>
-                            )}
-
-                            {/* === MONGODB DRAFTS UI === */}
-                            {!isAutoFilled && cloudDrafts.length > 0 && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="mt-12"
-                              >
-                                <div className="flex items-center gap-4 mb-6">
-                                  <span className="text-sm font-bold text-slate-400 tracking-widest uppercase">Resume Draft</span>
-                                  <div className="h-px bg-slate-200 flex-1"></div>
-                                </div>
-                                <div className="grid grid-cols-1 gap-4">
-                                  {cloudDrafts.map((draft, idx) => (
-                                    <div key={draft._id || idx} className="bg-white border-2 border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group">
-                                      <div className="flex items-center gap-4">
-                                        <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                                          <Clock className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                          <h4 className="font-bold text-slate-800 text-lg">{draft.draftName || 'Untitled Vendor Draft'}</h4>
-                                          <p className="text-sm text-slate-500 font-medium mt-0.5">
-                                            Last saved: {draft.updatedAt ? new Date(draft.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently'}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={() => draft._id && handleDeleteCloudDraft(draft._id, draft.draftName || 'Untitled Draft')}
-                                          className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                                          title="Delete Draft"
-                                        >
-                                          <Trash2 className="w-5 h-5" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRestoreCloudDraft(draft)}
-                                          className="px-6 py-3 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center gap-2 shadow-sm"
-                                        >
-                                          <Download className="w-5 h-5" />
-                                          Restore
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </motion.div>
-                            )}
-                          </>
-                        )}
-
-                      </motion.div>
+                    {/* HERO HEADING */}
+                    <div className="text-center mb-8">
+                      <h2 className="text-3xl font-bold text-slate-800 mb-2">Find Your Vendor</h2>
+                      <p className="text-slate-500">Search for an existing partner or create a new profile.</p>
                     </div>
 
-                    {/* RIGHT COLUMN: Illustration */}
-                    <motion.div
-                      initial={{ opacity: 0, x: -50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.8 }}
-                      className="flex-[0.5] hidden xl:flex justify-center items-center pointer-events-none bg-blue-600 rounded-3xl px-16 py-8 shadow-inner"
-                    >
-                      <img
-                        src="/freightcompare-container.png"
-                        alt="Logistics Tech"
-                        className="w-full h-auto object-contain object-center drop-shadow-[0_30px_30px_rgba(0,0,0,0.2)] bg-white rounded-xl p-4"
-                      />
-                    </motion.div>
+                    {/* SEARCH CONTAINER */}
+                    <div ref={dropdownRef} className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative z-10">
+                      <div className="p-1">
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            {isSearching ? <Loader2 className="h-6 w-6 text-blue-500 animate-spin" /> : <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-500 transition-colors" />}
+                          </div>
+                          <input
+                            type="text"
+                            className="block w-full pl-12 pr-4 py-4 text-lg border-none focus:ring-0 focus:outline-none placeholder:text-slate-300 transition-all bg-transparent"
+                            placeholder="Type vendor name..."
+                            value={legalCompanyNameInput}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setLegalCompanyNameInput(value);
+                              setIsAutoFilled(false);
+                              if (value.length >= 2) setIsSearching(true);
+                              searchTransporters(value);
+                            }}
+                            onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+                            onKeyDown={(e) => {
+                              if (!showDropdown || !suggestions.length) return;
+                              if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                setHighlightedIndex(p => p < suggestions.length - 1 ? p + 1 : 0);
+                              } else if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                setHighlightedIndex(p => p > 0 ? p - 1 : suggestions.length - 1);
+                              } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+                                e.preventDefault();
+                                handleVendorAutoSelect(suggestions[highlightedIndex]);
+                              } else if (e.key === 'Escape') {
+                                setShowDropdown(false);
+                              }
+                            }}
+                          />
+                          {/* Clear Button */}
+                          {legalCompanyNameInput.length > 0 && !isAutoFilled && (
+                            <button
+                              type="button"
+                              onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
+                              className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                            >
+                              <XCircleIcon className="h-5 w-5 text-slate-300 hover:text-slate-500 transition-colors" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                  </div>
-                </div>{/* close step 1 */}
+                      {/* DROPDOWN RESULTS */}
+                      <AnimatePresence>
+                        {showDropdown && suggestions.length > 0 && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="border-t border-slate-100 bg-slate-50/50 max-h-60 overflow-y-auto"
+                          >
+                            {suggestions.map((v, i) => (
+                              <div
+                                key={v.id}
+                                onClick={() => handleVendorAutoSelect(v)}
+                                onMouseEnter={() => setHighlightedIndex(i)}
+                                className={`px-4 py-3 cursor-pointer flex items-center gap-3 transition-colors ${highlightedIndex === i ? 'bg-blue-50' : 'hover:bg-white'}`}
+                              >
+                                <div className={`p-2 rounded-lg ${v.isTemporary ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                                  <Building2 className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-slate-800 text-sm">{v.legalCompanyName || v.companyName}</h4>
+                                  <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
+                                    {v.vendorCode && <span className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">{v.vendorCode}</span>}
+                                    {v.zones?.length > 0 && <span>• {v.zones.length} zones active</span>}
+                                  </div>
+                                </div>
+                                <div className="text-slate-400">
+                                  <CheckCircleIcon className="w-5 h-5 text-slate-300 hover:text-blue-500" />
+                                </div>
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* ══ CASE 1: VENDOR AUTO-FILLED (SUCCESS) ══ */}
+                    <AnimatePresence>
+                      {isAutoFilled && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mt-6 bg-emerald-50 border border-emerald-100 rounded-xl p-5 shadow-sm"
+                        >
+                          <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
+                            <div className="flex items-center gap-4">
+                              <div className="bg-emerald-100 p-2 rounded-full">
+                                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-emerald-900">Vendor Loaded</h4>
+                                <p className="text-sm text-emerald-700">
+                                  Data auto-filled from <strong>{autoFilledFromName}</strong>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-3 w-full md:w-auto">
+                              <button
+                                type="button"
+                                onClick={clearAutoFill}
+                                className="flex-1 md:flex-none px-4 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-50"
+                              >
+                                Clear
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setVendorMode('existing'); goNext(); }}
+                                className="flex-1 md:flex-none px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 shadow-sm flex items-center justify-center gap-2"
+                              >
+                                Continue <ChevronDown className="w-4 h-4 -rotate-90" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
+                    {/* Show this if: Not auto-filled AND (Search is empty OR No results found) */}
+                    {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="mt-12"
+                      >
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or Create New</span>
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                        </div>
+
+                        <p className="text-center text-slate-600 mb-6 font-medium">Do you have a pincode serviceability list?</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          {/* OPTION A: HAS PINCODES (EXCEL) */}
+                          <button
+                            type="button"
+                            onClick={() => { setVendorMode('new_with_pincodes'); setZoneConfigMode('pincode'); goNext(); }}
+                            className="group relative bg-white border-2 border-slate-100 hover:border-green-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
+                          >
+                            <div className="absolute top-4 right-4 text-slate-300 group-hover:text-green-500 transition-colors">
+                              <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                              <FileSpreadsheet className="w-6 h-6" />
+                            </div>
+                            <h3 className="font-bold text-slate-800 text-lg group-hover:text-green-700">Yes, I have an Excel file</h3>
+                            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                              Upload your pincode list (Excel/CSV). We will maximize coverage automatically.
+                            </p>
+                          </button>
+
+                          {/* OPTION B: MANUAL (WIZARD) */}
+                          <button
+                            type="button"
+                            onClick={() => { setVendorMode('new_without_pincodes'); setZoneConfigMode('wizard'); goNext(); }}
+                            className="group relative bg-white border-2 border-slate-100 hover:border-blue-500 rounded-2xl p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1"
+                          >
+                            <div className="absolute top-4 right-4 text-slate-300 group-hover:text-blue-500 transition-colors">
+                              <MapPin className="w-6 h-6" />
+                            </div>
+                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                              <Sparkles className="w-6 h-6" />
+                            </div>
+                            <h3 className="font-bold text-slate-800 text-lg group-hover:text-blue-700">No, select manually</h3>
+                            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                              Use the Zone Wizard to select states, cities, and regions manually.
+                            </p>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                  </motion.div>
+                </div>{/* close rounded-xl */}
+                {/* END STEP 1 */}
 
                 {/* ════════════════════════════════════════════════ */}
                 {/* STEP 3: COMPANY DETAILS                         */}
@@ -2666,19 +2576,19 @@ export const AddVendor: React.FC = () => {
                     className="w-full mx-auto"
                   >
 
-                    {/* Top Navigation for Step 2 */}
-                    <WizardNavigation
-                      onBack={goBack}
-                      backLabel="Back to Search"
-                      onNext={goNext}
-                      nextLabel="Next: Company Details"
-                      isNextDisabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
-                    />
+                    {/* Header & Tabs */}
+                    <div className="flex flex-col items-center mb-4">
+                      <h3 className="text-lg font-bold text-slate-800 mb-1">
+                        {vendorMode === 'existing' ? 'Zone Price Matrix' : 'Serviceability & Pricing'}
+                      </h3>
+                      {vendorMode === 'existing' && autoFilledFromName && (
+                        <p className="text-slate-500 mb-2 text-xs">
+                          Fill in prices for <strong>{autoFilledFromName}</strong>'s zones
+                        </p>
+                      )}
 
-                    {/* Tabs */}
-                    {vendorMode !== 'existing' && (
-                      <div className="flex flex-col items-center mb-4 mt-2">
-                        {/* Segmented Control */}
+                      {/* Segmented Control — hidden when existing vendor (goes directly to matrix) */}
+                      {vendorMode !== 'existing' && (
                         <div className="bg-slate-100 p-1 rounded-xl flex items-center shadow-inner">
                           {[
                             { id: 'pincode', label: 'Pincode Upload', icon: FileSpreadsheet },
@@ -2712,10 +2622,18 @@ export const AddVendor: React.FC = () => {
                             );
                           })}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px] ${zoneConfigMode === 'matrix' ? 'p-2' : 'p-6'}`}>
+                      {/* Top Navigation for Step 2 */}
+                      <WizardNavigation
+                        onBack={goBack}
+                        backLabel="Back to Search"
+                        onNext={goNext}
+                        nextLabel="Next: Company Details"
+                        isNextDisabled={!wizardStatus?.hasPriceMatrix && !serviceabilityData}
+                      />
 
                       <AnimatePresence mode="wait">
 
@@ -2941,30 +2859,28 @@ export const AddVendor: React.FC = () => {
             </div > {/* close flex-1 main content */}
           </div> {/* close left column */}
 
-          {/* ═══ RIGHT SIDE PANEL ═══ */}
-          {currentStep > 1 && (
-            <div className="w-[340px] shrink-0 hidden lg:block">
-              <VendorSidePanel
-                currentStep={currentStep}
-                vendorName={sidePanelProps.vendorName}
-                vendorCode={sidePanelProps.vendorCode}
-                transportMode={sidePanelProps.transportMode}
-                serviceMode={sidePanelProps.serviceMode}
-                zonesCount={matrixSize.rows}
-                pincodeCount={sidePanelProps.pincodeCount}
-                matrixSize={matrixSize}
-                hasCompanyInfo={sidePanelProps.hasCompanyInfo}
-                hasContactInfo={sidePanelProps.hasContactInfo}
-                hasGST={sidePanelProps.hasGST}
-                hasCharges={sidePanelProps.hasCharges}
-                hasPricing={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
-                isAutoFilled={isAutoFilled}
-                autoFilledFrom={autoFilledFromName}
-                vendorMode={vendorMode}
-                warnings={sideWarnings}
-              />
-            </div>
-          )}
+          {/* ═══ RIGHT SIDE PANEL (inside white card) ═══ */}
+          <div className="w-[320px] shrink-0 border-l border-slate-100 bg-slate-50/50">
+            <VendorSidePanel
+              currentStep={currentStep}
+              vendorName={sidePanelProps.vendorName}
+              vendorCode={sidePanelProps.vendorCode}
+              transportMode={sidePanelProps.transportMode}
+              serviceMode={sidePanelProps.serviceMode}
+              zonesCount={matrixSize.rows}
+              pincodeCount={sidePanelProps.pincodeCount}
+              matrixSize={matrixSize}
+              hasCompanyInfo={sidePanelProps.hasCompanyInfo}
+              hasContactInfo={sidePanelProps.hasContactInfo}
+              hasGST={sidePanelProps.hasGST}
+              hasCharges={sidePanelProps.hasCharges}
+              hasPricing={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
+              isAutoFilled={isAutoFilled}
+              autoFilledFrom={autoFilledFromName}
+              vendorMode={vendorMode}
+              warnings={sideWarnings}
+            />
+          </div>
         </div> {/* close flex */}
       </div> {/* close white card */}
 
@@ -3035,17 +2951,6 @@ export const AddVendor: React.FC = () => {
           />
         )}
       </AnimatePresence>
-
-      {/* Explicit Save Draft Button (Persistent Floating) */}
-      <button
-        onClick={handleSaveCloudDraft}
-        disabled={isSavingDraft || currentStep === 4 || currentStep === 1}
-        className={`fixed bottom-8 right-8 z-40 bg-slate-900 border-2 border-slate-700/50 text-white shadow-2xl hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] px-5 py-3 rounded-full flex items-center gap-2 font-semibold transition-all ${isSavingDraft ? 'opacity-70 cursor-not-allowed' : 'hover:bg-black'} ${(currentStep === 4 || currentStep === 1) ? 'hidden' : ''}`}
-      >
-        {isSavingDraft ? <Loader2 className="w-5 h-5 animate-spin" /> : <CloudIcon className="w-5 h-5 text-blue-400" />}
-        <span>{isSavingDraft ? 'Saving...' : 'Save Draft to Cloud'}</span>
-      </button>
-
     </div >
   );
 };

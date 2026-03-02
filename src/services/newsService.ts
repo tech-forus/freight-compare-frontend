@@ -45,9 +45,7 @@ export const fetchIndianBusinessNews = async (): Promise<NewsArticle[]> => {
         // Use centralized API configuration
         console.log('[News Service] Fetching fresh Indian business news from backend proxy...');
 
-        const response = await fetch(`${API_BASE_URL}/api/news/business`, {
-            credentials: 'include',
-        });
+        const response = await fetch(`${API_BASE_URL}/api/news/business`);
 
 
         if (!response.ok) {

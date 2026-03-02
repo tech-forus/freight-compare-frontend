@@ -238,7 +238,7 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                   )}
                 </>
               )}
-              {!isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
+              {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
               <MobileNavLink to="/contact">Contact Us</MobileNavLink>
               {/* {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>} */}
               <MobileNavLink to="/vehicle-info">
@@ -287,8 +287,8 @@ const Header: React.FC = () => {
 
             {/* CENTER: Navigation (Absolute Positioned for true center) */}
             <nav className="hidden lg:flex items-center gap-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              {/* About Us - only for non-logged-in users */}
-              {!isAuthenticated && <NavLink to="/about">About Us</NavLink>}
+              {/* Conditional About Us */}
+              {isAuthenticated && <NavLink to="/about">About Us</NavLink>}
 
               <NavLink to="/contact">Contact</NavLink>
               {/* --- FIXED: Use NavLink here */}
@@ -305,7 +305,7 @@ const Header: React.FC = () => {
                     {/* PRIMARY CTA: Calculate Freight (new) */}
                     <Link
                       to="/compare"
-                      className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-bold rounded-full shadow-md shadow-blue-500/30 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                      className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-blue-700"
                     >
                       Calculate Freight
                     </Link>
@@ -313,7 +313,7 @@ const Header: React.FC = () => {
                     {/* SECONDARY CTA: Dashboard (new) */}
                     <Link
                       to="/dashboard"
-                      className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-full hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      className="px-4 py-2 bg-white border text-sm font-semibold rounded-lg hover:bg-slate-50"
                     >
                       Dashboard
                     </Link>
@@ -323,7 +323,7 @@ const Header: React.FC = () => {
                     {(isAdmin || isSuperAdmin) && (
                       <Link
                         to={isSuperAdmin ? "/super-admin" : "/admin-updates"}
-                        className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-full hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                        className="px-3 py-2 bg-white border text-sm font-medium rounded-lg hover:bg-slate-50"
                       >
                         Admin
                       </Link>
