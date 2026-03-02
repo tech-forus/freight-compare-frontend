@@ -1928,6 +1928,9 @@ export const AddVendor: React.FC = () => {
     // Calculate priceChart first before validation
     const priceChart = (wizardData?.priceMatrix || zpm?.priceMatrix || {}) as Record<string, Record<string, number>>;
 
+    // ✅ DRAFT LOGIC: Determine early so we can skip checks
+    const isDraft = saveMode === 'draft';
+
     // Validate serviceability is loaded BEFORE building payload
     const hasServiceabilityFromCSV = serviceabilityData?.serviceability && Array.isArray(serviceabilityData.serviceability) && serviceabilityData.serviceability.length > 0;
     const hasServiceabilityFromWizard = wizardData?.serviceability && Array.isArray(wizardData.serviceability) && wizardData.serviceability.length > 0;
@@ -1941,8 +1944,8 @@ export const AddVendor: React.FC = () => {
       hasZPM: hasZPM ? '✅ Yes' : '❌ No',
     });
 
-    // Ensure we have at least serviceability OR price chart
-    if (!hasServiceabilityFromCSV && !hasServiceabilityFromWizard && !hasPriceChart && !hasZPM) {
+    // Ensure we have at least serviceability OR price chart (skip for drafts)
+    if (!isDraft && !hasServiceabilityFromCSV && !hasServiceabilityFromWizard && !hasPriceChart && !hasZPM) {
       toast.error('[STEP 1 FAIL] Missing data: No CSV pincodes, no Wizard data, no price chart', { duration: 5000 });
       return;
     }
@@ -1950,8 +1953,6 @@ export const AddVendor: React.FC = () => {
     // Validate (logs inside validateAll will tell us what failed)
     console.log('[STEP 2] Running validateAll...');
 
-    // ✅ DRAFT LOGIC: Skip validation if saving as draft
-    const isDraft = saveMode === 'draft';
     let ok = true;
 
     if (!isDraft) {
@@ -2023,6 +2024,11 @@ export const AddVendor: React.FC = () => {
         }
 
         fd.append('vendorJson', JSON.stringify(payloadForApi));
+
+        // ✅ DRAFT: Explicitly send isDraft flag so backend skips strict validation
+        if (isDraft) {
+          fd.append('isDraft', 'true');
+        }
 
         const token = getAuthToken();
         const url = `${API_BASE}/api/transporter/addtiedupcompanies`;
