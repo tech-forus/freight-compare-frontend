@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Cookies from 'js-cookie';
 import { persistDraft } from '../store/draftStore';
 // Hooks (keep your originals)
+import { useAuth } from '../hooks/useAuth';
 import { useVendorAutofill } from '../hooks/useVendorAutofill';
 
 import { useVendorBasics } from '../hooks/useVendorBasics';
@@ -404,18 +405,28 @@ function base64UrlToJson<T = any>(b64url: string): T | null {
 }
 
 function getCustomerIDFromToken(): string {
+  // Try to decode JWT from cookie/localStorage (legacy path — cookie is httpOnly so usually empty)
   const token = getAuthToken();
-  if (!token || token.split('.').length < 2) return '';
-  const payload = base64UrlToJson<Record<string, any>>(token.split('.')[1]) || {};
-  const id =
-    payload?.customer?._id ||
-    payload?.user?._id ||
-    payload?._id ||
-    payload?.id ||
-    payload?.customerId ||
-    payload?.customerID ||
-    '';
-  return id || '';
+  if (token && token.split('.').length >= 2) {
+    const payload = base64UrlToJson<Record<string, any>>(token.split('.')[1]) || {};
+    const id =
+      payload?.customer?._id ||
+      payload?.user?._id ||
+      payload?._id ||
+      payload?.id ||
+      payload?.customerId ||
+      payload?.customerID ||
+      '';
+    if (id) return id;
+  }
+  // Fallback: useAuth stores the user profile as 'authUser' in localStorage.
+  // The JWT is httpOnly so cannot be read by JS — we read the stored profile instead.
+  try {
+    const stored = JSON.parse(localStorage.getItem('authUser') || '{}');
+    return stored?.customer?._id || stored?._id || '';
+  } catch {
+    return '';
+  }
 }
 
 /** Capitalize every word (auto-capitalize) */
@@ -473,6 +484,9 @@ function safeLoadZPM(): ZonePriceMatrixLS | null {
 // MAIN COMPONENT
 // ============================================================================
 export const AddVendor: React.FC = () => {
+  // Auth hook — provides user from React context (reliable, no localStorage parsing needed)
+  const { user } = useAuth();
+
   // Hooks (manage sub-section state/UI)
   const vendorBasics = useVendorBasics();
   const pincodeLookup = usePincodeLookup();
@@ -588,6 +602,26 @@ export const AddVendor: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Stable ref for customerID — updated whenever auth user changes.
+  // Using a ref (not state) so the debounced search closure always reads the latest value
+  // without needing to be recreated via useMemo deps.
+  const customerIdRef = useRef<string>('');
+  useEffect(() => {
+    // Primary: read from useAuth React context
+    const ctxId = (user as any)?.customer?._id || '';
+    if (ctxId) {
+      customerIdRef.current = ctxId;
+      return;
+    }
+    // Fallback: useAuth writes 'authUser' to localStorage — parse it directly
+    try {
+      const stored = JSON.parse(localStorage.getItem('authUser') || '{}');
+      customerIdRef.current = stored?.customer?._id || stored?._id || '';
+    } catch {
+      customerIdRef.current = '';
+    }
+  }, [user]);
+
   // ----------------------------------------------------------------------------
   // Initialize vendor autofill helper (drop this after your hooks/state are defined)
   // ----------------------------------------------------------------------------
@@ -629,14 +663,13 @@ export const AddVendor: React.FC = () => {
         setIsSearching(true);
 
         try {
-          const customerID = getCustomerIDFromToken();
-          if (!customerID) {
-            setSuggestions([]);
-            return;
-          }
+          // Use ref (updated by useEffect when useAuth user changes) — no more localStorage parsing inside debounce
+          const customerID = customerIdRef.current;
 
           const token = getAuthToken();
-          const url = `${API_BASE}/api/transporter/search-transporters?query=${encodeURIComponent(query)}&customerID=${encodeURIComponent(customerID)}&limit=10`;
+          // Only include customerID in URL when we have one (backend handles missing customerID gracefully)
+          const customerParam = customerID ? `&customerID=${encodeURIComponent(customerID)}` : '';
+          const url = `${API_BASE}/api/transporter/search-transporters?query=${encodeURIComponent(query)}${customerParam}&limit=10`;
 
           console.time('[Search] API call');
           const response = await fetch(url, {
@@ -645,6 +678,7 @@ export const AddVendor: React.FC = () => {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
+            credentials: 'include',  // send httpOnly authToken cookie to satisfy protect middleware
             signal: abortControllerRef.current.signal
           });
           console.timeEnd('[Search] API call');
@@ -691,7 +725,7 @@ export const AddVendor: React.FC = () => {
         try {
           // Step 1: Fetch full vendor detail from new endpoint
           const token = getAuthToken();
-          const customerID = getCustomerIDFromToken();
+          const customerID = customerIdRef.current;
           const detailUrl = `${API_BASE}/api/transporter/search-transporters/${searchResult.id}?source=${encodeURIComponent(searchResult.source)}&customerID=${encodeURIComponent(customerID)}`;
 
           console.time('[AutoFill] detail-fetch');
@@ -700,7 +734,8 @@ export const AddVendor: React.FC = () => {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
-            }
+            },
+            credentials: 'include',  // send httpOnly authToken cookie to satisfy protect middleware
           });
           console.timeEnd('[AutoFill] detail-fetch');
 
@@ -1760,12 +1795,12 @@ export const AddVendor: React.FC = () => {
       surcharges: (charges.surcharges || [])
         .filter((s) => s.enabled !== false && s.label && s.label.trim())
         .map((s) => ({
-          id:      s.id,
-          label:   s.label.trim(),
+          id: s.id,
+          label: s.label.trim(),
           formula: s.formula,
-          value:   Number(s.value)  || 0,
-          value2:  Number(s.value2) || 0,
-          order:   s.order ?? 99,
+          value: Number(s.value) || 0,
+          value2: Number(s.value2) || 0,
+          order: s.order ?? 99,
           enabled: true,
         })),
     };
@@ -1824,7 +1859,7 @@ export const AddVendor: React.FC = () => {
     });
 
     const payloadForApi = {
-      customerID: getCustomerIDFromToken(),
+      customerID: customerIdRef.current,
       companyName: companyName.trim(),
       contactPersonName: contactPerson,      // ✅ NEW - at root level
       vendorCode: vendorCode,
@@ -1997,6 +2032,7 @@ export const AddVendor: React.FC = () => {
         const res = await fetch(url, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
           body: fd,
         });
 
@@ -2065,6 +2101,7 @@ export const AddVendor: React.FC = () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
+          credentials: 'include',
           body: JSON.stringify(utsfPayload),
         });
 
