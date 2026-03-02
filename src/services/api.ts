@@ -359,22 +359,15 @@ export const getTransporterById = async (
 
 /**
  * Delete temporary transporter
- * NEW:    DELETE /api/transporter/temporary/:id
- * LEGACY: DELETE /api/transporter/deletetemporary/:id   (if you have it)
+ * NEW:    DELETE /api/transporter/delete-vendor/:id
  */
 export const deleteTemporaryTransporter = async (id: string): Promise<boolean> => {
   try {
     emitDebug('API_DELETE_TEMP_TRANSPORTER_START', { id });
 
-    // Try NEW endpoint
-    const urlNew = `${API_BASE}/api/transporter/temporary/${id}`;
+    // Try correct endpoint
+    const urlNew = `${API_BASE}/api/transporter/delete-vendor/${id}`;
     let res = await authFetch(urlNew, { method: 'DELETE', headers: buildHeaders() });
-
-    // Fallback: try legacy route if 404
-    if (!res.ok && res.status === 404) {
-      const urlLegacy = `${API_BASE}/api/transporter/deletetemporary/${id}`;
-      res = await authFetch(urlLegacy, { method: 'DELETE', headers: buildHeaders() });
-    }
 
     emitDebug('API_DELETE_TEMP_TRANSPORTER_RESPONSE', { status: res.status });
 
