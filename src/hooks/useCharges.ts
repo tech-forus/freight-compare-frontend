@@ -56,6 +56,7 @@ export interface ChargesErrors {
   hamaliCharges?: string;
   greenTax?: string;
   miscCharges?: string;
+  chequeHandlingCharges?: string;
   fuelSurchargePct?: string;
   daccCharges?: string;
   invoiceValueSurcharge?: string; // <-- ADDED THIS
@@ -106,6 +107,7 @@ const SIMPLE_CHARGE_RANGES: Record<string, { min: number; max: number }> = {
   hamaliCharges: { min: 0, max: 10000 },
   greenTax: { min: 0, max: 10000 },
   miscCharges: { min: 0, max: 10000 },
+  chequeHandlingCharges: { min: 0, max: 10000 },
   daccCharges: { min: 0, max: 10000 },
 
   // Percentages
@@ -153,6 +155,7 @@ const defaultCharges: Charges = {
   hamaliCharges: null,
   greenTax: null,
   miscCharges: null,
+  chequeHandlingCharges: null,
   fuelSurchargePct: null,
   daccCharges: null,
   invoiceValueSurcharge: null,

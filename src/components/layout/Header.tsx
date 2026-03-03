@@ -238,7 +238,8 @@ const MobileNav = ({ isOpen, closeMenu }: { isOpen: boolean; closeMenu: () => vo
                   )}
                 </>
               )}
-              {isAuthenticated && <MobileNavLink to="/about">About Us</MobileNavLink>}
+              <MobileNavLink to="/services">Services</MobileNavLink>
+              <MobileNavLink to="/calculator">Freight Calculator</MobileNavLink>
               <MobileNavLink to="/contact">Contact Us</MobileNavLink>
               {/* {isAuthenticated && <MobileNavLink to="/addbid">Add Bid</MobileNavLink>} */}
               <MobileNavLink to="/vehicle-info">
@@ -287,9 +288,8 @@ const Header: React.FC = () => {
 
             {/* CENTER: Navigation (Absolute Positioned for true center) */}
             <nav className="hidden lg:flex items-center gap-8 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              {/* Conditional About Us */}
-              {isAuthenticated && <NavLink to="/about">About Us</NavLink>}
-
+              {/* Conditional Links based on auth */}
+              <NavLink to="/services">Services</NavLink>
               <NavLink to="/contact">Contact</NavLink>
               {/* --- FIXED: Use NavLink here */}
               {/* {isAuthenticated && <NavLink to="/addbid">Add Bid</NavLink>} */}

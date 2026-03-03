@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import http from '../lib/http';
 import { AdminPermissions, DEFAULT_ADMIN_PERMISSIONS } from '../config/adminPermissions';
+import { useAuthHeartbeat } from './useAuthHeartbeat';
 
 // Matches backend JWT which nests user under `customer`
 interface JwtPayload {
@@ -59,6 +60,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [adminPermissions, setAdminPermissions] = useState<AdminPermissions | null>(null);
+
+  // Silent heartbeat: ping /api/auth/me every 60s when authenticated
+  useAuthHeartbeat(isAuthenticated);
 
   // Helper function to extract admin info from token/user object
   const extractAdminInfo = (data: any): {

@@ -2,6 +2,7 @@
 // The httpOnly `authToken` cookie is sent automatically by the browser on every
 // request because `withCredentials: true` is set. No manual Authorization header needed.
 import axios from 'axios';
+import { forceLogout } from '../utils/forceLogout';
 
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Accept'] = 'application/json';
@@ -31,17 +32,11 @@ axios.interceptors.response.use(
 
     if (err?.response?.status === 401) {
       const code = err.response?.data?.code;
+      const reason = err.response?.data?.reason;
 
-      // SESSION_REPLACED = user logged in elsewhere; force logout
-      if (code === 'SESSION_REPLACED') {
-        localStorage.removeItem('authUser');
-        // Clear the httpOnly auth cookies by calling the logout endpoint.
-        // Must use fetch (not axios) to avoid triggering this interceptor again.
-        fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
-        alert('You have been logged out because your account was signed into another device.');
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/signin')) {
-          window.location.href = '/signin';
-        }
+      // SESSION_REPLACED / NEW_LOGIN_DETECTED = user logged in elsewhere; force logout
+      if (code === 'SESSION_REPLACED' || reason === 'NEW_LOGIN_DETECTED') {
+        forceLogout('Another device logged in. You have been signed out.');
         return Promise.reject(err);
       }
 

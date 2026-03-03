@@ -1171,6 +1171,7 @@ export const AddVendor: React.FC = () => {
               fuelSurchargePct: pr.fuel ?? null,
               daccCharges: pr.daccCharges ?? null,
               miscCharges: pr.miscellanousCharges ?? null,
+              chequeHandlingCharges: pr.chequeHandlingCharges ?? null,
               rovCharges: pr.rovCharges,
               codCharges: pr.codCharges,
               toPayCharges: pr.topayCharges,
@@ -1763,6 +1764,11 @@ export const AddVendor: React.FC = () => {
         0,
         100000,
       ),
+      chequeHandlingCharges: parseCharge(
+        safeGetNumber(c, 0, 'chequeHandlingCharges'),
+        0,
+        100000,
+      ),
 
       insuaranceCharges: {
         fixed: parseCharge(insuranceNorm.fixed, 0, 100000),
@@ -2120,7 +2126,8 @@ export const AddVendor: React.FC = () => {
       }
 
       // ========== SUCCESS ==========
-      toast.success('Vendor created successfully!', { duration: 800 });
+      const isDraftSave = saveMode === 'draft';
+      toast.success(isDraftSave ? 'Draft saved!' : 'Vendor created successfully!', { duration: 800 });
       setSubmitOverlayStage('success');
 
       // Reset the form
@@ -2938,6 +2945,29 @@ export const AddVendor: React.FC = () => {
                   <p className="text-sm text-slate-700 font-medium">
                     Creating vendor, please wait…
                   </p>
+                </>
+              ) : saveMode === 'draft' ? (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                    <CheckCircleIcon className="w-10 h-10 text-amber-600" />
+                  </div>
+                  <p className="text-sm text-slate-800 font-semibold">
+                    Draft saved successfully!
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Your draft has been saved. You can restore it later.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSubmitOverlay(false);
+                      setCurrentStep(1);
+                      setScrollKey(Date.now());
+                    }}
+                    className="mt-2 px-5 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600"
+                  >
+                    Continue Editing
+                  </button>
                 </>
               ) : (
                 <>
