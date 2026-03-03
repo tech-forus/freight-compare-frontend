@@ -217,10 +217,10 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           Basic Charges
         </h2>
 
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-          {/* ── LEFT: 2×2 grid of simple fields ── */}
-          <div className="w-full lg:w-1/2">
+          {/* ── LEFT BOX: Core fields ── */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-4">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <SimpleChargeField
                 label={getLabel('docketCharges', 'Docket Charges')}
@@ -287,11 +287,8 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             </div>
           </div>
 
-          {/* ── Vertical divider ── */}
-          <div className="hidden lg:block w-px bg-slate-200 self-stretch" />
-
-          {/* ── RIGHT: ROV & Handling side-by-side ── */}
-          <div className="w-full lg:w-1/2">
+          {/* ── RIGHT BOX: ROV & Handling ── */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <CompactChargeCard
                 title="ROV / FOV"
@@ -327,8 +324,8 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           Additional Charges
         </h2>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="max-w-[160px]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 px-3 py-3">
             <SimpleChargeField
               label={getLabel('greenTax', 'Green Tax / NGT')}
               name="greenTax"
@@ -341,7 +338,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               tooltip="Green Tax or NGT charges"
             />
           </div>
-          <div className="max-w-[160px]">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 px-3 py-3">
             <SimpleChargeField
               label={getLabel('hamaliCharges', 'Hamali Charges')}
               name="hamaliCharges"
@@ -354,7 +351,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               tooltip="Loading/Unloading charges per unit"
             />
           </div>
-          <div className="max-w-[160px]">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 px-3 py-3">
             <SimpleChargeField
               label={getLabel('miscCharges', 'Misc / AOC Charges')}
               name="miscCharges"
@@ -367,7 +364,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               tooltip="Miscellaneous or AOC charges"
             />
           </div>
-          <div className="max-w-[160px]">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 px-3 py-3">
             <SimpleChargeField
               label="Cheque Handling"
               name="chequeHandlingCharges"

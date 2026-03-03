@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Cookies from 'js-cookie';
 import { persistDraft } from '../store/draftStore';
+import { draftApi } from '../api/drafts';
 // Hooks (keep your originals)
 import { useAuth } from '../hooks/useAuth';
 import { useVendorAutofill } from '../hooks/useVendorAutofill';
@@ -641,6 +642,71 @@ export const AddVendor: React.FC = () => {
     getWizardStatus,             // imported utility function
     setServiceabilityData,       // ✅ FIX: Pass serviceability setter for autofill
   });
+
+  // ============================================================================
+  // LOAD DRAFT FEATURE
+  // ============================================================================
+  const [availableDrafts, setAvailableDrafts] = useState<any[]>([]);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+
+  const fetchAvailableDrafts = useCallback(async () => {
+    try {
+      setLoadingDrafts(true);
+      const drafts = await draftApi.getVendorDrafts();
+      setAvailableDrafts(drafts || []);
+      if (drafts?.length > 0) setShowDrafts(true);
+      else toast.error('No saved drafts found.', { duration: 2000 });
+    } catch (err) {
+      toast.error('Failed to load drafts.');
+    } finally {
+      setLoadingDrafts(false);
+    }
+  }, []);
+
+  const loadDraftIntoForm = useCallback((draftDoc: any) => {
+    try {
+      const data = draftDoc.draftData || draftDoc;
+
+      // 1. Basics
+      if (data.basics) vendorBasics.updateBasics(data.basics);
+
+      // 2. Geo
+      if (data.geo && pincodeLookup.loadFromDraft) {
+        pincodeLookup.loadFromDraft(data.geo);
+      }
+
+      // 3. Volumetric
+      if (data.volumetric && volumetric.loadFromDraft) {
+        volumetric.loadFromDraft(data.volumetric);
+      }
+
+      // 4. Charges
+      if (data.charges && charges.loadFromDraft) {
+        charges.loadFromDraft(data.charges);
+      }
+
+      // 5. Configs
+      if (data.transportMode) setTransportMode(data.transportMode);
+      if (data.zoneConfigMode) setZoneConfigMode(data.zoneConfigMode);
+      if (data.invoicePercentage) setInvoicePercentage(data.invoicePercentage);
+      if (data.invoiceMinAmount) setInvoiceMinAmount(data.invoiceMinAmount);
+      if (data.invoiceUseMax) setInvoiceUseMax(data.invoiceUseMax);
+
+      if (data.serviceabilityData) {
+        setServiceabilityData(data.serviceabilityData);
+      }
+      if (data.zpm) {
+        setZpm(data.zpm);
+      }
+
+      setShowDrafts(false);
+      toast.success('Draft loaded successfully!', { duration: 2000 });
+    } catch (err) {
+      console.error('Failed parsing draft payload', err);
+      toast.error('Failed to parse draft data.');
+    }
+  }, [vendorBasics, pincodeLookup, volumetric, charges]);
 
   // ============================================================================
   // VENDOR AUTOCOMPLETE FUNCTIONS
@@ -1937,6 +2003,63 @@ export const AddVendor: React.FC = () => {
     // ✅ DRAFT LOGIC: Determine early so we can skip checks
     const isDraft = saveMode === 'draft';
 
+    // ========== FAST DRAFT SAVE (uses dedicated lightweight API) ==========
+    if (isDraft) {
+      // CompanyName is required for drafts
+      const draftCompanyName = vendorBasics.basics.companyName?.trim();
+      if (!draftCompanyName) {
+        toast.error('Company Name is required to save a draft.', { duration: 3000 });
+        return;
+      }
+
+      setIsSubmitting(true);
+      setShowSubmitOverlay(true);
+      setSubmitOverlayStage('loading');
+
+      try {
+        // Collect lightweight draft payload from current form state
+        const draftPayload = {
+          basics: { ...vendorBasics.basics },
+          geo: {
+            state: pincodeLookup.geo.state,
+            city: pincodeLookup.geo.city,
+            pincode: pincodeLookup.geo.pincode,
+          },
+          volumetric: { ...volumetric.state },
+          charges: { ...charges.charges },
+          transportMode,
+          zoneConfigMode,
+          serviceabilityData: serviceabilityData ? {
+            serviceability: serviceabilityData.serviceability,
+            zoneSummary: serviceabilityData.zoneSummary,
+            checksum: serviceabilityData.checksum,
+            source: serviceabilityData.source,
+          } : null,
+          zpm: zpm ? { zones: zpm.zones, priceMatrix: zpm.priceMatrix } : null,
+          invoicePercentage,
+          invoiceMinAmount,
+          invoiceUseMax,
+        };
+
+        await draftApi.saveVendorDraft(draftCompanyName, draftPayload);
+        toast.success('Draft saved!', { duration: 800 });
+        setSubmitOverlayStage('success');
+
+        // Also persist locally
+        persistDraft({
+          basics: draftPayload.basics,
+          charges: draftPayload.charges as any,
+        });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to save draft.', { duration: 3000 });
+        setShowSubmitOverlay(false);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // ========== FULL VENDOR SAVE (non-draft) ==========
     // Validate serviceability is loaded BEFORE building payload
     const hasServiceabilityFromCSV = serviceabilityData?.serviceability && Array.isArray(serviceabilityData.serviceability) && serviceabilityData.serviceability.length > 0;
     const hasServiceabilityFromWizard = wizardData?.serviceability && Array.isArray(wizardData.serviceability) && wizardData.serviceability.length > 0;
@@ -1950,8 +2073,8 @@ export const AddVendor: React.FC = () => {
       hasZPM: hasZPM ? '✅ Yes' : '❌ No',
     });
 
-    // Ensure we have at least serviceability OR price chart (skip for drafts)
-    if (!isDraft && !hasServiceabilityFromCSV && !hasServiceabilityFromWizard && !hasPriceChart && !hasZPM) {
+    // Ensure we have at least serviceability OR price chart
+    if (!hasServiceabilityFromCSV && !hasServiceabilityFromWizard && !hasPriceChart && !hasZPM) {
       toast.error('[STEP 1 FAIL] Missing data: No CSV pincodes, no Wizard data, no price chart', { duration: 5000 });
       return;
     }
@@ -1959,18 +2082,12 @@ export const AddVendor: React.FC = () => {
     // Validate (logs inside validateAll will tell us what failed)
     console.log('[STEP 2] Running validateAll...');
 
-    let ok = true;
-
-    if (!isDraft) {
-      ok = validateAll();
-      console.log('[STEP 2] validateAll result =', ok);
-      if (!ok) {
-        emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
-        toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
-        return;
-      }
-    } else {
-      console.log('[STEP 2] Skipping validation for DRAFT mode');
+    const ok = validateAll();
+    console.log('[STEP 2] validateAll result =', ok);
+    if (!ok) {
+      emitDebugError('VALIDATION_FAILED_ON_SUBMIT');
+      toast.error('[STEP 2 FAIL] Form validation failed - check console for details', { duration: 5000 });
+      return;
     }
 
     // Show full-screen overlay loading immediately
@@ -2406,15 +2523,67 @@ export const AddVendor: React.FC = () => {
                       )}
                     </AnimatePresence>
 
-                    {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) ══ */}
+                    {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) / NO VENDOR SELECTED ══ */}
                     {/* Show this if: Not auto-filled AND (Search is empty OR No results found) */}
                     {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="mt-12"
+                        className="mt-8"
                       >
+                        {/* ══ DRAFTS SECTION ══ */}
+                        <div className="flex flex-col items-center mb-8">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (showDrafts) setShowDrafts(false);
+                              else fetchAvailableDrafts();
+                            }}
+                            className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2 px-6 rounded-full inline-flex items-center gap-2 border border-purple-200 transition-colors"
+                          >
+                            <CloudIcon className="w-4 h-4" />
+                            {loadingDrafts ? 'Loading Drafts...' : (showDrafts ? 'Hide Drafts' : 'Restore Saved Draft')}
+                          </button>
+
+                          <AnimatePresence>
+                            {showDrafts && availableDrafts.length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="w-full max-w-lg mt-4"
+                              >
+                                <div className="bg-white border text-left border-purple-100 rounded-xl overflow-hidden shadow-lg shadow-purple-900/5">
+                                  <div className="bg-purple-50/50 px-4 py-3 border-b border-purple-100">
+                                    <h4 className="text-sm font-bold text-purple-900">Your Saved Drafts</h4>
+                                  </div>
+                                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                                    {availableDrafts.map((draft: any) => (
+                                      <button
+                                        key={draft._id}
+                                        type="button"
+                                        onClick={() => loadDraftIntoForm(draft)}
+                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex justify-between items-center group"
+                                      >
+                                        <div>
+                                          <p className="font-semibold text-slate-800 text-sm">{draft.companyName}</p>
+                                          <p className="text-xs text-slate-400 mt-0.5">
+                                            Saved: {new Date(draft.updatedAt).toLocaleDateString()} at {new Date(draft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </p>
+                                        </div>
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <span className="text-xs font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded-md">Restore</span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
                         <div className="flex items-center gap-4 mb-6">
                           <div className="h-px bg-slate-200 flex-1"></div>
                           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or Create New</span>
