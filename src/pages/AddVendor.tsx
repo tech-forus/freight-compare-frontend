@@ -495,7 +495,7 @@ export const AddVendor: React.FC = () => {
   const charges = useCharges();
 
   // Wizard storage hook
-  const { wizardData, isLoaded: wizardLoaded, clearWizard, setWizardData } = useWizardStorage();
+  const { wizardData, isLoaded: wizardLoaded, clearWizard, setWizardData, writeWizard } = useWizardStorage();
 
   // Page-level state
   const [transportMode, setTransportMode] = useState<'road' | 'air' | 'rail' | 'ship'>('road');
@@ -711,6 +711,23 @@ export const AddVendor: React.FC = () => {
         localStorage.setItem(ZPM_KEY, JSON.stringify(data.zpm));
       }
 
+      // Restore wizardData (zones + priceMatrix) so ZonePriceMatrixComponent renders correctly
+      if (data.wizardData && typeof writeWizard === 'function') {
+        writeWizard({
+          zones: data.wizardData.zones || [],
+          priceMatrix: data.wizardData.priceMatrix || {},
+          serviceability: data.wizardData.serviceability || [],
+          serviceabilityChecksum: data.wizardData.serviceabilityChecksum || '',
+          serviceabilitySource: data.wizardData.serviceabilitySource || '',
+        });
+      } else if (data.zpm?.priceMatrix && typeof writeWizard === 'function') {
+        // Fallback: derive wizardData from zpm if wizardData wasn't saved in draft
+        writeWizard({
+          zones: Array.isArray(data.zpm.zones) ? data.zpm.zones : [],
+          priceMatrix: data.zpm.priceMatrix || {},
+        });
+      }
+
       setShowDrafts(false);
       // Auto-navigate to Step 2 (Pricing) so user can continue from where they left off
       goToStep(2);
@@ -719,7 +736,7 @@ export const AddVendor: React.FC = () => {
       console.error('Failed parsing draft payload', err);
       toast.error('Failed to parse draft data.');
     }
-  }, [vendorBasics, pincodeLookup, volumetric, charges, goToStep]);
+  }, [vendorBasics, pincodeLookup, volumetric, charges, goToStep, writeWizard]);
 
   // ============================================================================
   // STANDALONE SAVE DRAFT (accessible from any step, only needs companyName)
@@ -755,6 +772,13 @@ export const AddVendor: React.FC = () => {
           source: serviceabilityData.source,
         } : null,
         zpm: zpm ? { zones: zpm.zones, priceMatrix: zpm.priceMatrix } : null,
+        wizardData: wizardData ? {
+          zones: wizardData.zones,
+          priceMatrix: wizardData.priceMatrix,
+          serviceability: wizardData.serviceability,
+          serviceabilityChecksum: wizardData.serviceabilityChecksum,
+          serviceabilitySource: wizardData.serviceabilitySource,
+        } : null,
         invoicePercentage,
         invoiceMinAmount,
         invoiceUseMax,
@@ -775,7 +799,7 @@ export const AddVendor: React.FC = () => {
     } finally {
       setIsSavingDraft(false);
     }
-  }, [vendorBasics, legalCompanyNameInput, pincodeLookup, volumetric, charges, transportMode, zoneConfigMode, serviceabilityData, zpm, invoicePercentage, invoiceMinAmount, invoiceUseMax, currentDraftId]);
+  }, [vendorBasics, legalCompanyNameInput, pincodeLookup, volumetric, charges, transportMode, zoneConfigMode, serviceabilityData, zpm, wizardData, invoicePercentage, invoiceMinAmount, invoiceUseMax, currentDraftId]);
 
   // ============================================================================
   // VENDOR AUTOCOMPLETE FUNCTIONS
@@ -2105,6 +2129,13 @@ export const AddVendor: React.FC = () => {
             source: serviceabilityData.source,
           } : null,
           zpm: zpm ? { zones: zpm.zones, priceMatrix: zpm.priceMatrix } : null,
+          wizardData: wizardData ? {
+            zones: wizardData.zones,
+            priceMatrix: wizardData.priceMatrix,
+            serviceability: wizardData.serviceability,
+            serviceabilityChecksum: wizardData.serviceabilityChecksum,
+            serviceabilitySource: wizardData.serviceabilitySource,
+          } : null,
           invoicePercentage,
           invoiceMinAmount,
           invoiceUseMax,
