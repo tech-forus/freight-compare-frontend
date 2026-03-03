@@ -706,7 +706,8 @@ interface CompactChargeCardProps {
   | 'rovCharges'
   | 'codCharges'
   | 'toPayCharges'
-  | 'appointmentCharges';
+  | 'appointmentCharges'
+  | 'odaCharges';
   data: ChargeCardData;
   errors: Record<string, string>;
   onFieldChange: (field: keyof ChargeCardData, value: any) => void;
@@ -858,20 +859,34 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 h-full">
       {/* Header: Title + Tooltip | Toggle + Unit Select */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <div className="flex items-center gap-1.5 shrink-0">
           <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">{title}</h3>
           {tooltip && (
-            <div className="group relative">
+            <div className="group relative z-10">
               <InformationCircleIcon className="w-3.5 h-3.5 text-slate-400 cursor-help" />
-              <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                 {tooltip}
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          {/* Handling Unit Selector in the same row */}
+          {cardName === 'handlingCharges' && (
+            <select
+              value={data.unit}
+              tabIndex={-1}
+              onChange={(e) => onFieldChange('unit', e.target.value as Unit)}
+              className="text-[10px] font-semibold uppercase tracking-wide border border-slate-200 rounded-md px-1.5 py-0.5 bg-slate-50 text-slate-700 h-[26px] focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+            >
+              {UNIT_OPTIONS.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          )}
+
           {/* Toggle Switch */}
           <div className="inline-flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
             <button
@@ -905,25 +920,8 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
               </button>
             )}
           </div>
-
         </div>
       </div>
-
-      {/* Handling Unit Selector Row */}
-      {cardName === 'handlingCharges' && (
-        <div className="flex justify-end mb-3">
-          <select
-            value={data.unit}
-            tabIndex={-1}
-            onChange={(e) => onFieldChange('unit', e.target.value as Unit)}
-            className="text-xs border border-slate-200 rounded-md px-2 py-0.5 bg-slate-50 text-slate-700 h-[26px] focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-          >
-            {UNIT_OPTIONS.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* Fixed rate UI */}
       {isFixed && (

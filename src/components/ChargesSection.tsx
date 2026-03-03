@@ -287,7 +287,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
             </div>
           </div>
 
-          {/* ── RIGHT BOX: ROV & Handling ── */}
+          {/* ── RIGHT BOX: ROV, Handling & ODA ── */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <CompactChargeCard
@@ -310,6 +310,17 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
                 onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
                 onFieldBlur={(field) => validateCardField('handlingCharges', field)}
                 required={isRequired('handlingCharges')}
+              />
+
+              <CompactChargeCard
+                title="ODA Charges"
+                tooltip="Out of Delivery Area charges"
+                cardName="odaCharges"
+                data={{ ...createDefaultChargeCard(), ...(chargeValues.odaCharges || {}), unit: "per kg" } as ChargeCardData}
+                errors={errors.odaCharges || {}}
+                onFieldChange={(field, value) => setCardField('odaCharges', field, value)}
+                onFieldBlur={(field) => validateCardField('odaCharges', field)}
+                required={isRequired('odaCharges')}
               />
             </div>
           </div>

@@ -64,6 +64,7 @@ export interface ChargesErrors {
   // Card-based charges (nested errors)
   handlingCharges?: Record<string, string>;
   rovCharges?: Record<string, string>;
+  odaCharges?: Record<string, string>;
   codCharges?: Record<string, string>;
   toPayCharges?: Record<string, string>;
   appointmentCharges?: Record<string, string>;
@@ -74,13 +75,13 @@ export interface UseChargesReturn {
   errors: ChargesErrors;
   setCharge: (field: keyof Charges, value: string | number | null) => void;
   setCardField: (
-    cardName: 'handlingCharges' | 'rovCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
+    cardName: 'handlingCharges' | 'rovCharges' | 'odaCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
     field: keyof ChargeCardData,
     value: any
   ) => void;
   validateField: (field: keyof Charges) => boolean;
   validateCardField: (
-    cardName: 'handlingCharges' | 'rovCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
+    cardName: 'handlingCharges' | 'rovCharges' | 'odaCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
     field: keyof ChargeCardData
   ) => boolean;
   validateAll: () => { isValid: boolean; errors: ChargesErrors };
@@ -163,6 +164,7 @@ const defaultCharges: Charges = {
   // Card-based charges
   handlingCharges: createDefaultChargeCard(),
   rovCharges: createDefaultChargeCard(),
+  odaCharges: createDefaultChargeCard(),
   codCharges: createDefaultChargeCard(),
   toPayCharges: createDefaultChargeCard(),
   appointmentCharges: createDefaultChargeCard(),
@@ -269,7 +271,7 @@ export const useCharges = (
    */
   const setCardField = useCallback(
     (
-      cardName: 'handlingCharges' | 'rovCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
+      cardName: 'handlingCharges' | 'rovCharges' | 'odaCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
       field: keyof ChargeCardData,
       value: any
     ) => {
@@ -370,7 +372,7 @@ export const useCharges = (
    */
   const validateCardField = useCallback(
     (
-      cardName: 'handlingCharges' | 'rovCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
+      cardName: 'handlingCharges' | 'rovCharges' | 'odaCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges',
       field: keyof ChargeCardData
     ): boolean => {
       const cardData = charges[cardName] as ChargeCardData;
@@ -473,9 +475,10 @@ export const useCharges = (
     });
 
     // Validate card-based charges
-    const cardNames: Array<'handlingCharges' | 'rovCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges'> = [
+    const cardNames: Array<'handlingCharges' | 'rovCharges' | 'odaCharges' | 'codCharges' | 'toPayCharges' | 'appointmentCharges'> = [
       'handlingCharges',
       'rovCharges',
+      'odaCharges',
       'codCharges',
       'toPayCharges',
       'appointmentCharges',

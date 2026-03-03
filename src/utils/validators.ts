@@ -829,6 +829,7 @@ const ChargesSchema = z.object({
   // Card-based charges (redesigned)
   handlingCharges: ChargeCardSchema,
   rovCharges: ChargeCardSchema,
+  odaCharges: ChargeCardSchema,
   codCharges: ChargeCardSchema,
   toPayCharges: ChargeCardSchema,
   appointmentCharges: ChargeCardSchema,
