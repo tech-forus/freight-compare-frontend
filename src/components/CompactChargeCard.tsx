@@ -857,7 +857,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2.5 h-full flex flex-col relative overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2.5 relative overflow-hidden">
       {/* Header: Title + Tooltip | Toggle + Unit Select */}
       <div className="flex items-center justify-between flex-nowrap gap-1.5 mb-2.5">
         <div className="flex items-center gap-1 shrink md:shrink-0 min-w-0">
@@ -925,7 +925,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
 
       {/* Fixed rate UI */}
       {isFixed && (
-        <div className="mt-auto">
+        <div className="mt-2">
           <label className="block text-[9px] font-bold text-slate-600 mb-0.5 uppercase tracking-wider">
             Fixed Rate
             {required && <span className="text-red-500 ml-0.5">*</span>}
@@ -957,7 +957,7 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
 
       {/* Variable input - Combo Input (Type or Select) */}
       {isVariable && (
-        <div className="mt-auto">
+        <div className="mt-2">
           <label className="block text-[9px] font-bold text-slate-600 mb-0.5 uppercase tracking-wider">
             Percentage (%)
             {required && <span className="text-red-500 ml-0.5">*</span>}
@@ -986,18 +986,6 @@ export const CompactChargeCard: React.FC<CompactChargeCardProps> = ({
             formatOption={(val) => `${val.toFixed(2)}%`}
           />
 
-          {!errors.variableRange && (
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-xs text-slate-500">
-                Max allowed is 5%
-              </p>
-              {cardName === 'handlingCharges' && data.unit && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600 text-white">
-                  {data.unit}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       )}
 

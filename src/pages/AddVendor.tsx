@@ -650,13 +650,18 @@ export const AddVendor: React.FC = () => {
   const [availableDrafts, setAvailableDrafts] = useState<any[]>([]);
   const [showDrafts, setShowDrafts] = useState(false);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [promptCompanyName, setPromptCompanyName] = useState('');
 
   const fetchAvailableDrafts = useCallback(async () => {
     try {
       setLoadingDrafts(true);
-      const drafts = await draftApi.getVendorDrafts();
-      setAvailableDrafts(drafts || []);
-      if (drafts?.length > 0) setShowDrafts(true);
+      const response = await draftApi.getVendorDrafts();
+      const drafts = response?.data || [];
+      setAvailableDrafts(drafts);
+      if (drafts.length > 0) setShowDrafts(true);
       else toast.error('No saved drafts found.', { duration: 2000 });
     } catch (err) {
       toast.error('Failed to load drafts.');
@@ -667,10 +672,14 @@ export const AddVendor: React.FC = () => {
 
   const loadDraftIntoForm = useCallback((draftDoc: any) => {
     try {
-      const data = draftDoc.draftData || draftDoc;
+      // Draft docs from DB have the actual data nested in `payload`
+      const data = draftDoc.payload || draftDoc;
+
+      // Track this draft ID so future saves update the same document
+      if (draftDoc._id) setCurrentDraftId(draftDoc._id);
 
       // 1. Basics
-      if (data.basics) vendorBasics.updateBasics(data.basics);
+      if (data.basics && vendorBasics.loadFromDraft) vendorBasics.loadFromDraft(data.basics);
 
       // 2. Geo
       if (data.geo && pincodeLookup.loadFromDraft) {
@@ -692,22 +701,79 @@ export const AddVendor: React.FC = () => {
       if (data.zoneConfigMode) setZoneConfigMode(data.zoneConfigMode);
       if (data.invoicePercentage) setInvoicePercentage(data.invoicePercentage);
       if (data.invoiceMinAmount) setInvoiceMinAmount(data.invoiceMinAmount);
-      if (data.invoiceUseMax) setInvoiceUseMax(data.invoiceUseMax);
+      if (data.invoiceUseMax != null) setInvoiceUseMax(data.invoiceUseMax);
 
       if (data.serviceabilityData) {
         setServiceabilityData(data.serviceabilityData);
       }
       if (data.zpm) {
         setZpm(data.zpm);
+        localStorage.setItem(ZPM_KEY, JSON.stringify(data.zpm));
       }
 
       setShowDrafts(false);
-      toast.success('Draft loaded successfully!', { duration: 2000 });
+      toast.success('Draft restored successfully!', { duration: 2000 });
     } catch (err) {
       console.error('Failed parsing draft payload', err);
       toast.error('Failed to parse draft data.');
     }
   }, [vendorBasics, pincodeLookup, volumetric, charges]);
+
+  // ============================================================================
+  // STANDALONE SAVE DRAFT (accessible from any step, only needs companyName)
+  // ============================================================================
+
+  const handleSaveDraft = useCallback(async (overrideCompanyName?: string) => {
+    const companyName = (overrideCompanyName || vendorBasics.basics.companyName || legalCompanyNameInput || '').trim();
+
+    if (!companyName) {
+      // Prompt user to enter company name
+      setPromptCompanyName('');
+      setShowNamePrompt(true);
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      const draftPayload = {
+        basics: { ...vendorBasics.basics, companyName },
+        geo: {
+          state: pincodeLookup.geo.state,
+          city: pincodeLookup.geo.city,
+          pincode: pincodeLookup.geo.pincode,
+        },
+        volumetric: { ...volumetric.state },
+        charges: { ...charges.charges },
+        transportMode,
+        zoneConfigMode,
+        serviceabilityData: serviceabilityData ? {
+          serviceability: serviceabilityData.serviceability,
+          zoneSummary: serviceabilityData.zoneSummary,
+          checksum: serviceabilityData.checksum,
+          source: serviceabilityData.source,
+        } : null,
+        zpm: zpm ? { zones: zpm.zones, priceMatrix: zpm.priceMatrix } : null,
+        invoicePercentage,
+        invoiceMinAmount,
+        invoiceUseMax,
+      };
+
+      const response = await draftApi.saveVendorDraft(companyName, draftPayload, currentDraftId || undefined);
+      const savedDraftId = response?.data?._id;
+      if (savedDraftId) setCurrentDraftId(savedDraftId);
+
+      // If company name came from prompt, update the basics field too
+      if (overrideCompanyName) {
+        vendorBasics.setField('companyName', overrideCompanyName);
+      }
+
+      toast.success('Draft saved to cloud!', { duration: 2000 });
+    } catch (err) {
+      toast.error('Failed to save draft. Please try again.');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [vendorBasics, legalCompanyNameInput, pincodeLookup, volumetric, charges, transportMode, zoneConfigMode, serviceabilityData, zpm, invoicePercentage, invoiceMinAmount, invoiceUseMax, currentDraftId]);
 
   // ============================================================================
   // VENDOR AUTOCOMPLETE FUNCTIONS
@@ -2042,7 +2108,9 @@ export const AddVendor: React.FC = () => {
           invoiceUseMax,
         };
 
-        await draftApi.saveVendorDraft(draftCompanyName, draftPayload);
+        const draftResponse = await draftApi.saveVendorDraft(draftCompanyName, draftPayload, currentDraftId || undefined);
+        const savedDraftId = draftResponse?.data?._id;
+        if (savedDraftId) setCurrentDraftId(savedDraftId);
         toast.success('Draft saved!', { duration: 800 });
         setSubmitOverlayStage('success');
 
@@ -2380,7 +2448,19 @@ export const AddVendor: React.FC = () => {
               pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
               onReset={handleReset}
               actionButtons={
-                <div className="relative flex items-center">
+                <div className="relative flex items-center gap-2">
+                  {/* Save Draft button */}
+                  <button
+                    type="button"
+                    onClick={() => handleSaveDraft()}
+                    disabled={isSavingDraft}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-200 flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    {isSavingDraft ? 'Saving...' : (currentDraftId ? 'Update Draft' : 'Save Draft')}
+                  </button>
+
+                  {/* Restore Draft button */}
                   <button
                     type="button"
                     onClick={() => {
@@ -2417,7 +2497,7 @@ export const AddVendor: React.FC = () => {
                                 className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex justify-between items-center group"
                               >
                                 <div>
-                                  <p className="font-semibold text-slate-800 text-sm">{draft.companyName}</p>
+                                  <p className="font-semibold text-slate-800 text-sm">{draft.draftName || 'Unnamed Draft'}</p>
                                   <p className="text-xs text-slate-400 mt-0.5">
                                     Saved: {new Date(draft.updatedAt).toLocaleDateString()} at {new Date(draft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </p>
@@ -3210,6 +3290,76 @@ export const AddVendor: React.FC = () => {
             onClose={() => setShowValidationModal(false)}
             errors={validationErrors}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Company Name Prompt Modal (for Save Draft when name is missing) */}
+      <AnimatePresence>
+        {showNamePrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowNamePrompt(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden"
+            >
+              <div className="bg-amber-50 p-5 border-b border-amber-100 flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-full">
+                  <Save className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-amber-900">Save Draft</h3>
+                  <p className="text-sm text-amber-700 mt-0.5">Enter a company name to save this draft.</p>
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Company Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={promptCompanyName}
+                    onChange={(e) => setPromptCompanyName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && promptCompanyName.trim()) {
+                        setShowNamePrompt(false);
+                        handleSaveDraft(promptCompanyName.trim());
+                      }
+                      if (e.key === 'Escape') setShowNamePrompt(false);
+                    }}
+                    placeholder="e.g. ShipMove North"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-amber-400 focus:ring-amber-400 focus:outline-none focus:ring-2"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowNamePrompt(false)}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!promptCompanyName.trim()}
+                    onClick={() => {
+                      setShowNamePrompt(false);
+                      handleSaveDraft(promptCompanyName.trim());
+                    }}
+                    className="px-4 py-2 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Save Draft
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div >

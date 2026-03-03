@@ -211,17 +211,17 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
     <FormKeyNav className="flex flex-col gap-6">
 
       {/* ════════ SECTION 1: BASIC CHARGES ════════ */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
-          <CurrencyDollarIcon className="w-5 h-5 text-blue-500" />
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h2 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+          <CurrencyDollarIcon className="w-4 h-4 text-blue-500" />
           Basic Charges
         </h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
           {/* ── LEFT BOX: Core fields ── */}
-          <div className="lg:col-span-5 rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full flex flex-col justify-center">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          <div className="lg:col-span-4 rounded-lg border border-slate-200 bg-slate-50/30 p-3">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0">
               <SimpleChargeField
                 label={getLabel('docketCharges', 'Docket Charges')}
                 name="docketCharges"
@@ -235,7 +235,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               />
 
               {/* Fuel Surcharge (ComboInput) */}
-              <div className="mb-0 max-h-min">
+              <div className="mb-3">
                 <div className="flex items-center gap-1 mb-1">
                   <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide">
                     {getLabel('fuelSurchargePct', 'Fuel Surcharge')}
@@ -284,47 +284,41 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
                 tooltip="Minimum base freight amount"
               />
             </div>
-            {!errors.fuelSurchargePct && <p className="mt-3 text-[10px] text-slate-400 text-center col-span-2 hidden">Max 50% Fuel Surcharge</p>}
           </div>
 
-          {/* ── RIGHT BOX: ROV, Handling & ODA ── */}
-          <div className="lg:col-span-7 rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-4">
-                <CompactChargeCard
-                  title="ROV / FOV"
-                  tooltip="Risk of Value / Freight on Value charges for high-value shipments"
-                  cardName="rovCharges"
-                  data={{ ...createDefaultChargeCard(), ...(chargeValues.rovCharges || {}) } as ChargeCardData}
-                  errors={errors.rovCharges || {}}
-                  onFieldChange={(field, value) => setCardField('rovCharges', field, value)}
-                  onFieldBlur={(field) => validateCardField('rovCharges', field)}
-                  required={isRequired('rovCharges')}
-                />
-                <CompactChargeCard
-                  title="ODA Charges"
-                  tooltip="Out of Delivery Area charges"
-                  cardName="odaCharges"
-                  data={{ ...createDefaultChargeCard(), ...(chargeValues.odaCharges || {}), unit: "per kg" } as ChargeCardData}
-                  errors={errors.odaCharges || {}}
-                  onFieldChange={(field, value) => setCardField('odaCharges', field, value)}
-                  onFieldBlur={(field) => validateCardField('odaCharges', field)}
-                  required={isRequired('odaCharges')}
-                />
-              </div>
-
-              <div className="h-full">
-                <CompactChargeCard
-                  title="Handling"
-                  tooltip="Material handling and processing charges"
-                  cardName="handlingCharges"
-                  data={{ ...createDefaultChargeCard(), ...(chargeValues.handlingCharges || {}) } as ChargeCardData}
-                  errors={errors.handlingCharges || {}}
-                  onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
-                  onFieldBlur={(field) => validateCardField('handlingCharges', field)}
-                  required={isRequired('handlingCharges')}
-                />
-              </div>
+          {/* ── RIGHT BOX: ROV, ODA & Handling ── */}
+          <div className="lg:col-span-8 rounded-lg border border-slate-200 bg-slate-50/30 p-3">
+            <div className="grid grid-cols-3 gap-3">
+              <CompactChargeCard
+                title="ROV / FOV"
+                tooltip="Risk of Value / Freight on Value charges for high-value shipments"
+                cardName="rovCharges"
+                data={{ ...createDefaultChargeCard(), ...(chargeValues.rovCharges || {}) } as ChargeCardData}
+                errors={errors.rovCharges || {}}
+                onFieldChange={(field, value) => setCardField('rovCharges', field, value)}
+                onFieldBlur={(field) => validateCardField('rovCharges', field)}
+                required={isRequired('rovCharges')}
+              />
+              <CompactChargeCard
+                title="ODA Charges"
+                tooltip="Out of Delivery Area charges"
+                cardName="odaCharges"
+                data={{ ...createDefaultChargeCard(), ...(chargeValues.odaCharges || {}), unit: "per kg" } as ChargeCardData}
+                errors={errors.odaCharges || {}}
+                onFieldChange={(field, value) => setCardField('odaCharges', field, value)}
+                onFieldBlur={(field) => validateCardField('odaCharges', field)}
+                required={isRequired('odaCharges')}
+              />
+              <CompactChargeCard
+                title="Handling"
+                tooltip="Material handling and processing charges"
+                cardName="handlingCharges"
+                data={{ ...createDefaultChargeCard(), ...(chargeValues.handlingCharges || {}) } as ChargeCardData}
+                errors={errors.handlingCharges || {}}
+                onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
+                onFieldBlur={(field) => validateCardField('handlingCharges', field)}
+                required={isRequired('handlingCharges')}
+              />
             </div>
           </div>
 
@@ -332,9 +326,9 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
       </div>
 
       {/* ════════ SECTION 2: ADDITIONAL CHARGES ════════ */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
-          <DocumentPlusIcon className="w-5 h-5 text-indigo-500" />
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <h2 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+          <DocumentPlusIcon className="w-4 h-4 text-indigo-500" />
           Additional Charges
         </h2>
 
