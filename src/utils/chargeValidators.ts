@@ -35,9 +35,9 @@ export interface ChargeCardData {
   unit: Unit;
   currency: Currency;
   mode: Mode;
-  fixedAmount: number;
+  fixedAmount: number | null;
   variableRange: VariableRange;
-  weightThreshold?: number; // Optional - only used in handlingCharges
+  weightThreshold?: number | null; // Optional - only used in handlingCharges
 }
 
 // =============================================================================
@@ -189,7 +189,7 @@ export const createDefaultChargeCard = (): ChargeCardData => ({
   unit: 'per kg',
   currency: 'INR',
   mode: 'FIXED',
-  fixedAmount: 0,
+  fixedAmount: null,
   variableRange: '0%',
   weightThreshold: null,
 });

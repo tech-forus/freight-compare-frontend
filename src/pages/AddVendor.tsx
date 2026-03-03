@@ -712,12 +712,14 @@ export const AddVendor: React.FC = () => {
       }
 
       setShowDrafts(false);
+      // Auto-navigate to Step 2 (Pricing) so user can continue from where they left off
+      goToStep(2);
       toast.success('Draft restored successfully!', { duration: 2000 });
     } catch (err) {
       console.error('Failed parsing draft payload', err);
       toast.error('Failed to parse draft data.');
     }
-  }, [vendorBasics, pincodeLookup, volumetric, charges]);
+  }, [vendorBasics, pincodeLookup, volumetric, charges, goToStep]);
 
   // ============================================================================
   // STANDALONE SAVE DRAFT (accessible from any step, only needs companyName)
@@ -2775,7 +2777,7 @@ export const AddVendor: React.FC = () => {
                     onBack={goBack}
                     backLabel="Back to Company Details"
                     onNext={handleSubmit}
-                    nextLabel={saveMode === 'active' ? 'Save Vendor' : 'Save Draft'}
+                    nextLabel="Save Vendor"
                     isSubmitting={isSubmitting}
                   />
 
@@ -3077,59 +3079,16 @@ export const AddVendor: React.FC = () => {
                           <div className="p-1.5 bg-green-100 text-green-600 rounded-lg">
                             <Save className="w-5 h-5" />
                           </div>
-                          <h3 className="text-lg font-bold text-slate-800">Finalize & Save</h3>
+                          <h3 className="text-lg font-bold text-slate-800">Publish Vendor</h3>
                         </div>
                         <p className="text-slate-600 text-sm ml-9">
-                          Review your configuration. You can save as a draft or publish immediately.
+                          Review your configuration and publish the vendor. Use <strong>Save Draft</strong> in the top bar to save progress.
                         </p>
                       </div>
 
                       <div className="p-4 md:p-5 space-y-4">
-                        {/* Save Mode Selection */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <label
-                            onClick={() => setSaveMode('draft')}
-                            className={`relative flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'draft' ? 'border-amber-400 bg-amber-50/30' : 'border-slate-200'
-                              }`}
-                          >
-                            <input
-                              type="radio"
-                              name="saveMode"
-                              checked={saveMode === 'draft'}
-                              onChange={() => setSaveMode('draft')}
-                              className="mt-1 w-4 h-4 text-amber-500 focus:ring-amber-500 border-slate-300"
-                            />
-                            <div>
-                              <span className="block font-bold text-slate-900 text-sm">Save as Draft</span>
-                              <span className="text-xs text-slate-500 mt-0.5 block">
-                                Vendor will be saved but <strong>kept hidden</strong>.
-                              </span>
-                            </div>
-                          </label>
-
-                          <label
-                            onClick={() => setSaveMode('active')}
-                            className={`relative flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-slate-50 ${saveMode === 'active' ? 'border-green-500 bg-green-50/30' : 'border-slate-200'
-                              }`}
-                          >
-                            <input
-                              type="radio"
-                              name="saveMode"
-                              checked={saveMode === 'active'}
-                              onChange={() => setSaveMode('active')}
-                              className="mt-1 w-4 h-4 text-green-600 focus:ring-green-500 border-slate-300"
-                            />
-                            <div>
-                              <span className="block font-bold text-slate-900 text-sm">Publish Vendor</span>
-                              <span className="text-xs text-slate-500 mt-0.5 block">
-                                Vendor will be <strong>live</strong> immediately.
-                              </span>
-                            </div>
-                          </label>
-                        </div>
-
                         {/* Action Buttons */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                           <button
                             type="button"
                             onClick={goBack}
@@ -3158,7 +3117,7 @@ export const AddVendor: React.FC = () => {
                                 </>
                               ) : (
                                 <>
-                                  {saveMode === 'active' ? 'Save Vendor' : 'Save Draft'}
+                                  Save Vendor
                                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </>
                               )}
