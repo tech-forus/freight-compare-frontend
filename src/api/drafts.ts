@@ -19,12 +19,13 @@ const buildHeaders = (): HeadersInit => {
 
 export const draftApi = {
     // Get all drafts for the logged-in user (max 2)
-    getVendorDrafts: async () => {
+    getVendorDrafts: async (signal?: AbortSignal) => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/drafts/vendor`, {
                 method: 'GET',
                 headers: buildHeaders(),
                 credentials: 'include',
+                signal,
             });
             if (!response.ok) {
                 throw new Error('Network response was not ok');

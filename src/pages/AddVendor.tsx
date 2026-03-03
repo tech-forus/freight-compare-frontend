@@ -597,6 +597,7 @@ export const AddVendor: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [hasSearchedAndFoundNone, setHasSearchedAndFoundNone] = useState(false);
   const [autoFilledFromName, setAutoFilledFromName] = useState<string | null>(null);
   const [autoFilledFromId, setAutoFilledFromId] = useState<string | null>(null);
@@ -656,16 +657,23 @@ export const AddVendor: React.FC = () => {
   const [promptCompanyName, setPromptCompanyName] = useState('');
 
   const fetchAvailableDrafts = useCallback(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
     try {
       setLoadingDrafts(true);
-      const response = await draftApi.getVendorDrafts();
+      const response = await draftApi.getVendorDrafts(controller.signal);
       const drafts = response?.data || [];
       setAvailableDrafts(drafts);
       if (drafts.length > 0) setShowDrafts(true);
       else toast.error('No saved drafts found.', { duration: 2000 });
-    } catch (err) {
-      toast.error('Failed to load drafts.');
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        toast.error('Request timed out. Check your connection and try again.');
+      } else {
+        toast.error('Failed to load drafts. Please try again.');
+      }
     } finally {
+      clearTimeout(timeout);
       setLoadingDrafts(false);
     }
   }, []);
@@ -879,6 +887,7 @@ export const AddVendor: React.FC = () => {
       // Close dropdown immediately for responsive feel
       setShowDropdown(false);
       setHighlightedIndex(-1);
+      setIsAutoFilling(true);
 
       (async () => {
         try {
@@ -930,13 +939,16 @@ export const AddVendor: React.FC = () => {
           );
         } catch (err) {
           console.error('[AutoFill] Auto-fill failed', err);
-          toast.error('Failed to auto-fill vendor');
+          toast.error('Failed to auto-fill vendor. Please try again.');
+        } finally {
+          setIsAutoFilling(false);
         }
       })();
     },
     [
       applyVendorAutofill,
       setIsAutoFilled,
+      setIsAutoFilling,
       setAutoFilledFromName,
       setAutoFilledFromId,
       setShowDropdown,
@@ -2496,13 +2508,14 @@ export const AddVendor: React.FC = () => {
                   {/* Restore Draft button */}
                   <button
                     type="button"
+                    disabled={loadingDrafts}
                     onClick={() => {
                       if (showDrafts) setShowDrafts(false);
                       else fetchAvailableDrafts();
                     }}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-200 flex items-center gap-1.5 shrink-0"
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-200 flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <CloudIcon className="w-3.5 h-3.5" />
+                    {loadingDrafts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudIcon className="w-3.5 h-3.5" />}
                     {loadingDrafts ? 'Loading...' : (showDrafts ? 'Hide Drafts' : 'Restore Draft')}
                   </button>
 
@@ -2657,6 +2670,28 @@ export const AddVendor: React.FC = () => {
                         )}
                       </AnimatePresence>
                     </div>
+
+                    {/* ══ CASE 0: VENDOR LOADING (autofill in progress) ══ */}
+                    <AnimatePresence>
+                      {isAutoFilling && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="mt-6 bg-blue-50 border border-blue-100 rounded-xl p-5 shadow-sm"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="bg-blue-100 p-2 rounded-full">
+                              <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-blue-900">Loading Vendor Data…</h4>
+                              <p className="text-sm text-blue-700">Fetching zones and pricing structure, please wait.</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* ══ CASE 1: VENDOR AUTO-FILLED (SUCCESS) ══ */}
                     <AnimatePresence>
