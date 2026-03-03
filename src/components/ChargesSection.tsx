@@ -220,7 +220,7 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
           {/* ── LEFT BOX: Core fields ── */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full flex flex-col justify-center">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <SimpleChargeField
                 label={getLabel('docketCharges', 'Docket Charges')}
@@ -235,8 +235,8 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
               />
 
               {/* Fuel Surcharge (ComboInput) */}
-              <div className="mb-3">
-                <div className="flex items-center gap-1.5 mb-1">
+              <div className="mb-0 max-h-min">
+                <div className="flex items-center gap-1 mb-1">
                   <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide">
                     {getLabel('fuelSurchargePct', 'Fuel Surcharge')}
                     {isRequired('fuelSurchargePct') && <span className="text-red-500 ml-0.5">*</span>}
@@ -258,7 +258,6 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
                   onKeyDown={(e) => { if (BLOCKED_KEYS.has(e.key)) e.preventDefault(); }}
                   onPaste={(e) => { e.preventDefault(); handleFuelSurchargeChange(e.clipboardData?.getData('text') ?? ''); }}
                 />
-                {!errors.fuelSurchargePct && <p className="mt-0.5 text-[10px] text-slate-400">Max 50%</p>}
               </div>
 
               <SimpleChargeField
@@ -285,10 +284,11 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
                 tooltip="Minimum base freight amount"
               />
             </div>
+            {!errors.fuelSurchargePct && <p className="mt-3 text-[10px] text-slate-400 text-center col-span-2 hidden">Max 50% Fuel Surcharge</p>}
           </div>
 
           {/* ── RIGHT BOX: ROV, Handling & ODA ── */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <CompactChargeCard
                 title="ROV / FOV"

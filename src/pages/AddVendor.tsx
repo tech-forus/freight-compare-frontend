@@ -2376,6 +2376,61 @@ export const AddVendor: React.FC = () => {
               zonesCount={matrixSize.rows}
               pricingReady={!!(wizardStatus?.hasPriceMatrix || (serviceabilityData?.serviceability?.length ?? 0) > 0)}
               onReset={handleReset}
+              actionButtons={
+                <div className="relative flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (showDrafts) setShowDrafts(false);
+                      else fetchAvailableDrafts();
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-200 flex items-center gap-1.5 shrink-0"
+                  >
+                    <CloudIcon className="w-3.5 h-3.5" />
+                    {loadingDrafts ? 'Loading...' : (showDrafts ? 'Hide Drafts' : 'Restore Draft')}
+                  </button>
+
+                  <AnimatePresence>
+                    {showDrafts && availableDrafts.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute right-0 top-full mt-2 w-80 z-[100]"
+                      >
+                        <div className="bg-white border text-left border-purple-100 rounded-xl overflow-hidden shadow-xl shadow-purple-900/10">
+                          <div className="bg-purple-50/50 px-4 py-3 border-b border-purple-100 flex justify-between items-center">
+                            <h4 className="text-sm font-bold text-purple-900">Your Saved Drafts</h4>
+                            <button onClick={() => setShowDrafts(false)} className="text-slate-400 hover:text-slate-600">
+                              <XCircleIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                            {availableDrafts.map((draft: any) => (
+                              <button
+                                key={draft._id}
+                                type="button"
+                                onClick={() => { loadDraftIntoForm(draft); setShowDrafts(false); }}
+                                className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex justify-between items-center group"
+                              >
+                                <div>
+                                  <p className="font-semibold text-slate-800 text-sm">{draft.companyName}</p>
+                                  <p className="text-xs text-slate-400 mt-0.5">
+                                    Saved: {new Date(draft.updatedAt).toLocaleDateString()} at {new Date(draft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                </div>
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <span className="text-xs font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded-md">Restore</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              }
             />
             {/* Main Content */}
             <div className="flex-1 min-w-0 p-6">
@@ -2532,57 +2587,6 @@ export const AddVendor: React.FC = () => {
                         transition={{ delay: 0.2 }}
                         className="mt-8"
                       >
-                        {/* ══ DRAFTS SECTION ══ */}
-                        <div className="flex flex-col items-center mb-8">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (showDrafts) setShowDrafts(false);
-                              else fetchAvailableDrafts();
-                            }}
-                            className="bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2 px-6 rounded-full inline-flex items-center gap-2 border border-purple-200 transition-colors"
-                          >
-                            <CloudIcon className="w-4 h-4" />
-                            {loadingDrafts ? 'Loading Drafts...' : (showDrafts ? 'Hide Drafts' : 'Restore Saved Draft')}
-                          </button>
-
-                          <AnimatePresence>
-                            {showDrafts && availableDrafts.length > 0 && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="w-full max-w-lg mt-4"
-                              >
-                                <div className="bg-white border text-left border-purple-100 rounded-xl overflow-hidden shadow-lg shadow-purple-900/5">
-                                  <div className="bg-purple-50/50 px-4 py-3 border-b border-purple-100">
-                                    <h4 className="text-sm font-bold text-purple-900">Your Saved Drafts</h4>
-                                  </div>
-                                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
-                                    {availableDrafts.map((draft: any) => (
-                                      <button
-                                        key={draft._id}
-                                        type="button"
-                                        onClick={() => loadDraftIntoForm(draft)}
-                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex justify-between items-center group"
-                                      >
-                                        <div>
-                                          <p className="font-semibold text-slate-800 text-sm">{draft.companyName}</p>
-                                          <p className="text-xs text-slate-400 mt-0.5">
-                                            Saved: {new Date(draft.updatedAt).toLocaleDateString()} at {new Date(draft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                          </p>
-                                        </div>
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <span className="text-xs font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded-md">Restore</span>
-                                        </div>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
 
                         <div className="flex items-center gap-4 mb-6">
                           <div className="h-px bg-slate-200 flex-1"></div>

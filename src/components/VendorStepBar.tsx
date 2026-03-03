@@ -21,6 +21,7 @@ interface VendorStepBarProps {
   zonesCount?: number;
   pricingReady?: boolean;
   onReset: () => void;
+  actionButtons?: React.ReactNode;
 }
 
 export const VendorStepBar: React.FC<VendorStepBarProps> = ({
@@ -31,6 +32,7 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
   zonesCount = 0,
   pricingReady,
   onReset,
+  actionButtons,
 }) => {
   return (
     <div className="select-none">
@@ -50,20 +52,18 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
                     type="button"
                     onClick={() => isClickable && onStepChange(step.id)}
                     disabled={!isClickable}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 ${
-                      isDone
-                        ? 'bg-green-500 border-green-500 text-white cursor-pointer hover:bg-green-600 hover:border-green-600'
-                        : isActive
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 ${isDone
+                      ? 'bg-green-500 border-green-500 text-white cursor-pointer hover:bg-green-600 hover:border-green-600'
+                      : isActive
                         ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
                         : 'bg-white border-slate-300 text-slate-400 cursor-default'
-                    }`}
+                      }`}
                   >
                     {isDone ? <Check className="w-4.5 h-4.5" strokeWidth={3} /> : step.id}
                   </button>
                   <span
-                    className={`mt-2 text-xs font-medium whitespace-nowrap ${
-                      isDone || isActive ? 'text-green-700' : 'text-slate-400'
-                    }`}
+                    className={`mt-2 text-xs font-medium whitespace-nowrap ${isDone || isActive ? 'text-green-700' : 'text-slate-400'
+                      }`}
                   >
                     {step.label}
                   </span>
@@ -73,9 +73,8 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
                 {i < STEPS.length - 1 && (
                   <div className="flex-1 mt-[18px] px-1">
                     <div
-                      className={`h-[3px] rounded-full transition-colors ${
-                        step.id < currentStep ? 'bg-green-500' : 'bg-slate-200'
-                      }`}
+                      className={`h-[3px] rounded-full transition-colors ${step.id < currentStep ? 'bg-green-500' : 'bg-slate-200'
+                        }`}
                     />
                   </div>
                 )}
@@ -84,14 +83,17 @@ export const VendorStepBar: React.FC<VendorStepBarProps> = ({
           })}
         </div>
 
-        {/* Reset button */}
-        <button
-          type="button"
-          onClick={onReset}
-          className="ml-6 mt-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
-        >
-          Reset
-        </button>
+        {/* Reset button & Action Buttons */}
+        <div className="ml-6 flex items-center gap-2 mt-1 shrink-0 z-50">
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+          >
+            Reset
+          </button>
+          {actionButtons}
+        </div>
       </div>
 
       {/* Context strip — visible after step 1 when vendor is known */}
