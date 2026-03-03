@@ -597,6 +597,7 @@ export const AddVendor: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const [hasSearchedAndFoundNone, setHasSearchedAndFoundNone] = useState(false);
   const [autoFilledFromName, setAutoFilledFromName] = useState<string | null>(null);
   const [autoFilledFromId, setAutoFilledFromId] = useState<string | null>(null);
   const [legalCompanyNameInput, setLegalCompanyNameInput] = useState('');
@@ -718,6 +719,7 @@ export const AddVendor: React.FC = () => {
       debounce(async (query: string) => {
         if (!query || query.length < 2) {
           setSuggestions([]);
+          setHasSearchedAndFoundNone(false);
           return;
         }
 
@@ -759,12 +761,11 @@ export const AddVendor: React.FC = () => {
           if (data.success && data.data?.length > 0) {
             setSuggestions(data.data);
             setShowDropdown(true);
+            setHasSearchedAndFoundNone(false);
           } else {
             setSuggestions([]);
-            toast.error(`No transporters found for "${query}"`, {
-              duration: 3000,
-              icon: '🔍',
-            });
+            setHasSearchedAndFoundNone(true);
+            // Optionally removed the toast error here to avoid double notifications
           }
         } catch (error: any) {
           if (error.name !== 'AbortError') {
@@ -2274,6 +2275,7 @@ export const AddVendor: React.FC = () => {
       setAutoFilledFromName(null);
       setAutoFilledFromId(null);
       setSuggestions([]);
+      setHasSearchedAndFoundNone(false);
       setServiceabilityData(null);
       setCurrentStep(1);
       setVendorMode(null);
@@ -2315,6 +2317,7 @@ export const AddVendor: React.FC = () => {
     setAutoFilledFromName(null);
     setAutoFilledFromId(null);
     setSuggestions([]);
+    setHasSearchedAndFoundNone(false);
     setServiceabilityData(null);  // ✅ NEW: Reset serviceability data
     setCurrentStep(1);           // Reset step workflow
     setVendorMode(null);         // Reset vendor mode
@@ -2492,7 +2495,12 @@ export const AddVendor: React.FC = () => {
                           {legalCompanyNameInput.length > 0 && !isAutoFilled && (
                             <button
                               type="button"
-                              onClick={() => { setLegalCompanyNameInput(''); setSuggestions([]); setShowDropdown(false); }}
+                              onClick={() => {
+                                setLegalCompanyNameInput('');
+                                setSuggestions([]);
+                                setShowDropdown(false);
+                                setHasSearchedAndFoundNone(false);
+                              }}
                               className="absolute inset-y-0 right-0 pr-4 flex items-center"
                             >
                               <XCircleIcon className="h-5 w-5 text-slate-300 hover:text-slate-500 transition-colors" />
@@ -2579,8 +2587,8 @@ export const AddVendor: React.FC = () => {
                     </AnimatePresence>
 
                     {/* ══ CASE 2: VENDOR NOT FOUND (BRANCHING) / NO VENDOR SELECTED ══ */}
-                    {/* Show this if: Not auto-filled AND (Search is empty OR No results found) */}
-                    {!isAutoFilled && (legalCompanyNameInput.length === 0 || suggestions.length === 0) && (
+                    {/* Show this if: Not auto-filled AND Search has text AND No results found AND Not currently searching AND the API confirmed no results */}
+                    {!isAutoFilled && hasSearchedAndFoundNone && !isSearching && (
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -2588,10 +2596,17 @@ export const AddVendor: React.FC = () => {
                         className="mt-8"
                       >
 
-                        <div className="flex items-center gap-4 mb-6">
-                          <div className="h-px bg-slate-200 flex-1"></div>
-                          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Or Create New</span>
-                          <div className="h-px bg-slate-200 flex-1"></div>
+                        <div className="flex flex-col items-center mb-6 w-full">
+                          <div className="bg-amber-50 text-amber-800 px-4 py-3 rounded-xl text-sm font-medium border border-amber-200 mb-8 inline-flex items-center gap-2 max-w-lg shadow-sm">
+                            <span className="flex-shrink-0 bg-amber-100 p-1.5 rounded-full"><Search className="w-4 h-4 text-amber-700" /></span>
+                            <span>Vendor <strong>"{legalCompanyNameInput}"</strong> is not available in our records. Please create a new vendor profile.</span>
+                          </div>
+
+                          <div className="flex items-center gap-4 w-full">
+                            <div className="h-px bg-slate-200 flex-1"></div>
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Create New</span>
+                            <div className="h-px bg-slate-200 flex-1"></div>
+                          </div>
                         </div>
 
                         <p className="text-center text-slate-600 mb-6 font-medium">Do you have a pincode serviceability list?</p>

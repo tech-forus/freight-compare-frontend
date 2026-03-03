@@ -217,10 +217,10 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           Basic Charges
         </h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
           {/* ── LEFT BOX: Core fields ── */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full flex flex-col justify-center">
+          <div className="lg:col-span-5 rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full flex flex-col justify-center">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <SimpleChargeField
                 label={getLabel('docketCharges', 'Docket Charges')}
@@ -288,40 +288,43 @@ export const ChargesSection: React.FC<ChargesSectionProps> = ({ charges }) => {
           </div>
 
           {/* ── RIGHT BOX: ROV, Handling & ODA ── */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full">
+          <div className="lg:col-span-7 rounded-xl border border-slate-200 bg-slate-50/30 p-3 h-full">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <CompactChargeCard
-                title="ROV / FOV"
-                tooltip="Risk of Value / Freight on Value charges for high-value shipments"
-                cardName="rovCharges"
-                data={{ ...createDefaultChargeCard(), ...(chargeValues.rovCharges || {}) } as ChargeCardData}
-                errors={errors.rovCharges || {}}
-                onFieldChange={(field, value) => setCardField('rovCharges', field, value)}
-                onFieldBlur={(field) => validateCardField('rovCharges', field)}
-                required={isRequired('rovCharges')}
-              />
+              <div className="flex flex-col gap-4">
+                <CompactChargeCard
+                  title="ROV / FOV"
+                  tooltip="Risk of Value / Freight on Value charges for high-value shipments"
+                  cardName="rovCharges"
+                  data={{ ...createDefaultChargeCard(), ...(chargeValues.rovCharges || {}) } as ChargeCardData}
+                  errors={errors.rovCharges || {}}
+                  onFieldChange={(field, value) => setCardField('rovCharges', field, value)}
+                  onFieldBlur={(field) => validateCardField('rovCharges', field)}
+                  required={isRequired('rovCharges')}
+                />
+                <CompactChargeCard
+                  title="ODA Charges"
+                  tooltip="Out of Delivery Area charges"
+                  cardName="odaCharges"
+                  data={{ ...createDefaultChargeCard(), ...(chargeValues.odaCharges || {}), unit: "per kg" } as ChargeCardData}
+                  errors={errors.odaCharges || {}}
+                  onFieldChange={(field, value) => setCardField('odaCharges', field, value)}
+                  onFieldBlur={(field) => validateCardField('odaCharges', field)}
+                  required={isRequired('odaCharges')}
+                />
+              </div>
 
-              <CompactChargeCard
-                title="Handling"
-                tooltip="Material handling and processing charges"
-                cardName="handlingCharges"
-                data={{ ...createDefaultChargeCard(), ...(chargeValues.handlingCharges || {}) } as ChargeCardData}
-                errors={errors.handlingCharges || {}}
-                onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
-                onFieldBlur={(field) => validateCardField('handlingCharges', field)}
-                required={isRequired('handlingCharges')}
-              />
-
-              <CompactChargeCard
-                title="ODA Charges"
-                tooltip="Out of Delivery Area charges"
-                cardName="odaCharges"
-                data={{ ...createDefaultChargeCard(), ...(chargeValues.odaCharges || {}), unit: "per kg" } as ChargeCardData}
-                errors={errors.odaCharges || {}}
-                onFieldChange={(field, value) => setCardField('odaCharges', field, value)}
-                onFieldBlur={(field) => validateCardField('odaCharges', field)}
-                required={isRequired('odaCharges')}
-              />
+              <div className="h-full">
+                <CompactChargeCard
+                  title="Handling"
+                  tooltip="Material handling and processing charges"
+                  cardName="handlingCharges"
+                  data={{ ...createDefaultChargeCard(), ...(chargeValues.handlingCharges || {}) } as ChargeCardData}
+                  errors={errors.handlingCharges || {}}
+                  onFieldChange={(field, value) => setCardField('handlingCharges', field, value)}
+                  onFieldBlur={(field) => validateCardField('handlingCharges', field)}
+                  required={isRequired('handlingCharges')}
+                />
+              </div>
             </div>
           </div>
 
