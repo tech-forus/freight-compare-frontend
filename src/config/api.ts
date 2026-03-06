@@ -22,7 +22,7 @@
 // Production backend URL - used as fallback when env var not set
 const PRODUCTION_BACKEND = 'https://freight-compare-backend-production.up.railway.app';
 
-const DEV_BACKEND = 'http://localhost:8000';
+const DEV_BACKEND = 'https://freight-compare-backend-production.up.railway.app';
 
 /**
  * Safely read environment variable (handles SSR edge cases)

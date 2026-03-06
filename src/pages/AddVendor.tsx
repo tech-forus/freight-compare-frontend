@@ -820,6 +820,7 @@ export const AddVendor: React.FC = () => {
         if (!query || query.length < 2) {
           setSuggestions([]);
           setHasSearchedAndFoundNone(false);
+          setIsSearching(false);
           return;
         }
 
@@ -2597,6 +2598,7 @@ export const AddVendor: React.FC = () => {
                               const value = e.target.value;
                               setLegalCompanyNameInput(value);
                               setIsAutoFilled(false);
+                              setHasSearchedAndFoundNone(false);
                               if (value.length >= 2) setIsSearching(true);
                               searchTransporters(value);
                             }}

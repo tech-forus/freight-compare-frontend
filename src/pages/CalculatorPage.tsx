@@ -33,6 +33,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import http from "../lib/http";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
@@ -75,7 +76,7 @@ import {
 } from "../constants/specialVendors";
 
 // 🔽 Fetch vendor approval statuses from Super Admin system
-import { getTemporaryTransporters, getRegularTransporters, saveSearchHistory, apiGetPincode } from "../services/api";
+import { getTemporaryTransporters, getRegularTransporters, saveSearchHistory, apiGetPincode, getBoxLibraries } from "../services/api";
 
 // 🔽 Business News Popup (shown during slow calculations)
 // import NewsPopup from "../components/NewsPopup";
@@ -830,41 +831,56 @@ const CalculatorPage: React.FC = (): JSX.Element => {
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
-    // Presets
+    // Presets — fetch from both old savepackinglist system AND new box-libraries system
     const fetchSavedBoxes = async () => {
-        if (!token) {
-            console.warn("[Presets] Skipping fetch: missing auth token");
-            setSavedBoxes([]);
-            return;
-        }
+        const customerId = (user as any)?.customer?._id;
 
-        const customerId = getCustomer()?._id;
-        if (!customerId) {
-            if (!isSuperAdmin) {
-                console.warn("[Presets] Skipping fetch: missing customerId (likely admin user)");
+        // Fetch old presets (saved via Calculator's Save button)
+        let oldBoxes: SavedBox[] = [];
+        if (customerId) {
+            try {
+                const res = await http.get(`/api/transporter/getpackinglist?customerId=${customerId}`);
+                const data = res.data?.data;
+                if (Array.isArray(data)) oldBoxes = data;
+            } catch (err: any) {
+                console.error("Failed to fetch old presets:", err?.message);
             }
-            setSavedBoxes([]);
-            return;
         }
-        try {
-            const response = await axios.get(
-                `${API_BASE_URL}/api/transporter/getpackinglist`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
 
-            const list = (response as any)?.data?.data;
-            setSavedBoxes(Array.isArray(list) ? list : []);
-        } catch (err: any) {
-            console.error("Failed to fetch saved boxes:", {
-                status: err?.response?.status,
-                data: err?.response?.data,
-                message: err?.message,
-            });
-            setSavedBoxes([]);
-            setError(
-                `Could not load presets: ${err.response?.data?.message || err.message}`
+        // Fetch new box libraries (saved via RecentSearchesPage)
+        let newBoxes: SavedBox[] = [];
+        try {
+            const libraries = await getBoxLibraries();
+            newBoxes = libraries.flatMap((lib) =>
+                lib.boxes.map((item) => ({
+                    _id: item._id || `${lib._id}-${item.name}`,
+                    name: item.name,
+                    weight: item.weight,
+                    length: item.length,
+                    width: item.width,
+                    height: item.height,
+                    quantity: item.quantity,
+                    noofboxes: item.quantity,
+                    originPincode: 0,
+                    destinationPincode: 0,
+                    modeoftransport: "Road" as const,
+                    dimensionUnit: "cm" as const,
+                }))
             );
+        } catch (err: any) {
+            console.error("Failed to fetch box libraries:", err?.message);
         }
+
+        // Merge: deduplicate by _id, old presets first
+        const seen = new Set<string>();
+        const merged: SavedBox[] = [];
+        for (const box of [...oldBoxes, ...newBoxes]) {
+            if (!seen.has(box._id)) {
+                seen.add(box._id);
+                merged.push(box);
+            }
+        }
+        setSavedBoxes(merged);
     };
 
     const handleDeletePreset = async (

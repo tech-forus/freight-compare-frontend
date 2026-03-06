@@ -15,7 +15,7 @@ export default defineConfig({
     proxy: {
       // Forward API calls to backend during development to avoid CORS
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'https://freight-compare-backend-production.up.railway.app',
         changeOrigin: true,
         secure: false,
       },
