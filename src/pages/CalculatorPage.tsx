@@ -96,6 +96,23 @@ import {
 
 
 // -----------------------------------------------------------------------------
+// Optional surcharge definitions
+// priority = shown expanded by default; others behind "Show more"
+// -----------------------------------------------------------------------------
+const OPTIONAL_CHARGES = [
+    { key: "oda",      label: "ODA Charges",         description: "Out of Delivery Area surcharge",      priority: true  },
+    { key: "cod",      label: "COD Charges",          description: "Cash on Delivery handling fee",       priority: true  },
+    { key: "topay",    label: "To Pay Charges",       description: "Freight charged at destination",      priority: true  },
+    { key: "fuel",     label: "Fuel Surcharge",       description: "Variable fuel cost adjustment",       priority: true  },
+    { key: "docket",   label: "Docket Charges",       description: "Booking & documentation fee",         priority: false },
+    { key: "fov",      label: "FOV / Insurance",      description: "Freight on value / cargo insurance",  priority: false },
+    { key: "handling", label: "Handling Charges",     description: "Special handling fee",                priority: false },
+    { key: "appt",     label: "Appointment Delivery", description: "Delivery at scheduled time",          priority: false },
+    { key: "weekend",  label: "Weekend Delivery",     description: "Saturday / Sunday delivery",          priority: false },
+    { key: "reverse",  label: "Reverse Pickup",       description: "Return shipment charges",             priority: false },
+] as const;
+
+// -----------------------------------------------------------------------------
 // Limits
 // -----------------------------------------------------------------------------
 const MAX_DIMENSION_LENGTH = 1500;
@@ -362,6 +379,16 @@ const CalculatorPage: React.FC = (): JSX.Element => {
     });
     const [invoiceValue, setInvoiceValue] = useState("");
     const [invoiceError, setInvoiceError] = useState<string | null>(null);
+
+    // Optional surcharges
+    const [selectedCharges, setSelectedCharges] = useState<Set<string>>(new Set());
+    const [showAllCharges, setShowAllCharges] = useState(false);
+    const toggleCharge = (key: string) =>
+        setSelectedCharges(prev => {
+            const next = new Set(prev);
+            next.has(key) ? next.delete(key) : next.add(key);
+            return next;
+        });
 
 
 
@@ -1241,9 +1268,9 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                     modeoftransport: modeOfTransport,
                     fromPincode,
                     toPincode: effectiveToPincode,
-
                     shipment_details: shipmentPayload,
                     invoiceValue: inv,
+                    optionalCharges: Array.from(selectedCharges),
                 },
                 {
                     headers: {
@@ -2149,6 +2176,104 @@ const CalculatorPage: React.FC = (): JSX.Element => {
                             </Card>
                         </div>
                         {/* END OF VERTICALLY STACKED SECTIONS */}
+
+                        {/* Optional Charges */}
+                        <div>
+                            <Card className="p-0 overflow-hidden">
+                                <div className="px-5 py-3.5 flex items-center justify-between border-b border-slate-100">
+                                    <div className="flex items-center gap-2">
+                                        <IndianRupee size={16} className="text-slate-400" />
+                                        <span className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                                            Optional Charges
+                                        </span>
+                                        {selectedCharges.size > 0 && (
+                                            <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                                {selectedCharges.size} selected
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-slate-400">Tick any that apply to your shipment</span>
+                                </div>
+
+                                <div className="px-5 py-4 space-y-4">
+                                    {/* Priority charges — always visible */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {OPTIONAL_CHARGES.filter(c => c.priority).map(charge => (
+                                            <label
+                                                key={charge.key}
+                                                className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all select-none ${
+                                                    selectedCharges.has(charge.key)
+                                                        ? "border-blue-400 bg-blue-50"
+                                                        : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/40"
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCharges.has(charge.key)}
+                                                    onChange={() => toggleCharge(charge.key)}
+                                                    className="mt-0.5 accent-blue-600 w-4 h-4 shrink-0"
+                                                />
+                                                <div>
+                                                    <div className="text-sm font-medium text-slate-800 leading-tight">{charge.label}</div>
+                                                    <div className="text-xs text-slate-400 mt-0.5 leading-tight">{charge.description}</div>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+
+                                    {/* Secondary charges — behind toggle */}
+                                    <AnimatePresence initial={false}>
+                                        {showAllCharges && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="pt-1 border-t border-slate-100">
+                                                    <div className="pt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                        {OPTIONAL_CHARGES.filter(c => !c.priority).map(charge => (
+                                                            <label
+                                                                key={charge.key}
+                                                                className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all select-none ${
+                                                                    selectedCharges.has(charge.key)
+                                                                        ? "border-blue-400 bg-blue-50"
+                                                                        : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/40"
+                                                                }`}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedCharges.has(charge.key)}
+                                                                    onChange={() => toggleCharge(charge.key)}
+                                                                    className="mt-0.5 accent-blue-600 w-4 h-4 shrink-0"
+                                                                />
+                                                                <div>
+                                                                    <div className="text-sm font-medium text-slate-800 leading-tight">{charge.label}</div>
+                                                                    <div className="text-xs text-slate-400 mt-0.5 leading-tight">{charge.description}</div>
+                                                                </div>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAllCharges(p => !p)}
+                                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                    >
+                                        <ChevronRight
+                                            size={14}
+                                            className={`transition-transform ${showAllCharges ? "rotate-90" : ""}`}
+                                        />
+                                        {showAllCharges ? "Show fewer charges" : `Show ${OPTIONAL_CHARGES.filter(c => !c.priority).length} more charges`}
+                                    </button>
+                                </div>
+                            </Card>
+                        </div>
 
                         {/* Action Row - Calculate Button */}
                         <div className="flex flex-col items-center justify-center pt-2 px-1 gap-3">
